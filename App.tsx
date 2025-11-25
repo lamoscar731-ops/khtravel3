@@ -323,7 +323,7 @@ const App: React.FC = () => {
                       <div>
                           <h4 className="text-xs text-neutral-500 font-bold uppercase mb-2">Sync / Share Trip</h4>
                           <p className="text-[10px] text-neutral-400 mb-3 leading-relaxed">Share current trip ({destination}) with others.</p>
-                          <button onClick={handleExport} className="w-full bg-white text-black py-3 rounded-lg text-sm font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2"><span>📋 Copy Trip Code</span></button>
+                          <button onClick={handleExport} className="w-full bg-white text-black py-3 rounded-lg text-sm font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase"><span>📋 Copy Trip Code</span></button>
                           <div className="relative">
                               <input value={importData} onChange={(e) => setImportData(e.target.value)} placeholder="Paste code to import..." className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none pr-16" />
                               <button onClick={handleImport} disabled={!importData} className="absolute right-1 top-1 bottom-1 bg-neutral-800 text-white px-3 rounded text-[10px] font-bold disabled:opacity-50 hover:bg-neutral-700">LOAD</button>
@@ -385,13 +385,13 @@ const App: React.FC = () => {
                                 </button>
                             )}
                         </div>
-                        {itinerary.length > 1 && (<button onClick={handleDeleteDay} className="mt-2 text-[10px] text-red-900 hover:text-red-500 transition-colors flex items-center gap-1">🗑️ Delete Day</button>)}
+                        {itinerary.length > 1 && (<button onClick={handleDeleteDay} className="mt-2 text-[10px] text-red-900 hover:text-red-500 transition-colors flex items-center gap-1 uppercase">🗑️ Delete Day</button>)}
                     </div>
                     <div className="text-right pt-0.5"><div className="text-xl">☁️</div><div className="text-[9px] text-neutral-400 max-w-[80px] leading-tight mt-0.5">{currentDayPlan.weatherSummary || "Tap AI Check"}</div></div>
                 </div>
 
-                <button onClick={handleEnrichItinerary} disabled={isLoading} className="w-full mb-6 bg-gradient-to-r from-neutral-800 to-neutral-900 border border-neutral-700 text-neutral-300 py-2.5 rounded-lg flex items-center justify-center gap-2 text-xs font-medium hover:border-neutral-500 transition-all active:scale-[0.98]">
-                    {isLoading ? <span className="animate-pulse">Analyzing...</span> : <><span>✨ AI Guide Check</span></>}
+                <button onClick={handleEnrichItinerary} disabled={isLoading} className="w-full mb-6 bg-gradient-to-r from-neutral-800 to-neutral-900 border border-neutral-700 text-neutral-300 py-2.5 rounded-lg flex items-center justify-center gap-2 text-xs font-medium hover:border-neutral-500 transition-all active:scale-[0.98] uppercase">
+                    {isLoading ? <span className="animate-pulse">Analyzing...</span> : <><span>✨ AI GUIDE CHECK</span></>}
                 </button>
 
                 <div className="relative pl-0.5">
@@ -401,7 +401,7 @@ const App: React.FC = () => {
                     <div className="flex gap-3 mb-8 mt-4 relative group">
                         <div className="absolute left-[15px] top-0 bottom-10 w-[2px] bg-gradient-to-b from-neutral-800 to-transparent z-0"></div>
                         <div className="flex flex-col items-center min-w-[32px] z-10 opacity-50"><div className="w-8 h-8 rounded-full border border-neutral-800 border-dashed flex items-center justify-center"><span className="text-neutral-500 text-xs">+</span></div></div>
-                        <button onClick={handleAddItem} className="flex-1 h-12 border border-dashed border-neutral-800 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 transition-all active:scale-95 uppercase text-[10px] font-bold tracking-widest">+ Add Activity</button>
+                        <button onClick={handleAddItem} className="flex-1 h-12 border border-dashed border-neutral-800 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 transition-all active:scale-95 uppercase text-[10px] font-bold tracking-widest">+ ADD ACTIVITY</button>
                     </div>
                 </div>
             </>
@@ -414,7 +414,7 @@ const App: React.FC = () => {
             <>
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-lg font-bold text-white uppercase tracking-tight">My Trips</h2>
-                    <button onClick={handleCreateTrip} className="bg-white text-black text-xs font-bold px-3 py-1.5 rounded-lg active:scale-95 transition-transform">+ New Trip</button>
+                    <button onClick={handleCreateTrip} className="bg-white text-black text-xs font-bold px-3 py-1.5 rounded-lg active:scale-95 transition-transform uppercase">+ New Trip</button>
                 </div>
                 <div className="grid gap-3">
                     {trips.map(trip => (
