@@ -12,8 +12,7 @@ const App: React.FC = () => {
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // --- Persistence Logic (Load from LocalStorage or fallback to constants) ---
-  
+  // --- Persistence Logic ---
   const [itinerary, setItinerary] = useState<DayPlan[]>(() => {
     const saved = localStorage.getItem('kuro_itinerary');
     return saved ? JSON.parse(saved) : INITIAL_ITINERARY;
@@ -43,8 +42,7 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : INITIAL_CONTACTS;
   });
 
-  // --- Save to LocalStorage whenever state changes ---
-
+  // --- Save to LocalStorage ---
   useEffect(() => { localStorage.setItem('kuro_itinerary', JSON.stringify(itinerary)); }, [itinerary]);
   useEffect(() => { localStorage.setItem('kuro_destination', destination); }, [destination]);
   useEffect(() => { localStorage.setItem('kuro_flights', JSON.stringify(flights)); }, [flights]);
@@ -56,6 +54,7 @@ const App: React.FC = () => {
   
   const currentDayPlan = itinerary.find(d => d.dayId === selectedDay) || itinerary[0];
 
+  // --- AI Enrichment ---
   const handleEnrichItinerary = async () => {
     setIsLoading(true);
     try {
@@ -70,6 +69,7 @@ const App: React.FC = () => {
     }
   };
 
+  // --- Itinerary CRUD ---
   const handleUpdateItem = (updatedItem: ItineraryItem) => {
     setItinerary(prev => prev.map(day => {
       if (day.dayId !== selectedDay) return day;
@@ -101,12 +101,12 @@ const App: React.FC = () => {
     }));
   };
 
+  // --- Day Management ---
   const handleAddDay = () => {
       const newDayId = itinerary.length + 1;
-      // Default to the day after the last day, or today if empty
       let nextDate = new Date();
       if (itinerary.length > 0) {
-          const lastDateStr = itinerary[itinerary.length - 1].date.split(' ')[0]; // Extract YYYY-MM-DD
+          const lastDateStr = itinerary[itinerary.length - 1].date.split(' ')[0];
           const lastDate = new Date(lastDateStr);
           if (!isNaN(lastDate.getTime())) {
               lastDate.setDate(lastDate.getDate() + 1);
@@ -114,17 +114,36 @@ const App: React.FC = () => {
           }
       }
       const dateString = nextDate.toISOString().split('T')[0];
-      
       const newDay: DayPlan = { dayId: newDayId, date: dateString, items: [] };
       setItinerary(prev => [...prev, newDay]);
       setSelectedDay(newDayId);
+  };
+
+  const handleDeleteDay = () => {
+      if (itinerary.length <= 1) {
+          alert("You must have at least one day in your itinerary.");
+          return;
+      }
+      
+      // Filter out the current day
+      const updatedItinerary = itinerary.filter(d => d.dayId !== selectedDay);
+      
+      // Re-index days to ensure sequence (Day 1, Day 2, etc.)
+      const reindexedItinerary = updatedItinerary.map((day, index) => ({
+          ...day,
+          dayId: index + 1
+      }));
+
+      setItinerary(reindexedItinerary);
+      // Reset selection to the first day or the previous valid index
+      setSelectedDay(1);
   };
 
   const handleUpdateDayDate = (newDate: string) => {
       setItinerary(prev => prev.map(d => d.dayId === selectedDay ? { ...d, date: newDate } : d));
   };
 
-  // Utilities CRUD
+  // --- Utilities CRUD ---
   const handleAddFlight = () => setFlights(prev => [...prev, { id: `f-${Date.now()}`, flightNumber: 'JL 000', departureDate: '2024-01-01', departureTime: '00:00', departureAirport: 'DEP', arrivalDate: '2024-01-01', arrivalTime: '00:00', arrivalAirport: 'ARR' }]);
   const handleUpdateFlight = (u: FlightInfo) => setFlights(prev => prev.map(f => f.id === u.id ? u : f));
   const handleDeleteFlight = (id: string) => setFlights(prev => prev.filter(f => f.id !== id));
@@ -141,11 +160,12 @@ const App: React.FC = () => {
   const handleUpdateContact = (u: EmergencyContact) => setContacts(prev => prev.map(c => c.id === u.id ? u : c));
   const handleDeleteContact = (id: string) => setContacts(prev => prev.filter(c => c.id !== id));
 
+  // --- Date Editing UI Logic ---
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [tempDate, setTempDate] = useState('');
   
   const startEditingDate = () => { 
-      // Extract YYYY-MM-DD from the current date string (which might contain junk or time)
+      // Extract YYYY-MM-DD cleanly
       const cleanDate = currentDayPlan.date.split(' ')[0];
       setTempDate(cleanDate); 
       setIsEditingDate(true); 
@@ -159,6 +179,7 @@ const App: React.FC = () => {
   const getFormattedDate = (dateStr: string) => {
       if (!dateStr) return "N/A";
       const parts = dateStr.split(' ')[0].split('-');
+      // Return MM/DD for display
       if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
       return dateStr;
   };
@@ -196,27 +217,38 @@ const App: React.FC = () => {
       <main className="px-5 pt-[140px] max-w-lg mx-auto">
         {activeTab === Tab.ITINERARY ? (
             <>
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-start mb-6">
                     <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-white mb-1 uppercase tracking-tight">Itinerary</h2>
-                        {isEditingDate ? (
-                            <div className="flex items-center gap-2">
-                                <input 
-                                    type="date" 
-                                    className="bg-neutral-800 text-sm text-white p-2 rounded-lg border border-neutral-700 outline-none w-full max-w-[160px] [color-scheme:dark]" 
-                                    value={tempDate} 
-                                    onChange={e => setTempDate(e.target.value)} 
-                                />
-                                <button onClick={saveDate} className="bg-white text-black text-xs font-bold px-3 py-2 rounded-lg">OK</button>
-                            </div>
-                        ) : (
-                            <p onClick={startEditingDate} className="text-xs text-neutral-500 cursor-pointer hover:text-white flex items-center gap-1 group w-fit p-1 -ml-1 rounded hover:bg-neutral-900 transition-colors">
-                                <span className="font-mono text-sm">{currentDayPlan.date}</span> 
-                                <span className="opacity-0 group-hover:opacity-100 text-[10px] transition-opacity">✎ EDIT DATE</span>
-                            </p>
-                        )}
+                        <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-tight">Itinerary</h2>
+                        
+                        <div className="flex items-center gap-3">
+                            {/* Date Editor */}
+                            {isEditingDate ? (
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="date" 
+                                        className="bg-neutral-800 text-sm text-white p-2 rounded-lg border border-neutral-700 outline-none w-full max-w-[140px] [color-scheme:dark]" 
+                                        value={tempDate} 
+                                        onChange={e => setTempDate(e.target.value)} 
+                                    />
+                                    <button onClick={saveDate} className="bg-white text-black text-xs font-bold px-3 py-2 rounded-lg">OK</button>
+                                </div>
+                            ) : (
+                                <button onClick={startEditingDate} className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 px-3 py-1.5 rounded-lg hover:border-neutral-600 transition-colors group">
+                                    <span className="font-mono text-sm text-neutral-300">{currentDayPlan.date.split(' ')[0]}</span> 
+                                    <span className="text-neutral-600 text-[10px] group-hover:text-white transition-colors">📅 Edit</span>
+                                </button>
+                            )}
+
+                            {/* Delete Day Button */}
+                            {itinerary.length > 1 && (
+                                <button onClick={handleDeleteDay} className="flex items-center gap-1 bg-red-950/20 border border-red-900/30 px-3 py-1.5 rounded-lg text-red-400 hover:bg-red-950/40 hover:border-red-900/60 transition-colors">
+                                    <span className="text-xs font-bold">🗑️ Delete Day</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
-                    <div className="text-right"><div className="text-2xl">☁️</div><div className="text-[10px] text-neutral-400 max-w-[100px] leading-tight mt-1">{currentDayPlan.weatherSummary || "Tap 'AI Guide' for forecast"}</div></div>
+                    <div className="text-right pt-1"><div className="text-2xl">☁️</div><div className="text-[10px] text-neutral-400 max-w-[100px] leading-tight mt-1">{currentDayPlan.weatherSummary || "Tap 'AI Guide' for forecast"}</div></div>
                 </div>
 
                 <button onClick={handleEnrichItinerary} disabled={isLoading} className="w-full mb-8 bg-gradient-to-r from-neutral-800 to-neutral-900 border border-neutral-700 text-neutral-300 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium hover:border-neutral-500 transition-all active:scale-[0.98]">
