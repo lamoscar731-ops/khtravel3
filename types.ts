@@ -31,6 +31,7 @@ export interface ItineraryItem {
   tags?: Tag[];
   weather?: string;
   navQuery: string;
+  mapsUrl?: string; // New field for direct Google Maps link
 }
 
 export interface DayPlan {
@@ -75,4 +76,16 @@ export interface EmergencyContact {
   name: string;
   number: string;
   note: string;
+}
+
+// New Interface for Multi-Trip Support
+export interface Trip {
+  id: string;
+  destination: string;
+  startDate: string;
+  itinerary: DayPlan[];
+  flights: FlightInfo[];
+  hotels: HotelInfo[];
+  budget: BudgetProps[];
+  contacts: EmergencyContact[];
 }
