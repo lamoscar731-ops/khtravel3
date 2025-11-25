@@ -200,8 +200,8 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black pb-24 text-neutral-200 font-sans">
-      <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-neutral-900 pt-safe-top">
-        <div className="px-5 py-3 flex justify-between items-center">
+      <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-neutral-900 pt-[env(safe-area-inset-top)]">
+        <div className="px-5 py-3 mt-2 flex justify-between items-center">
           <div className="flex items-center gap-2">
              <span className="text-neutral-500 text-xs font-normal uppercase tracking-wider">Trip to</span>
              {isEditingDest ? (
@@ -229,7 +229,7 @@ const App: React.FC = () => {
         )}
       </header>
 
-      <main className="px-4 pt-[110px] max-w-lg mx-auto">
+      <main className="px-4 pt-[130px] max-w-lg mx-auto">
         {activeTab === Tab.ITINERARY ? (
             <>
                 <div className="flex justify-between items-start mb-4">
