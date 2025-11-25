@@ -42,17 +42,33 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
       let newLocation = formData.location;
       
       // Try to extract location name from standard Google Maps URLs
-      // Format 1: .../maps/place/LOCATION_NAME/...
-      const placeMatch = url.match(/\/maps\/place\/([^/]+)\//);
+      // Works for desktop browser URLs: https://www.google.com/maps/place/Tokyo+Tower/...
+      // Does NOT work for short links (maps.app.goo.gl) as they don't contain the name.
+      
+      // Regex looks for /place/NAME or /search/NAME
+      const placeMatch = url.match(/\/(?:place|search)\/([^/?]+)/);
+      
       if (placeMatch && placeMatch[1]) {
-          const extractedName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
-          // If title is generic "New Activity" or empty, replace it
-          if (formData.title === 'New Activity' || !formData.title) {
-              newTitle = extractedName;
-          }
-          // Also set location if empty
-          if (formData.location === 'Location TBD' || !formData.location) {
-              newLocation = extractedName;
+          try {
+              // Decode URL (e.g., Tokyo+Tower -> Tokyo Tower, %E6%9D%B1%E4%BA%AC -> 東京)
+              let extractedName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+              
+              // Remove coordinates if they got mixed in (sometimes happens with @...)
+              extractedName = extractedName.split('@')[0].trim();
+
+              // Only auto-fill if we successfully extracted something readable
+              if (extractedName && extractedName.length > 0) {
+                   // If title is generic "New Activity" or empty, replace it
+                  if (formData.title === 'New Activity' || !formData.title) {
+                      newTitle = extractedName;
+                  }
+                  // Also set location if generic or empty
+                  if (formData.location === 'Location TBD' || !formData.location || formData.location === 'TBD') {
+                      newLocation = extractedName;
+                  }
+              }
+          } catch (err) {
+              console.log("Could not parse map URL name");
           }
       }
 
@@ -117,9 +133,10 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
                             type="text" 
                             value={formData.mapsUrl || ''} 
                             onChange={handleMapUrlPaste} 
-                            placeholder="Paste https://maps.app.goo.gl/..."
+                            placeholder="Paste long URL for auto-fill"
                             className="w-full bg-transparent border-b border-neutral-700 text-blue-300 text-xs py-1 focus:outline-none focus:border-neutral-400" 
                         />
+                        <p className="text-[9px] text-neutral-600 mt-1">* Short links (maps.app.goo.gl) cannot auto-fill name, but Navigation will work.</p>
                     </div>
                     <div>
                         <label className="text-[10px] text-neutral-500 font-bold block mb-1">Title</label>
