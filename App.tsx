@@ -56,12 +56,21 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('kuro_contacts', JSON.stringify(contacts)); }, [contacts]);
 
   const [isEditingDest, setIsEditingDest] = useState<boolean>(false);
+  
+  // --- Settings / Sync Logic ---
+  const [showSettings, setShowSettings] = useState(false);
+  const [importData, setImportData] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const currentDayPlan = itinerary.find(d => d.dayId === selectedDay) || itinerary[0];
 
   // --- Avatar Upload ---
   const handleAvatarClick = () => {
+      // Toggle settings modal instead of direct upload
+      setShowSettings(true);
+  };
+
+  const triggerFileUpload = () => {
       fileInputRef.current?.click();
   };
 
@@ -73,6 +82,40 @@ const App: React.FC = () => {
               setUserAvatar(reader.result as string);
           };
           reader.readAsDataURL(file);
+      }
+  };
+
+  // --- Export / Import ---
+  const handleExport = () => {
+      const data = {
+          itinerary, destination, flights, hotels, budget, contacts
+      };
+      const jsonStr = JSON.stringify(data);
+      const encoded = btoa(unescape(encodeURIComponent(jsonStr))); // Simple base64 encoding
+      navigator.clipboard.writeText(encoded).then(() => {
+          alert("Trip data copied to clipboard! Send this code to your partner.");
+      });
+  };
+
+  const handleImport = () => {
+      if (!importData) return;
+      try {
+          const jsonStr = decodeURIComponent(escape(atob(importData)));
+          const data = JSON.parse(jsonStr);
+          
+          if (confirm("This will overwrite your current trip data. Are you sure?")) {
+              if (data.itinerary) setItinerary(data.itinerary);
+              if (data.destination) setDestination(data.destination);
+              if (data.flights) setFlights(data.flights);
+              if (data.hotels) setHotels(data.hotels);
+              if (data.budget) setBudget(data.budget);
+              if (data.contacts) setContacts(data.contacts);
+              setShowSettings(false);
+              setImportData('');
+              alert("Trip loaded successfully!");
+          }
+      } catch (e) {
+          alert("Invalid data code. Please check and try again.");
       }
   };
 
@@ -199,7 +242,55 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black pb-24 text-neutral-200 font-sans">
+    <div className="min-h-screen bg-black pb-24 text-neutral-200 font-sans relative">
+      {/* Settings Modal */}
+      {showSettings && (
+          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+              <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
+                  <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
+                  <h3 className="text-xl font-bold text-white mb-6 uppercase tracking-wider text-center">Trip Settings</h3>
+                  
+                  <div className="space-y-6">
+                      {/* Avatar Section */}
+                      <div className="text-center">
+                          <div className="w-20 h-20 rounded-full bg-neutral-800 border-2 border-neutral-700 mx-auto mb-3 overflow-hidden">
+                             <img src={userAvatar} alt="User" className="w-full h-full object-cover" />
+                          </div>
+                          <button onClick={triggerFileUpload} className="text-xs bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-full font-bold">Change Avatar</button>
+                      </div>
+
+                      <hr className="border-neutral-800" />
+
+                      {/* Sync Section */}
+                      <div>
+                          <h4 className="text-xs text-neutral-500 font-bold uppercase mb-2">Sync Trip Data</h4>
+                          <p className="text-[10px] text-neutral-400 mb-3 leading-relaxed">To share your itinerary, click "Export" and send the code to your partner. They can paste it below to sync.</p>
+                          
+                          <button onClick={handleExport} className="w-full bg-white text-black py-3 rounded-lg text-sm font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                              <span>📋 Copy Trip Code</span>
+                          </button>
+
+                          <div className="relative">
+                              <input 
+                                value={importData}
+                                onChange={(e) => setImportData(e.target.value)}
+                                placeholder="Paste code here to import..." 
+                                className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none pr-16"
+                              />
+                              <button 
+                                onClick={handleImport}
+                                disabled={!importData}
+                                className="absolute right-1 top-1 bottom-1 bg-neutral-800 text-white px-3 rounded text-[10px] font-bold disabled:opacity-50 hover:bg-neutral-700"
+                              >
+                                  LOAD
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
       <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-neutral-900 pt-[env(safe-area-inset-top)]">
         <div className="px-5 py-3 mt-2 flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -210,7 +301,7 @@ const App: React.FC = () => {
                 <h1 onClick={() => setIsEditingDest(true)} className="text-lg font-bold tracking-widest text-white cursor-pointer active:opacity-50 border-b border-transparent hover:border-neutral-700 transition-all uppercase">{destination}</h1>
              )}
           </div>
-          <div onClick={handleAvatarClick} className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden cursor-pointer active:opacity-70">
+          <div onClick={handleAvatarClick} className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden cursor-pointer active:opacity-70 transition-transform hover:scale-105 shadow-glow">
             <img src={userAvatar} alt="User" className="w-full h-full object-cover" />
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
           </div>
