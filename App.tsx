@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
@@ -16,13 +17,11 @@ const App: React.FC = () => {
   
   // --- Fetch Real-time Rates ---
   useEffect(() => {
+      // ExchangeRate-API (Free tier, base HKD)
       fetch('https://api.exchangerate-api.com/v4/latest/HKD')
         .then(res => res.json())
         .then(data => {
             if (data && data.rates) {
-                // Invert rates because API gives HKD -> Currency, we need Currency -> HKD (approx) logic for display 
-                // actually, Utilities uses rate * cost. If rate is HKD per Unit.
-                // The API returns: 1 HKD = 19 JPY. So 1 JPY = 1/19 HKD.
                 const newRates: Record<string, number> = {};
                 Object.keys(DEFAULT_RATES).forEach(key => {
                     if (data.rates[key]) {
@@ -35,7 +34,7 @@ const App: React.FC = () => {
                 setExchangeRates(newRates);
             }
         })
-        .catch(err => console.log("Using default rates", err));
+        .catch(() => console.log("Using default rates"));
   }, []);
 
   // --- Multi-Trip State Management ---
@@ -80,7 +79,7 @@ const App: React.FC = () => {
   const [budget, setBudget] = useState<BudgetProps[]>([]);
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
 
-  // User Avatar (Flag)
+  // User Flag
   const [userFlag, setUserFlag] = useState<string>(() => {
     return localStorage.getItem('kuro_flag') || "🇯🇵";
   });
@@ -125,7 +124,8 @@ const App: React.FC = () => {
           id: `trip-${Date.now()}`,
           destination: 'NEW TRIP',
           startDate: new Date().toISOString().split('T')[0],
-          itinerary: INITIAL_ITINERARY,
+          // Start with a clean slate
+          itinerary: [{ dayId: 1, date: new Date().toISOString().split('T')[0], items: [] }],
           flights: [],
           hotels: [],
           budget: [],
@@ -136,34 +136,31 @@ const App: React.FC = () => {
       setActiveTab(Tab.ITINERARY);
   };
 
-  const handleDeleteTrip = (e: React.MouseEvent, id: string) => {
-      e.stopPropagation();
+  const handleDeleteTrip = () => {
       if (trips.length <= 1) { alert("You must have at least one trip."); return; }
-      if (confirm("Delete this trip?")) {
-          const newTrips = trips.filter(t => t.id !== id);
+      if (confirm("Delete this trip? This cannot be undone.")) {
+          const newTrips = trips.filter(t => t.id !== activeTripId);
           setTrips(newTrips);
           localStorage.setItem('kuro_trips', JSON.stringify(newTrips));
-          if (activeTripId === id) setActiveTripId(newTrips[0].id);
+          setActiveTripId(newTrips[0].id);
+          setShowSettings(false);
       }
   };
 
-  // --- Settings / Sync ---
+  // --- Settings / Sync / Flag ---
   const [showSettings, setShowSettings] = useState(false);
   const [showFlagSelector, setShowFlagSelector] = useState(false);
   const [importData, setImportData] = useState('');
   
   const handleFlagClick = () => setShowFlagSelector(true);
-  const handleSelectFlag = (flag: string) => {
-      setUserFlag(flag);
-      setShowFlagSelector(false);
-  };
+  const handleSelectFlag = (flag: string) => { setUserFlag(flag); setShowFlagSelector(false); };
 
   const handleExport = () => {
       const currentTrip = trips.find(t => t.id === activeTripId);
       if (!currentTrip) return;
       const jsonStr = JSON.stringify(currentTrip);
       const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
-      navigator.clipboard.writeText(encoded).then(() => alert("Trip data code copied!"));
+      navigator.clipboard.writeText(encoded).then(() => alert("Trip code copied!"));
   };
 
   const handleImport = () => {
@@ -171,33 +168,28 @@ const App: React.FC = () => {
       try {
           const jsonStr = decodeURIComponent(escape(atob(importData)));
           const data = JSON.parse(jsonStr);
-          if (!data.itinerary || !data.destination) throw new Error("Invalid format");
+          if (!data.itinerary || !data.destination) throw new Error("Invalid");
           const newTrip: Trip = { ...data, id: `trip-imported-${Date.now()}`, destination: data.destination + ' (Imp)' };
           setTrips(prev => [...prev, newTrip]);
           setActiveTripId(newTrip.id);
           setShowSettings(false);
           setImportData('');
-          alert("Trip imported!");
-      } catch (e) { alert("Invalid data code."); }
+          alert("Imported!");
+      } catch (e) { alert("Invalid code."); }
   };
 
   // --- AI Enrichment & Reset ---
   const handleEnrichItinerary = async () => {
     setIsLoading(true);
     try {
-        // Create backup before enriching if not exists
         const itemsBackup = JSON.parse(JSON.stringify(currentDayPlan.items));
         const planToEnrich = { ...currentDayPlan };
-        
         const enrichedPlan = await enrichItineraryWithGemini(planToEnrich);
-        
-        // Add backup to the enriched plan
         enrichedPlan.backupItems = itemsBackup;
-
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
         console.error("Failed to enrich", e);
-        alert("AI Assistant is offline. Check API Key.");
+        alert("Offline.");
     } finally {
         setIsLoading(false);
     }
@@ -208,18 +200,14 @@ const App: React.FC = () => {
       const restoredItems = currentDayPlan.backupItems;
       setItinerary(prev => prev.map(day => {
           if (day.dayId === selectedDay) {
-              const { backupItems, ...rest } = day; // Remove backupItems property
-              return { 
-                  ...rest, 
-                  items: restoredItems,
-                  weatherSummary: '' // Clear weather
-              };
+              const { backupItems, ...rest } = day;
+              return { ...rest, items: restoredItems, weatherSummary: '' };
           }
           return day;
       }));
   };
 
-  // --- Itinerary CRUD with Auto-Sort ---
+  // --- Auto-Sort Logic ---
   const sortItems = (items: ItineraryItem[]) => {
       return [...items].sort((a, b) => a.time.localeCompare(b.time));
   };
@@ -271,7 +259,7 @@ const App: React.FC = () => {
       setSelectedDay(newDayId);
   };
   const handleDeleteDay = () => {
-      if (itinerary.length <= 1) { alert("Keep at least one day."); return; }
+      if (itinerary.length <= 1) { alert("Keep one day."); return; }
       const reindexed = itinerary.filter(d => d.dayId !== selectedDay).map((day, index) => ({ ...day, dayId: index + 1 }));
       setItinerary(reindexed);
       setSelectedDay(1);
@@ -313,12 +301,19 @@ const App: React.FC = () => {
                   <div className="space-y-6">
                       <div>
                           <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">Sync / Share Trip</h4>
-                          <p className="text-[9px] text-neutral-400 mb-3 leading-relaxed">Copy the long code below to backup or share this trip.</p>
-                          <button onClick={handleExport} className="w-full bg-white text-black py-2 rounded-lg text-xs font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase"><span>📋 Copy Trip Data Code</span></button>
+                          <p className="text-[9px] text-neutral-400 mb-3 leading-relaxed">Copy the code below.</p>
+                          <button onClick={handleExport} className="w-full bg-white text-black py-2 rounded-lg text-xs font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase"><span>📋 Copy Trip Data</span></button>
                           <div className="relative">
-                              <input value={importData} onChange={(e) => setImportData(e.target.value)} placeholder="Paste code to import..." className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none pr-16" />
+                              <input value={importData} onChange={(e) => setImportData(e.target.value)} placeholder="Paste code..." className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none pr-16" />
                               <button onClick={handleImport} disabled={!importData} className="absolute right-1 top-1 bottom-1 bg-neutral-800 text-white px-3 rounded text-[10px] font-bold disabled:opacity-50 hover:bg-neutral-700">LOAD</button>
                           </div>
+                      </div>
+                      
+                      <div className="border-t border-neutral-800 pt-4 mt-4">
+                        <h4 className="text-[10px] text-red-500 font-bold uppercase mb-2">Danger Zone</h4>
+                        <button onClick={handleDeleteTrip} className="w-full border border-red-900/50 bg-red-950/20 text-red-400 py-3 rounded-lg text-xs font-bold hover:bg-red-900/40 uppercase transition-colors">
+                            🗑️ Delete Current Trip
+                        </button>
                       </div>
                   </div>
               </div>
@@ -359,6 +354,7 @@ const App: React.FC = () => {
           </div>
         </div>
         
+        {/* Day Selector */}
         {activeTab === Tab.ITINERARY && (
             <div className="flex px-5 pb-2 overflow-x-auto no-scrollbar gap-2 items-center">
                 {itinerary.map(day => (
@@ -394,7 +390,6 @@ const App: React.FC = () => {
                         </div>
                         {itinerary.length > 1 && (<button onClick={handleDeleteDay} className="mt-1 text-[9px] text-red-900 hover:text-red-500 transition-colors flex items-center gap-1 uppercase">🗑️ Delete Day</button>)}
                     </div>
-                    {/* Weather: Only show if available */}
                     {currentDayPlan.weatherSummary && (
                          <div className="text-right pt-0.5"><div className="text-lg">☁️</div><div className="text-[9px] text-neutral-400 max-w-[80px] leading-tight mt-0.5">{currentDayPlan.weatherSummary}</div></div>
                     )}
@@ -443,7 +438,7 @@ const App: React.FC = () => {
                                      <h3 className={`text-xl font-black uppercase tracking-tight leading-none mb-0.5 ${activeTripId === trip.id ? 'text-black' : 'text-white'}`}>{trip.destination}</h3>
                                      <div className={`text-[9px] font-medium ${activeTripId === trip.id ? 'text-neutral-600' : 'text-neutral-400'}`}>{trip.itinerary.length} Days • {trip.flights.length} Flights</div>
                                  </div>
-                                 {activeTripId === trip.id ? <span className="bg-black text-white text-[8px] font-bold px-2 py-0.5 rounded-full">ACTIVE</span> : <button onClick={(e) => handleDeleteTrip(e, trip.id)} className="text-neutral-600 hover:text-red-500 p-1 rounded-full border border-transparent hover:border-red-900/30 transition-colors z-20">🗑️</button>}
+                                 {activeTripId === trip.id && <span className="bg-black text-white text-[8px] font-bold px-2 py-0.5 rounded-full">ACTIVE</span>}
                              </div>
                         </div>
                     ))}
@@ -452,12 +447,10 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Watermark */}
       <div className="fixed bottom-[70px] w-full text-center pointer-events-none z-0">
-          <span className="text-[8px] text-neutral-800 font-mono tracking-widest uppercase opacity-50">COPYRIGHT KH 2025</span>
+          <span className="text-[8px] text-neutral-700 font-mono tracking-widest uppercase opacity-50">COPYRIGHT KH 2025</span>
       </div>
 
-      {/* Navigation */}
       <nav className="fixed bottom-0 w-full bg-black/95 backdrop-blur-xl border-t border-neutral-900 pb-safe-bottom z-50">
         <div className="flex justify-around items-center h-[60px] max-w-lg mx-auto">
             <button onClick={() => setActiveTab(Tab.ITINERARY)} className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === Tab.ITINERARY ? 'text-white' : 'text-neutral-600'}`}>
