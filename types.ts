@@ -1,3 +1,4 @@
+
 export enum ItemType {
   SIGHTSEEING = 'SIGHTSEEING',
   FOOD = 'FOOD',
@@ -31,7 +32,7 @@ export interface ItineraryItem {
   tags?: Tag[];
   weather?: string;
   navQuery: string;
-  mapsUrl?: string; // New field for direct Google Maps link
+  mapsUrl?: string;
 }
 
 export interface DayPlan {
@@ -39,6 +40,7 @@ export interface DayPlan {
   date: string;
   weatherSummary?: string;
   items: ItineraryItem[];
+  backupItems?: ItineraryItem[]; // Stores original items before AI enrichment
 }
 
 export interface BudgetProps {
@@ -78,7 +80,6 @@ export interface EmergencyContact {
   note: string;
 }
 
-// New Interface for Multi-Trip Support
 export interface Trip {
   id: string;
   destination: string;
