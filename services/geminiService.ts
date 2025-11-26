@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { DayPlan, ItemType } from "../types";
 
@@ -5,9 +6,7 @@ import { DayPlan, ItemType } from "../types";
 const getAiClient = (apiKey: string) => new GoogleGenAI({ apiKey });
 
 export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<DayPlan> => {
-  // The API key must be obtained exclusively from the environment variable process.env.API_KEY.
   const apiKey = process.env.API_KEY;
-  
   if (!apiKey) throw new Error("Missing API Key");
 
   const ai = getAiClient(apiKey);
@@ -18,7 +17,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
     properties: {
       dayId: { type: Type.INTEGER },
       date: { type: Type.STRING },
-      weatherSummary: { type: Type.STRING, description: "Estimated weather forecast." },
+      weatherSummary: { type: Type.STRING, description: "Concise weather forecast (Temp, Humidity only)." },
       items: {
         type: Type.ARRAY,
         items: {
@@ -41,7 +40,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
                     }
                 }
             },
-            weather: { type: Type.STRING },
+            weather: { type: Type.STRING, description: "Temp & Humidity only (e.g. 24°C, 60%)" },
             navQuery: { type: Type.STRING }
           }
         }
@@ -50,13 +49,13 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
   };
 
   const prompt = `
-    Analyze this travel itinerary for Day ${currentPlan.dayId} (${currentPlan.date}).
-    1. Provide a realistic weather estimate.
-    2. Enhance descriptions with cultural facts.
-    3. Add "tips" (Must-eat, photo spots).
-    4. Tag items: 'Must Eat' (gold), 'Reservation Needed' (red).
+    Analyze this itinerary for Day ${currentPlan.dayId} (${currentPlan.date}).
+    1. Update 'weatherSummary' with just Temperature and Humidity (e.g., "24°C, 65% Humidity"). Do not add descriptive text.
+    2. Enhance descriptions briefly.
+    3. Add "tips".
+    4. Tag items.
     
-    Current Items JSON:
+    Current Items:
     ${JSON.stringify(currentPlan.items)}
   `;
 
@@ -79,7 +78,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
     console.error("Gemini Enrichment Error:", error);
     return {
         ...currentPlan,
-        weatherSummary: "Weather unavailable"
+        weatherSummary: "Offline"
     };
   }
 };
