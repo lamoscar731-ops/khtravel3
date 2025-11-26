@@ -90,7 +90,12 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
                     <div className="grid grid-cols-3 gap-2">
                          <div className="col-span-1">
                             <label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Time</label>
-                            <input type="text" value={formData.time} onChange={(e) => handleChange('time', e.target.value)} className="w-full bg-transparent border-b border-neutral-700 text-white text-sm py-0.5 focus:outline-none focus:border-neutral-400" />
+                            <input 
+                                type="time" 
+                                value={formData.time} 
+                                onChange={(e) => handleChange('time', e.target.value)} 
+                                className="w-full bg-transparent border-b border-neutral-700 text-white text-sm py-0.5 focus:outline-none focus:border-neutral-400 [color-scheme:dark]" 
+                            />
                         </div>
                         <div className="col-span-2">
                              <label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Type</label>
