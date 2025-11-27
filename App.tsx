@@ -3,16 +3,15 @@ import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
 import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES } from './constants';
 import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem } from './types';
-import { enrichItineraryWithGemini, generatePackingList } from './services/geminiService';
+import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions } from './services/geminiService';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
 
 const FLAGS = ['🇯🇵', '🇰🇷', '🇹🇼', '🇨🇳', '🇭🇰', '🇹🇭', '🇻🇳', '🇸🇬', '🇺🇸', '🇬🇧', '🇪🇺', '🇦🇺', '🇨🇦', '🇫🇷', '🇮🇹', '🇪🇸', '🌍'];
 
-// Haptic Helper
 const vibrate = () => {
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(10); // Light tap
+        navigator.vibrate(10); 
     }
 };
 
@@ -20,6 +19,13 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.ITINERARY);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(DEFAULT_RATES);
+  const [now, setNow] = useState(new Date());
+
+  // --- Clock for Live Mode ---
+  useEffect(() => {
+      const timer = setInterval(() => setNow(new Date()), 60000); // Update every minute
+      return () => clearInterval(timer);
+  }, []);
   
   // --- Fetch Real-time Rates ---
   useEffect(() => {
@@ -59,7 +65,8 @@ const App: React.FC = () => {
               contacts: JSON.parse(localStorage.getItem('kuro_contacts') || JSON.stringify(INITIAL_CONTACTS)),
               totalBudget: 20000,
               checklist: [],
-              notes: ''
+              notes: '',
+              coverImage: ''
           };
           return [migratedTrip];
       }
@@ -74,7 +81,8 @@ const App: React.FC = () => {
           contacts: INITIAL_CONTACTS,
           totalBudget: 20000,
           checklist: [],
-          notes: ''
+          notes: '',
+          coverImage: ''
       }];
   });
 
@@ -92,6 +100,7 @@ const App: React.FC = () => {
   const [totalBudget, setTotalBudget] = useState<number>(20000);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [tripNotes, setTripNotes] = useState<string>('');
+  const [coverImage, setCoverImage] = useState<string>('');
 
   const [userFlag, setUserFlag] = useState<string>(() => {
     return localStorage.getItem('kuro_flag') || "🇯🇵";
@@ -110,7 +119,10 @@ const App: React.FC = () => {
           setTotalBudget(currentTrip.totalBudget || 20000);
           setChecklist(currentTrip.checklist || []);
           setTripNotes(currentTrip.notes || '');
+          setCoverImage(currentTrip.coverImage || '');
           if (selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
+          setIsSelectMode(false);
+          setSelectedItemIds(new Set());
       }
       localStorage.setItem('kuro_active_trip_id', activeTripId);
   }, [activeTripId]);
@@ -130,7 +142,8 @@ const App: React.FC = () => {
                       contacts, 
                       totalBudget, 
                       checklist,
-                      notes: tripNotes
+                      notes: tripNotes,
+                      coverImage
                   };
               }
               return t;
@@ -138,12 +151,41 @@ const App: React.FC = () => {
           localStorage.setItem('kuro_trips', JSON.stringify(newTrips));
           return newTrips;
       });
-  }, [destination, itinerary, flights, hotels, budget, contacts, totalBudget, checklist, tripNotes]);
+  }, [destination, itinerary, flights, hotels, budget, contacts, totalBudget, checklist, tripNotes, coverImage]);
 
   useEffect(() => { localStorage.setItem('kuro_flag', userFlag); }, [userFlag]);
 
   const [isEditingDest, setIsEditingDest] = useState<boolean>(false);
   const currentDayPlan = itinerary.find(d => d.dayId === selectedDay) || (itinerary[0] || { dayId: 1, date: 'N/A', items: [] });
+
+  // --- Live Mode Helper ---
+  const isLiveItem = (item: ItineraryItem, index: number, items: ItineraryItem[]) => {
+      // 1. Check Date
+      const dateStr = currentDayPlan.date.split(' ')[0]; // YYYY-MM-DD
+      const planDate = new Date(dateStr);
+      const isSameDate = planDate.getFullYear() === now.getFullYear() &&
+                         planDate.getMonth() === now.getMonth() &&
+                         planDate.getDate() === now.getDate();
+      
+      if (!isSameDate) return false;
+
+      // 2. Check Time
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      
+      const itemTimeParts = item.time.split(':');
+      const itemMinutes = parseInt(itemTimeParts[0]) * 60 + parseInt(itemTimeParts[1]);
+
+      let nextItemMinutes = 24 * 60; // Default to end of day
+      if (index < items.length - 1) {
+          const nextParts = items[index + 1].time.split(':');
+          nextItemMinutes = parseInt(nextParts[0]) * 60 + parseInt(nextParts[1]);
+      } else {
+          // If last item, assume it lasts 2 hours
+          nextItemMinutes = itemMinutes + 120; 
+      }
+
+      return currentMinutes >= itemMinutes && currentMinutes < nextItemMinutes;
+  };
 
   // --- Handlers ---
   const handleCreateTrip = () => {
@@ -159,7 +201,8 @@ const App: React.FC = () => {
           contacts: [],
           totalBudget: 20000,
           checklist: [],
-          notes: ''
+          notes: '',
+          coverImage: ''
       };
       setTrips(prev => [...prev, newTrip]);
       setActiveTripId(newTrip.id);
@@ -181,6 +224,8 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showFlagSelector, setShowFlagSelector] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [showAfterParty, setShowAfterParty] = useState(false);
+  const [afterPartyRecs, setAfterPartyRecs] = useState<string[]>([]);
   const [importData, setImportData] = useState('');
   
   const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
@@ -211,25 +256,18 @@ const App: React.FC = () => {
       } catch (e) { alert("Invalid code."); }
   };
 
-  // --- Export to Calendar (.ics) ---
   const handleExportCalendar = () => {
       vibrate();
       let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//kh.travel//Trip Planner//EN\n";
-      
       itinerary.forEach(day => {
           day.items.forEach(item => {
               if (item.title && item.time) {
-                  // Construct Date Time
-                  // day.date format is YYYY-MM-DD (sometimes with day name, need to parse)
-                  const dateStr = day.date.split(' ')[0].replace(/-/g, ''); // YYYYMMDD
-                  const timeStr = item.time.replace(':', '') + '00'; // HHMMSS
+                  const dateStr = day.date.split(' ')[0].replace(/-/g, ''); 
+                  const timeStr = item.time.replace(':', '') + '00'; 
                   const startDateTime = `${dateStr}T${timeStr}`;
-                  
-                  // Assume 1 hour duration
                   let endHour = parseInt(item.time.split(':')[0]) + 1;
                   const endTimeStr = (endHour < 10 ? '0' + endHour : endHour) + item.time.split(':')[1] + '00';
                   const endDateTime = `${dateStr}T${endTimeStr}`;
-
                   icsContent += "BEGIN:VEVENT\n";
                   icsContent += `SUMMARY:${item.title}\n`;
                   icsContent += `DTSTART:${startDateTime}\n`;
@@ -240,9 +278,7 @@ const App: React.FC = () => {
               }
           });
       });
-      
       icsContent += "END:VCALENDAR";
-
       const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -253,7 +289,6 @@ const App: React.FC = () => {
       document.body.removeChild(link);
   };
 
-  // --- Copy as Text ---
   const handleCopyText = () => {
       vibrate();
       let text = `✈️ TRIP TO ${destination}\n\n`;
@@ -266,7 +301,6 @@ const App: React.FC = () => {
           });
           text += `----------------\n`;
       });
-      
       navigator.clipboard.writeText(text).then(() => alert("Itinerary copied to clipboard!"));
   };
 
@@ -294,7 +328,8 @@ const App: React.FC = () => {
       setItinerary(prev => prev.map(day => {
           if (day.dayId === selectedDay) {
               const { backupItems, ...rest } = day;
-              return { ...rest, items: restoredItems, weatherSummary: '' };
+              // Clear analysis fields too
+              return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined };
           }
           return day;
       }));
@@ -305,39 +340,40 @@ const App: React.FC = () => {
       setIsLoading(true);
       try {
           const suggestions = await generatePackingList(destination);
-          const newItems: ChecklistItem[] = suggestions.map(text => ({
-              id: `cl-${Date.now()}-${Math.random()}`,
-              text,
-              checked: false
-          }));
+          const newItems: ChecklistItem[] = suggestions.map(text => ({ id: `cl-${Date.now()}-${Math.random()}`, text, checked: false }));
           setChecklist(prev => {
               const existingTexts = new Set(prev.map(i => i.text.toLowerCase()));
               const uniqueNew = newItems.filter(i => !existingTexts.has(i.text.toLowerCase()));
               return [...prev, ...uniqueNew];
           });
-      } catch (e) {
-          alert("AI Offline");
-      } finally {
-          setIsLoading(false);
-      }
+      } catch (e) { alert("AI Offline"); } finally { setIsLoading(false); }
+  };
+
+  const handleAfterParty = async () => {
+      vibrate();
+      if (currentDayPlan.items.length === 0) { alert("No items to base recommendations on."); return; }
+      setIsLoading(true);
+      try {
+          const lastItem = currentDayPlan.items[currentDayPlan.items.length - 1];
+          const recs = await generateAfterPartySuggestions(lastItem.location || destination, lastItem.time);
+          setAfterPartyRecs(recs);
+          setShowAfterParty(true);
+      } catch (e) { alert("AI Offline"); } finally { setIsLoading(false); }
   };
 
   // --- Map Route ---
   const handleMapRoute = () => {
       vibrate();
-      const validItems = currentDayPlan.items.filter(i => 
+      let validItems = currentDayPlan.items.filter(i => 
           i.location && i.location.trim() !== '' && !i.location.includes('TBD') && !i.location.includes('Location TBD')
       );
-      if (validItems.length === 0) { alert("Add locations to map."); return; }
-      if (validItems.length === 1) {
-           const query = encodeURIComponent(validItems[0].location);
-           window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-           return;
-      }
+      if (isSelectMode && selectedItemIds.size > 0) validItems = validItems.filter(item => selectedItemIds.has(item.id));
+      if (validItems.length === 0) { alert("Select items with locations."); return; }
+      if (validItems.length === 1) { const query = encodeURIComponent(validItems[0].location); window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank'); return; }
       const origin = encodeURIComponent(validItems[0].location);
       const destination = encodeURIComponent(validItems[validItems.length - 1].location);
       const waypoints = validItems.slice(1, -1).slice(0, 9).map(i => encodeURIComponent(i.location)).join('|');
-      let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=transit`;
+      let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`; // Changed to walking for better overview
       if (waypoints) url += `&waypoints=${waypoints}`;
       window.open(url, '_blank');
   };
@@ -359,43 +395,12 @@ const App: React.FC = () => {
   };
   const handleAddItem = () => {
     vibrate();
-    const newItem: ItineraryItem = {
-        id: `${selectedDay}-${Date.now()}`,
-        time: '12:00',
-        title: 'New Activity',
-        location: 'TBD',
-        type: ItemType.SIGHTSEEING,
-        description: 'Description...',
-        navQuery: 'Tokyo',
-        tags: []
-    };
-    setItinerary(prev => prev.map(day => {
-        if (day.dayId !== selectedDay) return day;
-        const newItems = [...day.items, newItem];
-        return { ...day, items: sortItems(newItems) };
-    }));
+    const newItem: ItineraryItem = { id: `${selectedDay}-${Date.now()}`, time: '12:00', title: 'New Activity', location: 'TBD', type: ItemType.SIGHTSEEING, description: 'Description...', navQuery: 'Tokyo', tags: [] };
+    setItinerary(prev => prev.map(day => { if (day.dayId !== selectedDay) return day; const newItems = [...day.items, newItem]; return { ...day, items: sortItems(newItems) }; }));
   };
 
-  const handleAddDay = () => {
-      vibrate();
-      const newDayId = itinerary.length + 1;
-      let nextDate = new Date();
-      if (itinerary.length > 0) {
-          const lastDateStr = itinerary[itinerary.length - 1].date.split(' ')[0];
-          const lastDate = new Date(lastDateStr);
-          if (!isNaN(lastDate.getTime())) { lastDate.setDate(lastDate.getDate() + 1); nextDate = lastDate; }
-      }
-      const newDay: DayPlan = { dayId: newDayId, date: nextDate.toISOString().split('T')[0], items: [] };
-      setItinerary(prev => [...prev, newDay]);
-      setSelectedDay(newDayId);
-  };
-  const handleDeleteDay = () => {
-      vibrate();
-      if (itinerary.length <= 1) { alert("Keep one day."); return; }
-      const reindexed = itinerary.filter(d => d.dayId !== selectedDay).map((day, index) => ({ ...day, dayId: index + 1 }));
-      setItinerary(reindexed);
-      setSelectedDay(1);
-  };
+  const handleAddDay = () => { vibrate(); const newDayId = itinerary.length + 1; let nextDate = new Date(); if (itinerary.length > 0) { const lastDateStr = itinerary[itinerary.length - 1].date.split(' ')[0]; const lastDate = new Date(lastDateStr); if (!isNaN(lastDate.getTime())) { lastDate.setDate(lastDate.getDate() + 1); nextDate = lastDate; } } const newDay: DayPlan = { dayId: newDayId, date: nextDate.toISOString().split('T')[0], items: [] }; setItinerary(prev => [...prev, newDay]); setSelectedDay(newDayId); };
+  const handleDeleteDay = () => { vibrate(); if (itinerary.length <= 1) { alert("Keep one day."); return; } const reindexed = itinerary.filter(d => d.dayId !== selectedDay).map((day, index) => ({ ...day, dayId: index + 1 })); setItinerary(reindexed); setSelectedDay(1); };
   const handleUpdateDayDate = (newDate: string) => setItinerary(prev => prev.map(d => d.dayId === selectedDay ? { ...d, date: newDate } : d));
 
   const handleAddFlight = () => { vibrate(); setFlights(prev => [...prev, { id: `f-${Date.now()}`, flightNumber: 'FL 000', departureDate: '2024-01-01', departureTime: '00:00', departureAirport: 'DEP', arrivalDate: '2024-01-01', arrivalTime: '00:00', arrivalAirport: 'ARR' }]); };
@@ -418,78 +423,83 @@ const App: React.FC = () => {
   const [tempDate, setTempDate] = useState('');
   const startEditingDate = () => { setTempDate(currentDayPlan.date.split(' ')[0]); setIsEditingDate(true); };
   const saveDate = () => { if(tempDate) handleUpdateDayDate(tempDate); setIsEditingDate(false); };
-  const getFormattedDate = (dateStr: string) => {
-      if (!dateStr) return "N/A";
-      const parts = dateStr.split(' ')[0].split('-');
-      if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
-      return dateStr;
-  };
+  const getFormattedDate = (dateStr: string) => { if (!dateStr) return "N/A"; const parts = dateStr.split(' ')[0].split('-'); if (parts.length >= 3) return `${parts[1]}/${parts[2]}`; return dateStr; };
 
-  // --- Selection Logic ---
-  const toggleSelectMode = () => {
-      vibrate();
-      setIsSelectMode(!isSelectMode);
-      setSelectedItemIds(new Set()); 
-  };
+  const toggleSelectMode = () => { vibrate(); setIsSelectMode(!isSelectMode); setSelectedItemIds(new Set()); };
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
-  const handleToggleItemSelection = (id: string) => {
-      vibrate();
-      const newSet = new Set(selectedItemIds);
-      if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
-      setSelectedItemIds(newSet);
-  };
+  const handleToggleItemSelection = (id: string) => { vibrate(); const newSet = new Set(selectedItemIds); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedItemIds(newSet); };
 
   return (
     <div className="min-h-screen bg-black pb-24 text-neutral-200 font-sans relative">
       {/* Settings Modal */}
       {showSettings && (
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
-              <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
+              <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative overflow-y-auto max-h-[80vh]">
                   <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
                   <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider text-center">Settings</h3>
                   <div className="space-y-6">
+                      {/* Cover Photo Input */}
+                      <div>
+                          <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">Trip Cover Image</h4>
+                          <input value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="Paste image URL (e.g. Unsplash)" className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none" />
+                      </div>
+
                       <div>
                           <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">Sync / Share Trip</h4>
                           <p className="text-[9px] text-neutral-400 mb-3 leading-relaxed">Copy the code below.</p>
                           <button onClick={handleExport} className="w-full bg-white text-black py-2 rounded-lg text-xs font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase"><span>📋 Copy Trip Data</span></button>
-                          
                           <div className="relative mb-4">
                               <input value={importData} onChange={(e) => setImportData(e.target.value)} placeholder="Paste code..." className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none pr-16" />
                               <button onClick={handleImport} disabled={!importData} className="absolute right-1 top-1 bottom-1 bg-neutral-800 text-white px-3 rounded text-[10px] font-bold disabled:opacity-50 hover:bg-neutral-700">LOAD</button>
                           </div>
-
                           <div className="grid grid-cols-2 gap-2">
-                              <button onClick={handleExportCalendar} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1">
-                                  <span>📅 Export .ics</span>
-                              </button>
-                              <button onClick={handleCopyText} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1">
-                                  <span>📝 Copy Text</span>
-                              </button>
+                              <button onClick={handleExportCalendar} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1"><span>📅 Export .ics</span></button>
+                              <button onClick={handleCopyText} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1"><span>📝 Copy Text</span></button>
                           </div>
                       </div>
                       
                       <div className="border-t border-neutral-800 pt-4 mt-4">
                         <h4 className="text-[10px] text-red-500 font-bold uppercase mb-2">Danger Zone</h4>
-                        <button onClick={handleDeleteTrip} className="w-full border border-red-900/50 bg-red-950/20 text-red-400 py-3 rounded-lg text-xs font-bold hover:bg-red-900/40 uppercase transition-colors">
-                            🗑️ Delete Current Trip
-                        </button>
+                        <button onClick={handleDeleteTrip} className="w-full border border-red-900/50 bg-red-950/20 text-red-400 py-3 rounded-lg text-xs font-bold hover:bg-red-900/40 uppercase transition-colors">🗑️ Delete Current Trip</button>
                       </div>
                   </div>
               </div>
           </div>
       )}
 
-      {/* Flag & Notes Modals (kept same) */}
+      {/* After Party Modal */}
+      {showAfterParty && (
+          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+              <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
+                  <button onClick={() => setShowAfterParty(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
+                  <h3 className="text-lg font-bold text-white mb-1 uppercase tracking-wider">Nearby Gems</h3>
+                  <p className="text-[10px] text-neutral-500 mb-6">Late night spots near your last location.</p>
+                  
+                  <div className="space-y-3">
+                      {afterPartyRecs.map((rec, idx) => (
+                          <div key={idx} className="p-3 bg-neutral-800 rounded-lg border border-neutral-700">
+                              <p className="text-xs text-neutral-200 leading-relaxed">{rec}</p>
+                          </div>
+                      ))}
+                      {afterPartyRecs.length === 0 && <p className="text-xs text-neutral-500">No recommendations found.</p>}
+                  </div>
+                  
+                  <div className="mt-6 text-center">
+                      <button onClick={() => { vibrate(); const query = encodeURIComponent(currentDayPlan.items[currentDayPlan.items.length-1]?.location + " bars ramen"); window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">Search on Maps</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Flag Selector & Notes Modal */}
       {showFlagSelector && (
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
                <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-xs shadow-2xl relative">
                    <button onClick={() => setShowFlagSelector(false)} className="absolute top-3 right-3 text-neutral-500 hover:text-white">✕</button>
                    <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider text-center">Select Country</h3>
                    <div className="grid grid-cols-5 gap-3">
-                       {FLAGS.map(flag => (
-                           <button key={flag} onClick={() => handleSelectFlag(flag)} className="text-2xl hover:scale-125 transition-transform p-1">{flag}</button>
-                       ))}
+                       {FLAGS.map(flag => <button key={flag} onClick={() => handleSelectFlag(flag)} className="text-2xl hover:scale-125 transition-transform p-1">{flag}</button>)}
                    </div>
                </div>
           </div>
@@ -503,7 +513,7 @@ const App: React.FC = () => {
                   </h3>
                   <button onClick={() => setShowNotes(false)} className="text-neutral-500 hover:text-white p-2 text-xl">✕</button>
               </div>
-              <textarea className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-sm text-neutral-300 focus:outline-none focus:border-neutral-700 resize-none leading-relaxed placeholder-neutral-700" placeholder="Type notes..." value={tripNotes} onChange={(e) => setTripNotes(e.target.value)} autoFocus />
+              <textarea className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-sm text-neutral-300 focus:outline-none focus:border-neutral-700 resize-none leading-relaxed placeholder-neutral-700" placeholder="Type anything..." value={tripNotes} onChange={(e) => setTripNotes(e.target.value)} autoFocus />
               <div className="mt-2 text-center text-[10px] text-neutral-600">Autosaved to Trip</div>
           </div>
       )}
@@ -550,26 +560,35 @@ const App: React.FC = () => {
       <main className="px-3 pt-[130px] max-w-lg mx-auto">
         {activeTab === Tab.ITINERARY ? (
             <>
-                <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-base font-bold text-white uppercase tracking-tight">Itinerary</h2>
-                             {isEditingDate ? (
-                                <div className="flex items-center gap-1">
-                                    <input type="date" className="bg-neutral-800 text-[10px] text-white p-1 rounded border border-neutral-700 outline-none w-[100px] [color-scheme:dark]" value={tempDate} onChange={e => setTempDate(e.target.value)} />
-                                    <button onClick={saveDate} className="bg-white text-black text-[10px] font-bold px-2 py-0.5 rounded">OK</button>
-                                </div>
-                            ) : (
-                                <button onClick={startEditingDate} className="flex items-center gap-1 bg-neutral-900/50 border border-neutral-800 px-2 py-0.5 rounded hover:border-neutral-600 transition-colors group">
-                                    <span className="font-mono text-[10px] text-neutral-400">{currentDayPlan.date.split(' ')[0]}</span> 
-                                    <span className="text-neutral-600 text-[8px] group-hover:text-white transition-colors">✎</span>
-                                </button>
-                            )}
+                <div className="flex flex-col mb-3">
+                    <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-base font-bold text-white uppercase tracking-tight">Itinerary</h2>
+                                {isEditingDate ? (
+                                    <div className="flex items-center gap-1">
+                                        <input type="date" className="bg-neutral-800 text-[10px] text-white p-1 rounded border border-neutral-700 outline-none w-[100px] [color-scheme:dark]" value={tempDate} onChange={e => setTempDate(e.target.value)} />
+                                        <button onClick={saveDate} className="bg-white text-black text-[10px] font-bold px-2 py-0.5 rounded">OK</button>
+                                    </div>
+                                ) : (
+                                    <button onClick={startEditingDate} className="flex items-center gap-1 bg-neutral-900/50 border border-neutral-800 px-2 py-0.5 rounded hover:border-neutral-600 transition-colors group">
+                                        <span className="font-mono text-[10px] text-neutral-400">{currentDayPlan.date.split(' ')[0]}</span> 
+                                        <span className="text-neutral-600 text-[8px] group-hover:text-white transition-colors">✎</span>
+                                    </button>
+                                )}
+                            </div>
+                            {itinerary.length > 1 && (<button onClick={handleDeleteDay} className="mt-1 text-[9px] text-red-900 hover:text-red-500 transition-colors flex items-center gap-1 uppercase">🗑️ Delete Day</button>)}
                         </div>
-                        {itinerary.length > 1 && (<button onClick={handleDeleteDay} className="mt-1 text-[9px] text-red-900 hover:text-red-500 transition-colors flex items-center gap-1 uppercase">🗑️ Delete Day</button>)}
+                        {currentDayPlan.weatherSummary && (
+                            <div className="text-right pt-0.5"><div className="text-lg">☁️</div><div className="text-[9px] text-neutral-400 max-w-[80px] leading-tight mt-0.5">{currentDayPlan.weatherSummary}</div></div>
+                        )}
                     </div>
-                    {currentDayPlan.weatherSummary && (
-                         <div className="text-right pt-0.5"><div className="text-lg">☁️</div><div className="text-[9px] text-neutral-400 max-w-[80px] leading-tight mt-0.5">{currentDayPlan.weatherSummary}</div></div>
+                    {/* Logic/Pace Analysis Display */}
+                    {(currentDayPlan.paceAnalysis || currentDayPlan.logicWarning) && (
+                        <div className="mt-2 flex gap-2 flex-wrap">
+                            {currentDayPlan.paceAnalysis && <span className="text-[9px] bg-neutral-800 text-neutral-300 px-2 py-0.5 rounded border border-neutral-700">{currentDayPlan.paceAnalysis}</span>}
+                            {currentDayPlan.logicWarning && <span className="text-[9px] bg-red-950/30 text-red-400 px-2 py-0.5 rounded border border-red-900/30">⚠️ {currentDayPlan.logicWarning}</span>}
+                        </div>
                     )}
                 </div>
 
@@ -599,12 +618,20 @@ const App: React.FC = () => {
                             isSelectMode={isSelectMode}
                             isSelected={selectedItemIds.has(item.id)}
                             onSelect={handleToggleItemSelection}
+                            isActive={isLiveItem(item, index, currentDayPlan.items)}
                         />
                     ))}
-                    <div className="flex gap-2 mb-8 mt-2 relative group">
+                    <div className="flex gap-2 mb-4 mt-2 relative group">
                         <div className="absolute left-[13px] top-0 bottom-8 w-[2px] bg-gradient-to-b from-neutral-800 to-transparent z-0"></div>
                         <div className="flex flex-col items-center min-w-[28px] z-10 opacity-50"><div className="w-7 h-7 rounded-full border border-neutral-800 border-dashed flex items-center justify-center"><span className="text-neutral-500 text-[10px]">+</span></div></div>
                         <button onClick={handleAddItem} className="flex-1 h-10 border border-dashed border-neutral-800 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 transition-all active:scale-95 uppercase text-[9px] font-bold tracking-widest">+ ADD ACTIVITY</button>
+                    </div>
+                    
+                    {/* After Party Button */}
+                    <div className="mb-8">
+                        <button onClick={handleAfterParty} className="w-full py-3 bg-neutral-900/50 border border-neutral-800 rounded-lg text-amber-200/50 hover:text-amber-200 hover:bg-neutral-900 text-[10px] font-bold tracking-widest uppercase transition-all">
+                            ✨ Next Stop?
+                        </button>
                     </div>
                 </div>
             </>
@@ -647,17 +674,30 @@ const App: React.FC = () => {
                 </div>
                 <div className="grid gap-2">
                     {trips.map(trip => (
-                        <div key={trip.id} onClick={() => { vibrate(); setActiveTripId(trip.id); setActiveTab(Tab.ITINERARY); }} className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden ${activeTripId === trip.id ? 'bg-neutral-100 border-white' : 'bg-neutral-900 border-neutral-800 hover:border-neutral-600'}`}>
-                             <div className={`absolute -right-4 -bottom-4 text-[60px] font-black opacity-5 pointer-events-none ${activeTripId === trip.id ? 'text-black' : 'text-white'}`}>
-                                 {trip.destination.substring(0, 3).toUpperCase()}
-                             </div>
+                        <div 
+                            key={trip.id} 
+                            onClick={() => { vibrate(); setActiveTripId(trip.id); setActiveTab(Tab.ITINERARY); }} 
+                            className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden h-32 flex flex-col justify-between ${activeTripId === trip.id ? 'border-white' : 'border-neutral-800 hover:border-neutral-600'}`}
+                            style={trip.coverImage ? { backgroundImage: `url(${trip.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                        >
+                             {/* Overlay for image readablity */}
+                             <div className={`absolute inset-0 ${trip.coverImage ? 'bg-black/60' : 'bg-neutral-900'} z-0`}></div>
+                             
+                             {!trip.coverImage && (
+                                <div className={`absolute -right-4 -bottom-4 text-[60px] font-black opacity-5 pointer-events-none ${activeTripId === trip.id ? 'text-black' : 'text-white'}`}>
+                                    {trip.destination.substring(0, 3).toUpperCase()}
+                                </div>
+                             )}
+
                              <div className="relative z-10 flex justify-between items-start">
                                  <div>
-                                     <div className={`text-[9px] font-bold tracking-widest mb-0.5 ${activeTripId === trip.id ? 'text-neutral-500' : 'text-neutral-500'}`}>{trip.startDate}</div>
-                                     <h3 className={`text-xl font-black uppercase tracking-tight leading-none mb-0.5 ${activeTripId === trip.id ? 'text-black' : 'text-white'}`}>{trip.destination}</h3>
-                                     <div className={`text-[9px] font-medium ${activeTripId === trip.id ? 'text-neutral-600' : 'text-neutral-400'}`}>{trip.itinerary.length} Days • {trip.flights.length} Flights</div>
+                                     <div className="text-[9px] font-bold tracking-widest mb-0.5 text-neutral-400">{trip.startDate}</div>
+                                     <h3 className="text-xl font-black uppercase tracking-tight leading-none mb-0.5 text-white">{trip.destination}</h3>
                                  </div>
-                                 {activeTripId === trip.id && <span className="bg-black text-white text-[8px] font-bold px-2 py-0.5 rounded-full">ACTIVE</span>}
+                                 {activeTripId === trip.id && <span className="bg-white text-black text-[8px] font-bold px-2 py-0.5 rounded-full">ACTIVE</span>}
+                             </div>
+                             <div className="relative z-10 text-[9px] font-medium text-neutral-400">
+                                 {trip.itinerary.length} Days • {trip.flights.length} Flights
                              </div>
                         </div>
                     ))}
