@@ -23,6 +23,7 @@ const App: React.FC = () => {
   
   // --- Fetch Real-time Rates ---
   useEffect(() => {
+      // ExchangeRate-API (Free tier, base HKD)
       fetch('https://api.exchangerate-api.com/v4/latest/HKD')
         .then(res => res.json())
         .then(data => {
@@ -411,13 +412,13 @@ const App: React.FC = () => {
 
       {/* Notes Modal */}
       {showNotes && (
-          <div className="fixed inset-0 z-[100] bg-black flex flex-col p-6 animate-fade-in">
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col px-6 pb-6 pt-[calc(env(safe-area-inset-top)+20px)] animate-fade-in">
               <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
                       Quick Notes
                   </h3>
-                  <button onClick={() => setShowNotes(false)} className="text-neutral-500 hover:text-white p-2">✕</button>
+                  <button onClick={() => setShowNotes(false)} className="text-neutral-500 hover:text-white p-2 text-xl">✕</button>
               </div>
               <textarea 
                   className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-sm text-neutral-300 focus:outline-none focus:border-neutral-700 resize-none leading-relaxed placeholder-neutral-700"
