@@ -24,6 +24,12 @@ export interface Tag {
   color: 'red' | 'gold' | 'gray';
 }
 
+export interface WeatherForecast {
+  date: string; // e.g. "11/15"
+  icon: string; // e.g. "☀️"
+  temp: string; // e.g. "24°"
+}
+
 export interface ItineraryItem {
   id: string;
   time: string;
@@ -41,9 +47,10 @@ export interface ItineraryItem {
 export interface DayPlan {
   dayId: number;
   date: string;
-  weatherSummary?: string;
-  paceAnalysis?: string; // New: AI Pace Analysis
-  logicWarning?: string; // New: AI Logic Warning
+  weatherSummary?: string; // Deprecated in UI, kept for backward compat
+  forecast?: WeatherForecast[]; // New: 7-Day Forecast
+  paceAnalysis?: string;
+  logicWarning?: string;
   items: ItineraryItem[];
   backupItems?: ItineraryItem[];
 }
@@ -103,5 +110,5 @@ export interface Trip {
   totalBudget?: number;
   checklist?: ChecklistItem[];
   notes?: string;
-  coverImage?: string; // New: Cover Image URL
+  coverImage?: string;
 }
