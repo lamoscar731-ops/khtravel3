@@ -146,7 +146,9 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     return (
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-3 shadow-sm mb-3 relative group">
              <div className="absolute top-2 right-2 flex gap-2">
-                 <button onClick={() => { vibrate(); setShowCard(true); }} className="text-neutral-400 hover:text-white text-[10px] font-bold border border-neutral-700 px-2 rounded hover:bg-neutral-800 transition">SHOW</button>
+                 <button onClick={() => { vibrate(); setShowCard(true); }} className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                 </button>
                  <button onClick={() => { vibrate(); setIsEditing(true); }} className="text-neutral-600 hover:text-white text-[10px] opacity-50 hover:opacity-100 p-1">✎</button>
              </div>
             <div className="flex justify-between items-start mb-1 pr-16">
