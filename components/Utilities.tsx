@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, ChecklistItem } from '../types';
+import { BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, ChecklistItem, ItemType } from '../types';
 
 interface UtilitiesProps {
     budget: BudgetProps[];
@@ -26,7 +26,6 @@ interface UtilitiesProps {
     onUpdateContact: (item: EmergencyContact) => void;
     onDeleteContact: (id: string) => void;
 
-    // New Props
     onUpdateTotalBudget: (amount: number) => void;
     onAddChecklist: (text: string) => void;
     onToggleChecklist: (id: string) => void;
@@ -179,7 +178,12 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
                     <div className="col-span-2"><select className="w-full bg-neutral-900 text-white text-[10px] border border-neutral-600 rounded p-0.5" value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})}>{Object.keys(rates).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                 </div>
                 <div className="flex gap-2 mb-1"><input className="bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none flex-1 text-right" type="number" value={data.cost} onChange={e => setData({...data, cost: Number(e.target.value)})} placeholder="Cost" /></div>
-                <div className="flex justify-between items-center"><input className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none w-1/2" value={data.category} onChange={e => setData({...data, category: e.target.value})} placeholder="Category" /><div className="flex gap-2"><button onClick={() => onDelete(item.id)} className="text-red-400 text-[10px] px-2 border border-red-900/50 rounded">Del</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">OK</button></div></div>
+                <div className="flex justify-between items-center">
+                    <select value={data.category} onChange={(e) => setData({...data, category: e.target.value})} className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none w-1/2 appearance-none">
+                        {Object.values(ItemType).map(t => <option key={t} value={t} className="bg-neutral-900 text-white">{t}</option>)}
+                    </select>
+                    <div className="flex gap-2"><button onClick={() => onDelete(item.id)} className="text-red-400 text-[10px] px-2 border border-red-900/50 rounded">Del</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">OK</button></div>
+                </div>
              </div>
         )
     }
@@ -210,7 +214,11 @@ export const Utilities: React.FC<UtilitiesProps> = ({
   }, 0);
 
   const budgetProgress = totalBudget ? Math.min((totalBudgetHkd / totalBudget) * 100, 100) : 0;
-  const isOverBudget = totalBudget && totalBudgetHkd > totalBudget;
+  
+  // Progress Bar Color Logic
+  let progressColor = 'bg-white';
+  if (budgetProgress >= 100) progressColor = 'bg-red-500';
+  else if (budgetProgress >= 80) progressColor = 'bg-amber-400';
 
   const handleAddChecklistKey = (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && newChecklistText.trim()) {
@@ -248,9 +256,9 @@ export const Utilities: React.FC<UtilitiesProps> = ({
                  <span>GOAL: <input type="number" className="bg-transparent border-b border-neutral-700 w-[60px] text-right text-white focus:outline-none" value={totalBudget || ''} onChange={(e) => onUpdateTotalBudget(Number(e.target.value))} placeholder="Set" /></span>
              </div>
              <div className="h-2 w-full bg-neutral-800 rounded-full overflow-hidden">
-                 <div className={`h-full transition-all duration-500 ${isOverBudget ? 'bg-red-500' : 'bg-white'}`} style={{ width: `${budgetProgress}%` }}></div>
+                 <div className={`h-full transition-all duration-500 ${progressColor}`} style={{ width: `${budgetProgress}%` }}></div>
              </div>
-             {isOverBudget && <div className="text-[9px] text-red-500 text-right mt-1 font-bold">OVER BUDGET!</div>}
+             {budgetProgress >= 100 && <div className="text-[9px] text-red-500 text-right mt-1 font-bold">OVER BUDGET!</div>}
         </div>
 
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">
@@ -262,8 +270,8 @@ export const Utilities: React.FC<UtilitiesProps> = ({
       <section>
           <div className="flex justify-between items-end mb-2 ml-1">
               <h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Packing List</h2>
-              <button onClick={onAiChecklist} disabled={isLoadingAi} className="text-amber-200 hover:text-amber-100 text-[10px] flex items-center gap-1">
-                  {isLoadingAi ? <span className="animate-pulse">Thinking...</span> : <><span>✨ AI Suggest</span></>}
+              <button onClick={onAiChecklist} disabled={isLoadingAi} className="text-amber-200 hover:text-amber-100 text-[10px] flex items-center gap-1 uppercase">
+                  {isLoadingAi ? <span className="animate-pulse">Thinking...</span> : <><span>✨ AI SUGGEST</span></>}
               </button>
           </div>
           <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">
