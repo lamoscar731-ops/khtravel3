@@ -16,7 +16,18 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
     properties: {
       dayId: { type: Type.INTEGER },
       date: { type: Type.STRING },
-      weatherSummary: { type: Type.STRING, description: "Concise weather forecast (Temp, Humidity only)." },
+      forecast: { 
+        type: Type.ARRAY,
+        description: "7-day weather forecast starting from this day.",
+        items: {
+            type: Type.OBJECT,
+            properties: {
+                date: { type: Type.STRING, description: "MM/DD format" },
+                icon: { type: Type.STRING, description: "Emoji icon only (e.g. ☀️, ☁️, 🌧️)" },
+                temp: { type: Type.STRING, description: "Temperature (e.g. 24°)" }
+            }
+        }
+      },
       paceAnalysis: { type: Type.STRING, description: "One word analysis: RELAXED, MODERATE, or RUSHED" },
       logicWarning: { type: Type.STRING, description: "Warning if route is illogical (e.g. 'Backtracking'), else null." },
       items: {
@@ -31,16 +42,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
             type: { type: Type.STRING, enum: [ItemType.SIGHTSEEING, ItemType.FOOD, ItemType.RAMEN, ItemType.COFFEE, ItemType.ALCOHOL, ItemType.TRANSPORT, ItemType.SHOPPING, ItemType.HOTEL, ItemType.MISC] },
             description: { type: Type.STRING },
             tips: { type: Type.ARRAY, items: { type: Type.STRING } },
-            tags: {
-                type: Type.ARRAY,
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        label: { type: Type.STRING },
-                        color: { type: Type.STRING, enum: ['red', 'gold', 'gray'] }
-                    }
-                }
-            },
+            // Removed tags from generation
             weather: { type: Type.STRING, description: "Temp & Humidity only" },
             navQuery: { type: Type.STRING }
           }
@@ -51,11 +53,13 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
 
   const prompt = `
     Analyze this itinerary for Day ${currentPlan.dayId} (${currentPlan.date}).
-    1. Update 'weatherSummary' (Temp/Humidity).
-    2. Set 'paceAnalysis' (RELAXED/MODERATE/RUSHED).
-    3. Set 'logicWarning' if route backtracks.
-    4. Enhance descriptions and add tips.
-    5. Tag items.
+    
+    1. **Weather**: Generate a 7-day forecast starting from ${currentPlan.date}. Infer location from items. Return Date (MM/DD), Icon (Emoji), Temp.
+    2. **Analysis**: Set 'paceAnalysis' and 'logicWarning'.
+    3. **Items**: 
+       - Enhance descriptions. 
+       - Add specific "tips" (Must Eat / Photo Spot).
+       - **DO NOT** generate tags. Keep existing tags if any, but do not add new ones.
     
     Current Items:
     ${JSON.stringify(currentPlan.items)}
@@ -92,7 +96,7 @@ export const generatePackingList = async (destination: string): Promise<string[]
   const ai = getAiClient(apiKey);
   const modelId = "gemini-2.5-flash";
 
-  const prompt = `Generate a concise packing checklist for a trip to ${destination}. Return a JSON array of strings.`;
+  const prompt = `Generate a concise packing checklist for a trip to ${destination}. Return a JSON array of strings only. Focus on essentials and destination-specific items.`;
   
   const schema = {
     type: Type.ARRAY,
