@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
@@ -207,6 +206,44 @@ const App: React.FC = () => {
       }));
   };
 
+  // --- Map Route (Option 1) ---
+  const handleMapRoute = () => {
+      // Filter out invalid or TBD locations
+      const validItems = currentDayPlan.items.filter(i => 
+          i.location && 
+          i.location.trim() !== '' && 
+          !i.location.includes('TBD') && 
+          !i.location.includes('Location TBD')
+      );
+
+      if (validItems.length === 0) {
+          alert("Add locations to map.");
+          return;
+      }
+
+      if (validItems.length === 1) {
+           const query = encodeURIComponent(validItems[0].location);
+           window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+           return;
+      }
+
+      const origin = encodeURIComponent(validItems[0].location);
+      const destination = encodeURIComponent(validItems[validItems.length - 1].location);
+      
+      // Google Maps supports up to 9 waypoints (excluding origin/dest)
+      // Taking items between start and end
+      const waypoints = validItems
+          .slice(1, -1) // remove first and last
+          .slice(0, 9)  // limit to 9
+          .map(i => encodeURIComponent(i.location))
+          .join('|');
+
+      let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=transit`;
+      if (waypoints) url += `&waypoints=${waypoints}`;
+
+      window.open(url, '_blank');
+  };
+
   // --- Auto-Sort Logic ---
   const sortItems = (items: ItineraryItem[]) => {
       return [...items].sort((a, b) => a.time.localeCompare(b.time));
@@ -396,6 +433,9 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="flex gap-2 mb-4">
+                    <button onClick={handleMapRoute} className="flex-1 bg-neutral-100 border border-white text-black py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:bg-neutral-300 transition-all active:scale-[0.98] uppercase">
+                        🗺️ MAP ROUTE
+                    </button>
                     <button onClick={handleEnrichItinerary} disabled={isLoading} className="flex-1 bg-gradient-to-r from-neutral-800 to-neutral-900 border border-neutral-700 text-neutral-300 py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:border-neutral-500 transition-all active:scale-[0.98] uppercase">
                         {isLoading ? <span className="animate-pulse">Analyzing...</span> : <><span>✨ AI GUIDE CHECK</span></>}
                     </button>
@@ -448,7 +488,7 @@ const App: React.FC = () => {
       </main>
 
       <div className="fixed bottom-[70px] w-full text-center pointer-events-none z-0">
-          <span className="text-[8px] text-neutral-700 font-mono tracking-widest uppercase opacity-50">COPYRIGHT KH 2025</span>
+          <span className="text-[8px] text-neutral-500 font-mono tracking-widest uppercase opacity-50">COPYRIGHT KH 2025</span>
       </div>
 
       <nav className="fixed bottom-0 w-full bg-black/95 backdrop-blur-xl border-t border-neutral-900 pb-safe-bottom z-50">
