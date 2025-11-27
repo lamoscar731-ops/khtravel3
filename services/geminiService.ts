@@ -17,8 +17,8 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
       dayId: { type: Type.INTEGER },
       date: { type: Type.STRING },
       weatherSummary: { type: Type.STRING, description: "Concise weather forecast (Temp, Humidity only)." },
-      paceAnalysis: { type: Type.STRING, description: "One word analysis of the schedule pace (e.g. RELAXED, MODERATE, RUSHED)" },
-      logicWarning: { type: Type.STRING, description: "Brief warning if route is illogical (e.g. 'Backtracking detected') or null if fine." },
+      paceAnalysis: { type: Type.STRING, description: "One word analysis: RELAXED, MODERATE, or RUSHED" },
+      logicWarning: { type: Type.STRING, description: "Warning if route is illogical (e.g. 'Backtracking'), else null." },
       items: {
         type: Type.ARRAY,
         items: {
@@ -41,7 +41,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
                     }
                 }
             },
-            weather: { type: Type.STRING, description: "Temp & Humidity only (e.g. 24°C, 60%)" },
+            weather: { type: Type.STRING, description: "Temp & Humidity only" },
             navQuery: { type: Type.STRING }
           }
         }
@@ -51,10 +51,10 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
 
   const prompt = `
     Analyze this itinerary for Day ${currentPlan.dayId} (${currentPlan.date}).
-    1. Update 'weatherSummary'.
-    2. Analyze the 'paceAnalysis' based on number of items and time gaps.
-    3. Check location logic for 'logicWarning' (e.g. zigzagging route).
-    4. Enhance descriptions and add specific tips (Must Eat / Photo Spot).
+    1. Update 'weatherSummary' (Temp/Humidity).
+    2. Set 'paceAnalysis' (RELAXED/MODERATE/RUSHED).
+    3. Set 'logicWarning' if route backtracks.
+    4. Enhance descriptions and add tips.
     5. Tag items.
     
     Current Items:
@@ -92,7 +92,7 @@ export const generatePackingList = async (destination: string): Promise<string[]
   const ai = getAiClient(apiKey);
   const modelId = "gemini-2.5-flash";
 
-  const prompt = `Generate a concise packing checklist for a trip to ${destination}. Return a JSON array of strings only. Focus on essentials.`;
+  const prompt = `Generate a concise packing checklist for a trip to ${destination}. Return a JSON array of strings.`;
   
   const schema = {
     type: Type.ARRAY,
@@ -122,8 +122,8 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
     const modelId = "gemini-2.5-flash";
   
     const prompt = `
-      I am at ${location} at ${time}. Suggest 3 specific late-night spots nearby (Ramen, Izakaya, Bar, or Donki).
-      Return a JSON array of strings. Each string should be "Name - Brief reason".
+      I am at ${location} at ${time}. Suggest 3 specific late-night spots nearby (Ramen, Bar, Donki).
+      Return a JSON array of strings. Each string: "Name - Brief reason".
     `;
     
     const schema = {
@@ -142,6 +142,6 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
       });
       return JSON.parse(response.text || '[]') as string[];
     } catch (error) {
-      return ["Don Quijote (Always Open)", "Ichiran Ramen", "Convenience Store"];
+      return ["Don Quijote", "Ichiran Ramen", "Konbini"];
     }
-  };
+};
