@@ -9,6 +9,13 @@ enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
 
 const FLAGS = ['🇯🇵', '🇰🇷', '🇹🇼', '🇨🇳', '🇭🇰', '🇹🇭', '🇻🇳', '🇸🇬', '🇺🇸', '🇬🇧', '🇪🇺', '🇦🇺', '🇨🇦', '🇫🇷', '🇮🇹', '🇪🇸', '🌍'];
 
+// Haptic Helper
+const vibrate = () => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(10); // Light tap
+    }
+};
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.ITINERARY);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -83,7 +90,6 @@ const App: React.FC = () => {
   const [totalBudget, setTotalBudget] = useState<number>(20000);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
 
-  // User Flag
   const [userFlag, setUserFlag] = useState<string>(() => {
     return localStorage.getItem('kuro_flag') || "🇯🇵";
   });
@@ -126,6 +132,7 @@ const App: React.FC = () => {
 
   // --- Handlers ---
   const handleCreateTrip = () => {
+      vibrate();
       const newTrip: Trip = {
           id: `trip-${Date.now()}`,
           destination: 'NEW TRIP',
@@ -144,6 +151,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteTrip = () => {
+      vibrate();
       if (trips.length <= 1) { alert("You must have at least one trip."); return; }
       if (confirm("Delete this trip? This cannot be undone.")) {
           const newTrips = trips.filter(t => t.id !== activeTripId);
@@ -154,15 +162,15 @@ const App: React.FC = () => {
       }
   };
 
-  // --- Settings / Sync / Flag ---
   const [showSettings, setShowSettings] = useState(false);
   const [showFlagSelector, setShowFlagSelector] = useState(false);
   const [importData, setImportData] = useState('');
   
-  const handleFlagClick = () => setShowFlagSelector(true);
-  const handleSelectFlag = (flag: string) => { setUserFlag(flag); setShowFlagSelector(false); };
+  const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
+  const handleSelectFlag = (flag: string) => { vibrate(); setUserFlag(flag); setShowFlagSelector(false); };
 
   const handleExport = () => {
+      vibrate();
       const currentTrip = trips.find(t => t.id === activeTripId);
       if (!currentTrip) return;
       const jsonStr = JSON.stringify(currentTrip);
@@ -171,6 +179,7 @@ const App: React.FC = () => {
   };
 
   const handleImport = () => {
+      vibrate();
       if (!importData) return;
       try {
           const jsonStr = decodeURIComponent(escape(atob(importData)));
@@ -185,8 +194,8 @@ const App: React.FC = () => {
       } catch (e) { alert("Invalid code."); }
   };
 
-  // --- AI Enrichment & Reset ---
   const handleEnrichItinerary = async () => {
+    vibrate();
     setIsLoading(true);
     try {
         const itemsBackup = JSON.parse(JSON.stringify(currentDayPlan.items));
@@ -203,6 +212,7 @@ const App: React.FC = () => {
   };
 
   const handleResetDay = () => {
+      vibrate();
       if (!currentDayPlan.backupItems) return;
       const restoredItems = currentDayPlan.backupItems;
       setItinerary(prev => prev.map(day => {
@@ -215,6 +225,7 @@ const App: React.FC = () => {
   };
 
   const handleAiChecklist = async () => {
+      vibrate();
       setIsLoading(true);
       try {
           const suggestions = await generatePackingList(destination);
@@ -235,8 +246,8 @@ const App: React.FC = () => {
       }
   };
 
-  // --- Map Route ---
   const handleMapRoute = () => {
+      vibrate();
       const validItems = currentDayPlan.items.filter(i => 
           i.location && i.location.trim() !== '' && !i.location.includes('TBD') && !i.location.includes('Location TBD')
       );
@@ -254,7 +265,6 @@ const App: React.FC = () => {
       window.open(url, '_blank');
   };
 
-  // --- Auto-Sort Logic ---
   const sortItems = (items: ItineraryItem[]) => [...items].sort((a, b) => a.time.localeCompare(b.time));
   const handleUpdateItem = (updatedItem: ItineraryItem) => {
     setItinerary(prev => prev.map(day => {
@@ -270,6 +280,7 @@ const App: React.FC = () => {
     }));
   };
   const handleAddItem = () => {
+    vibrate();
     const newItem: ItineraryItem = {
         id: `${selectedDay}-${Date.now()}`,
         time: '12:00',
@@ -287,8 +298,8 @@ const App: React.FC = () => {
     }));
   };
 
-  // --- Day/Util Handlers ---
   const handleAddDay = () => {
+      vibrate();
       const newDayId = itinerary.length + 1;
       let nextDate = new Date();
       if (itinerary.length > 0) {
@@ -301,6 +312,7 @@ const App: React.FC = () => {
       setSelectedDay(newDayId);
   };
   const handleDeleteDay = () => {
+      vibrate();
       if (itinerary.length <= 1) { alert("Keep one day."); return; }
       const reindexed = itinerary.filter(d => d.dayId !== selectedDay).map((day, index) => ({ ...day, dayId: index + 1 }));
       setItinerary(reindexed);
@@ -308,23 +320,20 @@ const App: React.FC = () => {
   };
   const handleUpdateDayDate = (newDate: string) => setItinerary(prev => prev.map(d => d.dayId === selectedDay ? { ...d, date: newDate } : d));
 
-  const handleAddFlight = () => setFlights(prev => [...prev, { id: `f-${Date.now()}`, flightNumber: 'FL 000', departureDate: '2024-01-01', departureTime: '00:00', departureAirport: 'DEP', arrivalDate: '2024-01-01', arrivalTime: '00:00', arrivalAirport: 'ARR' }]);
+  const handleAddFlight = () => { vibrate(); setFlights(prev => [...prev, { id: `f-${Date.now()}`, flightNumber: 'FL 000', departureDate: '2024-01-01', departureTime: '00:00', departureAirport: 'DEP', arrivalDate: '2024-01-01', arrivalTime: '00:00', arrivalAirport: 'ARR' }]); };
   const handleUpdateFlight = (u: FlightInfo) => setFlights(prev => prev.map(f => f.id === u.id ? u : f));
   const handleDeleteFlight = (id: string) => setFlights(prev => prev.filter(f => f.id !== id));
-  const handleAddHotel = () => setHotels(prev => [...prev, { id: `h-${Date.now()}`, name: 'New Hotel', address: 'Address', checkIn: '2024-01-01', checkOut: '2024-01-05', bookingRef: '' }]);
+  const handleAddHotel = () => { vibrate(); setHotels(prev => [...prev, { id: `h-${Date.now()}`, name: 'New Hotel', address: 'Address', checkIn: '2024-01-01', checkOut: '2024-01-05', bookingRef: '' }]); };
   const handleUpdateHotel = (u: HotelInfo) => setHotels(prev => prev.map(h => h.id === u.id ? u : h));
   const handleDeleteHotel = (id: string) => setHotels(prev => prev.filter(h => h.id !== id));
-  
-  // Default to MISC
-  const handleAddBudget = () => setBudget(prev => [...prev, { id: `b-${Date.now()}`, item: 'Expense', cost: 0, category: ItemType.MISC, currency: Currency.JPY }]);
+  const handleAddBudget = () => { vibrate(); setBudget(prev => [...prev, { id: `b-${Date.now()}`, item: 'Expense', cost: 0, category: ItemType.MISC, currency: Currency.JPY }]); };
   const handleUpdateBudget = (u: BudgetProps) => setBudget(prev => prev.map(b => b.id === u.id ? u : b));
   const handleDeleteBudget = (id: string) => setBudget(prev => prev.filter(b => b.id !== id));
-  const handleAddContact = () => setContacts(prev => [...prev, { id: `c-${Date.now()}`, name: 'Contact', number: '', note: '' }]);
+  const handleAddContact = () => { vibrate(); setContacts(prev => [...prev, { id: `c-${Date.now()}`, name: 'Contact', number: '', note: '' }]); };
   const handleUpdateContact = (u: EmergencyContact) => setContacts(prev => prev.map(c => c.id === u.id ? u : c));
   const handleDeleteContact = (id: string) => setContacts(prev => prev.filter(c => c.id !== id));
-  
-  const handleAddChecklist = (text: string) => setChecklist(prev => [...prev, { id: `cl-${Date.now()}`, text, checked: false }]);
-  const handleToggleChecklist = (id: string) => setChecklist(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
+  const handleAddChecklist = (text: string) => { vibrate(); setChecklist(prev => [...prev, { id: `cl-${Date.now()}`, text, checked: false }]); };
+  const handleToggleChecklist = (id: string) => { vibrate(); setChecklist(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i)); };
   const handleDeleteChecklist = (id: string) => setChecklist(prev => prev.filter(i => i.id !== id));
 
   const [isEditingDate, setIsEditingDate] = useState(false);
@@ -406,7 +415,7 @@ const App: React.FC = () => {
         {activeTab === Tab.ITINERARY && (
             <div className="flex px-5 pb-2 overflow-x-auto no-scrollbar gap-2 items-center">
                 {itinerary.map(day => (
-                    <button key={day.dayId} onClick={() => setSelectedDay(day.dayId)} className={`flex flex-col items-center min-w-[44px] p-1.5 rounded-lg transition-all border ${selectedDay === day.dayId ? 'bg-neutral-100 text-black border-neutral-100 shadow-glow' : 'bg-neutral-900 text-neutral-500 border-neutral-800 hover:border-neutral-700'}`}>
+                    <button key={day.dayId} onClick={() => { vibrate(); setSelectedDay(day.dayId); }} className={`flex flex-col items-center min-w-[44px] p-1.5 rounded-lg transition-all border ${selectedDay === day.dayId ? 'bg-neutral-100 text-black border-neutral-100 shadow-glow' : 'bg-neutral-900 text-neutral-500 border-neutral-800 hover:border-neutral-700'}`}>
                         <span className="text-[8px] uppercase font-bold tracking-wider">Day {day.dayId}</span>
                         <span className="text-xs font-bold font-mono">{getFormattedDate(day.date)}</span>
                     </button>
@@ -505,7 +514,7 @@ const App: React.FC = () => {
                 </div>
                 <div className="grid gap-2">
                     {trips.map(trip => (
-                        <div key={trip.id} onClick={() => { setActiveTripId(trip.id); setActiveTab(Tab.ITINERARY); }} className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden ${activeTripId === trip.id ? 'bg-neutral-100 border-white' : 'bg-neutral-900 border-neutral-800 hover:border-neutral-600'}`}>
+                        <div key={trip.id} onClick={() => { vibrate(); setActiveTripId(trip.id); setActiveTab(Tab.ITINERARY); }} className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden ${activeTripId === trip.id ? 'bg-neutral-100 border-white' : 'bg-neutral-900 border-neutral-800 hover:border-neutral-600'}`}>
                              <div className={`absolute -right-4 -bottom-4 text-[60px] font-black opacity-5 pointer-events-none ${activeTripId === trip.id ? 'text-black' : 'text-white'}`}>
                                  {trip.destination.substring(0, 3).toUpperCase()}
                              </div>
@@ -530,14 +539,14 @@ const App: React.FC = () => {
 
       <nav className="fixed bottom-0 w-full bg-black/95 backdrop-blur-xl border-t border-neutral-900 pb-safe-bottom z-50">
         <div className="flex justify-around items-center h-[60px] max-w-lg mx-auto">
-            <button onClick={() => setActiveTab(Tab.ITINERARY)} className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === Tab.ITINERARY ? 'text-white' : 'text-neutral-600'}`}>
+            <button onClick={() => { vibrate(); setActiveTab(Tab.ITINERARY); }} className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === Tab.ITINERARY ? 'text-white' : 'text-neutral-600'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                 <span className="text-[8px] font-medium uppercase tracking-wider">Schedule</span>
             </button>
-            <button onClick={() => setActiveTab(Tab.TRIPS)} className={`w-10 h-10 rounded-full flex items-center justify-center -mt-5 shadow-lg active:scale-95 transition-all ${activeTab === Tab.TRIPS ? 'bg-white text-black shadow-white/20' : 'bg-neutral-800 text-neutral-400 shadow-black border border-neutral-700'}`}>
+            <button onClick={() => { vibrate(); setActiveTab(Tab.TRIPS); }} className={`w-10 h-10 rounded-full flex items-center justify-center -mt-5 shadow-lg active:scale-95 transition-all ${activeTab === Tab.TRIPS ? 'bg-white text-black shadow-white/20' : 'bg-neutral-800 text-neutral-400 shadow-black border border-neutral-700'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
             </button>
-            <button onClick={() => setActiveTab(Tab.UTILITIES)} className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === Tab.UTILITIES ? 'text-white' : 'text-neutral-600'}`}>
+            <button onClick={() => { vibrate(); setActiveTab(Tab.UTILITIES); }} className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === Tab.UTILITIES ? 'text-white' : 'text-neutral-600'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                 <span className="text-[8px] font-medium uppercase tracking-wider">Wallet</span>
             </button>
@@ -546,7 +555,5 @@ const App: React.FC = () => {
     </div>
   );
 };
-
-export default App;
 
 export default App;
