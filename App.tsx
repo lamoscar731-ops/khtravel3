@@ -224,7 +224,6 @@ const App: React.FC = () => {
               text,
               checked: false
           }));
-          // Merge avoiding duplicates
           setChecklist(prev => {
               const existingTexts = new Set(prev.map(i => i.text.toLowerCase()));
               const uniqueNew = newItems.filter(i => !existingTexts.has(i.text.toLowerCase()));
@@ -316,14 +315,15 @@ const App: React.FC = () => {
   const handleAddHotel = () => setHotels(prev => [...prev, { id: `h-${Date.now()}`, name: 'New Hotel', address: 'Address', checkIn: '2024-01-01', checkOut: '2024-01-05', bookingRef: '' }]);
   const handleUpdateHotel = (u: HotelInfo) => setHotels(prev => prev.map(h => h.id === u.id ? u : h));
   const handleDeleteHotel = (id: string) => setHotels(prev => prev.filter(h => h.id !== id));
-  const handleAddBudget = () => setBudget(prev => [...prev, { id: `b-${Date.now()}`, item: 'Expense', cost: 0, category: 'Misc', currency: Currency.JPY }]);
+  
+  // Updated: Default category to 'MISC'
+  const handleAddBudget = () => setBudget(prev => [...prev, { id: `b-${Date.now()}`, item: 'Expense', cost: 0, category: ItemType.MISC, currency: Currency.JPY }]);
   const handleUpdateBudget = (u: BudgetProps) => setBudget(prev => prev.map(b => b.id === u.id ? u : b));
   const handleDeleteBudget = (id: string) => setBudget(prev => prev.filter(b => b.id !== id));
   const handleAddContact = () => setContacts(prev => [...prev, { id: `c-${Date.now()}`, name: 'Contact', number: '', note: '' }]);
   const handleUpdateContact = (u: EmergencyContact) => setContacts(prev => prev.map(c => c.id === u.id ? u : c));
   const handleDeleteContact = (id: string) => setContacts(prev => prev.filter(c => c.id !== id));
   
-  // Checklist Handlers
   const handleAddChecklist = (text: string) => setChecklist(prev => [...prev, { id: `cl-${Date.now()}`, text, checked: false }]);
   const handleToggleChecklist = (id: string) => setChecklist(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
   const handleDeleteChecklist = (id: string) => setChecklist(prev => prev.filter(i => i.id !== id));
