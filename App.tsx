@@ -23,7 +23,6 @@ const App: React.FC = () => {
   
   // --- Fetch Real-time Rates ---
   useEffect(() => {
-      // ExchangeRate-API (Free tier, base HKD)
       fetch('https://api.exchangerate-api.com/v4/latest/HKD')
         .then(res => res.json())
         .then(data => {
@@ -94,6 +93,10 @@ const App: React.FC = () => {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [tripNotes, setTripNotes] = useState<string>('');
 
+  // Selection Mode State
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+
   const [userFlag, setUserFlag] = useState<string>(() => {
     return localStorage.getItem('kuro_flag') || "🇯🇵";
   });
@@ -112,6 +115,9 @@ const App: React.FC = () => {
           setChecklist(currentTrip.checklist || []);
           setTripNotes(currentTrip.notes || '');
           if (selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
+          // Reset selection on trip change
+          setIsSelectMode(false);
+          setSelectedItemIds(new Set());
       }
       localStorage.setItem('kuro_active_trip_id', activeTripId);
   }, [activeTripId]);
@@ -264,19 +270,49 @@ const App: React.FC = () => {
       }
   };
 
+  // --- Selection Logic ---
+  const toggleSelectMode = () => {
+      vibrate();
+      setIsSelectMode(!isSelectMode);
+      setSelectedItemIds(new Set()); // Clear selection when toggling
+  };
+
+  const handleToggleItemSelection = (id: string) => {
+      vibrate();
+      const newSet = new Set(selectedItemIds);
+      if (newSet.has(id)) {
+          newSet.delete(id);
+      } else {
+          newSet.add(id);
+      }
+      setSelectedItemIds(newSet);
+  };
+
+  // --- Map Route ---
   const handleMapRoute = () => {
       vibrate();
-      const validItems = currentDayPlan.items.filter(i => 
+      
+      // 1. Get all valid items with locations
+      let validItems = currentDayPlan.items.filter(i => 
           i.location && i.location.trim() !== '' && !i.location.includes('TBD') && !i.location.includes('Location TBD')
       );
-      if (validItems.length === 0) { alert("Add locations to map."); return; }
+
+      // 2. If Select Mode is active AND items are selected, filter by selection
+      if (isSelectMode && selectedItemIds.size > 0) {
+          validItems = validItems.filter(item => selectedItemIds.has(item.id));
+      }
+
+      if (validItems.length === 0) { alert("Select items with locations."); return; }
+      
       if (validItems.length === 1) {
            const query = encodeURIComponent(validItems[0].location);
            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
            return;
       }
+
       const origin = encodeURIComponent(validItems[0].location);
       const destination = encodeURIComponent(validItems[validItems.length - 1].location);
+      // Google Maps waypoints limit
       const waypoints = validItems.slice(1, -1).slice(0, 9).map(i => encodeURIComponent(i.location)).join('|');
       let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=transit`;
       if (waypoints) url += `&waypoints=${waypoints}`;
@@ -495,8 +531,11 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="flex gap-2 mb-4">
+                    <button onClick={toggleSelectMode} className={`w-10 flex items-center justify-center rounded-lg border transition-all ${isSelectMode ? 'bg-white text-black border-white' : 'bg-neutral-900 text-neutral-500 border-neutral-800 hover:border-neutral-600'}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </button>
                     <button onClick={handleMapRoute} className="flex-1 bg-neutral-100 border border-white text-black py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:bg-neutral-300 transition-all active:scale-[0.98] uppercase">
-                        🗺️ MAP ROUTE
+                        🗺️ MAP ROUTE {isSelectMode && selectedItemIds.size > 0 ? `(${selectedItemIds.size})` : ''}
                     </button>
                     <button onClick={handleEnrichItinerary} disabled={isLoading} className="flex-1 bg-gradient-to-r from-neutral-800 to-neutral-900 border border-neutral-700 text-neutral-300 py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:border-neutral-500 transition-all active:scale-[0.98] uppercase">
                         {isLoading ? <span className="animate-pulse">Analyzing...</span> : <><span>✨ AI GUIDE CHECK</span></>}
@@ -508,7 +547,16 @@ const App: React.FC = () => {
 
                 <div className="relative pl-0.5">
                     {currentDayPlan.items.map((item, index) => (
-                        <ItineraryCard key={item.id} item={item} isLast={index === currentDayPlan.items.length - 1} onSave={handleUpdateItem} onDelete={handleDeleteItem} />
+                        <ItineraryCard 
+                            key={item.id} 
+                            item={item} 
+                            isLast={index === currentDayPlan.items.length - 1} 
+                            onSave={handleUpdateItem} 
+                            onDelete={handleDeleteItem} 
+                            isSelectMode={isSelectMode}
+                            isSelected={selectedItemIds.has(item.id)}
+                            onSelect={handleToggleItemSelection}
+                        />
                     ))}
                     <div className="flex gap-2 mb-8 mt-2 relative group">
                         <div className="absolute left-[13px] top-0 bottom-8 w-[2px] bg-gradient-to-b from-neutral-800 to-transparent z-0"></div>
@@ -520,7 +568,33 @@ const App: React.FC = () => {
         ) : activeTab === Tab.UTILITIES ? (
             <>
                  <h2 className="text-base font-bold text-white mb-3 uppercase tracking-tight">Trip Utilities</h2>
-                 <Utilities budget={budget} flights={flights} hotels={hotels} contacts={contacts} onUpdateFlight={handleUpdateFlight} onUpdateHotel={handleUpdateHotel} onAddFlight={handleAddFlight} onAddHotel={handleAddHotel} onDeleteFlight={handleDeleteFlight} onDeleteHotel={handleDeleteHotel} onAddBudget={handleAddBudget} onUpdateBudget={handleUpdateBudget} onDeleteBudget={handleDeleteBudget} onAddContact={handleAddContact} onUpdateContact={handleUpdateContact} onDeleteContact={handleDeleteContact} rates={exchangeRates} onUpdateTotalBudget={setTotalBudget} onAddChecklist={handleAddChecklist} onToggleChecklist={handleToggleChecklist} onDeleteChecklist={handleDeleteChecklist} onAiChecklist={handleAiChecklist} isLoadingAi={isLoading} checklist={checklist} totalBudget={totalBudget} />
+                 <Utilities 
+                    budget={budget} 
+                    flights={flights} 
+                    hotels={hotels} 
+                    contacts={contacts} 
+                    checklist={checklist}
+                    totalBudget={totalBudget}
+                    rates={exchangeRates} 
+                    onUpdateFlight={handleUpdateFlight} 
+                    onUpdateHotel={handleUpdateHotel} 
+                    onAddFlight={handleAddFlight} 
+                    onAddHotel={handleAddHotel} 
+                    onDeleteFlight={handleDeleteFlight} 
+                    onDeleteHotel={handleDeleteHotel} 
+                    onAddBudget={handleAddBudget} 
+                    onUpdateBudget={handleUpdateBudget} 
+                    onDeleteBudget={handleDeleteBudget} 
+                    onAddContact={handleAddContact} 
+                    onUpdateContact={handleUpdateContact} 
+                    onDeleteContact={handleDeleteContact}
+                    onUpdateTotalBudget={setTotalBudget}
+                    onAddChecklist={handleAddChecklist}
+                    onToggleChecklist={handleToggleChecklist}
+                    onDeleteChecklist={handleDeleteChecklist}
+                    onAiChecklist={handleAiChecklist}
+                    isLoadingAi={isLoading}
+                />
             </>
         ) : (
             <>
