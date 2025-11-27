@@ -8,7 +8,12 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
-const vibrate = () => { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10); };
+// Safe haptic feedback helper
+const vibrate = () => { 
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(10); 
+    }
+};
 
 const TypeIcon: React.FC<{ type: ItemType }> = ({ type }) => {
   switch (type) {
@@ -19,6 +24,8 @@ const TypeIcon: React.FC<{ type: ItemType }> = ({ type }) => {
     case ItemType.TRANSPORT: return <span className="text-base">🚄</span>;
     case ItemType.SHOPPING: return <span className="text-base">🛍️</span>;
     case ItemType.HOTEL: return <span className="text-base">🏨</span>;
+    case ItemType.MISC: return <span className="text-base">🧩</span>; // Added MISC icon
+    case ItemType.SIGHTSEEING: 
     default: return <span className="text-base">⛩️</span>;
   }
 };
@@ -44,10 +51,13 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
 
   const handleLocationClick = () => {
       vibrate();
-      navigator.clipboard.writeText(item.location).then(() => {
-          setShowCopied(true);
-          setTimeout(() => setShowCopied(false), 2000);
-      });
+      // Safe clipboard write
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(item.location).then(() => {
+              setShowCopied(true);
+              setTimeout(() => setShowCopied(false), 2000);
+          }).catch(err => console.error('Failed to copy', err));
+      }
   };
 
   const handleMapUrlPaste = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,7 +117,12 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
                     <div className="grid grid-cols-3 gap-2">
                          <div className="col-span-1">
                             <label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Time</label>
-                            <input type="time" value={formData.time} onChange={(e) => handleChange('time', e.target.value)} className="w-full bg-transparent border-b border-neutral-700 text-white text-sm py-0.5 focus:outline-none focus:border-neutral-400 [color-scheme:dark]" />
+                            <input 
+                                type="time" 
+                                value={formData.time} 
+                                onChange={(e) => handleChange('time', e.target.value)} 
+                                className="w-full bg-transparent border-b border-neutral-700 text-white text-sm py-0.5 focus:outline-none focus:border-neutral-400 [color-scheme:dark]" 
+                            />
                         </div>
                         <div className="col-span-2">
                              <label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Type</label>
