@@ -40,7 +40,6 @@ const App: React.FC = () => {
       const savedTrips = localStorage.getItem('kuro_trips');
       if (savedTrips) return JSON.parse(savedTrips);
       const oldItinerary = localStorage.getItem('kuro_itinerary');
-      // Migration for old data or fresh start
       if (oldItinerary) {
           const migratedTrip: Trip = {
               id: `trip-${Date.now()}`,
@@ -316,7 +315,7 @@ const App: React.FC = () => {
   const handleUpdateHotel = (u: HotelInfo) => setHotels(prev => prev.map(h => h.id === u.id ? u : h));
   const handleDeleteHotel = (id: string) => setHotels(prev => prev.filter(h => h.id !== id));
   
-  // Updated: Default category to 'MISC'
+  // Default to MISC
   const handleAddBudget = () => setBudget(prev => [...prev, { id: `b-${Date.now()}`, item: 'Expense', cost: 0, category: ItemType.MISC, currency: Currency.JPY }]);
   const handleUpdateBudget = (u: BudgetProps) => setBudget(prev => prev.map(b => b.id === u.id ? u : b));
   const handleDeleteBudget = (id: string) => setBudget(prev => prev.filter(b => b.id !== id));
@@ -547,5 +546,7 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+export default App;
 
 export default App;
