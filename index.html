@@ -8,9 +8,10 @@
     <meta name="theme-color" content="#000000" />
     <title>kh.travel</title>
     
-    <!-- Restored Static Icons for Maximum Performance -->
-    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iYmxhY2siLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI2IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTEwIDUwaDgwTTUwIDEwdjgwTTUwIDEwYzE1IDAgMjUgMTggMjUgNDBzLTEwIDQwLTI1IDQwLTI1LTE4LTI1LTQwIDEwLTQwIDI1LTQweiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI0IiBmaWxsPSJub25lIi8+PC9zdmc+">
-    <!-- Removed apple-touch-icon to use iOS default screenshot/letter logic for zero-blocking load -->
+    <!-- Browser Favicon (Lightweight SVG for Desktop/Android) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22black%22/><circle cx=%2250%22 cy=%2250%22 r=%2240%22 stroke=%22white%22 stroke-width=%226%22 fill=%22none%22/><path d=%22M10 50h80M50 10v80M50 10c15 0 25 18 25 40s-10 40-25 40-25-18-25-40 10-40 25-40z%22 stroke=%22white%22 stroke-width=%224%22 fill=%22none%22/></svg>">
+    
+    <!-- Note: apple-touch-icon removed to prioritize launch speed and use iOS default snapshot behavior -->
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -40,8 +41,6 @@
         50% { opacity: 0.5; }
       }
       .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-      .animate-fade-in { animation: fadeIn 0.2s ease-out; }
-      @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
       select { -webkit-appearance: none; }
     </style>
