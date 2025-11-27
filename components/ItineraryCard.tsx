@@ -35,6 +35,7 @@ const TypeIcon: React.FC<{ type: ItemType }> = ({ type }) => {
 
 export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete, isSelectMode, isSelected, onSelect }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [showCard, setShowCard] = useState(false);
   const [formData, setFormData] = useState<ItineraryItem>(item);
   const [newTagLabel, setNewTagLabel] = useState('');
   const [newTagColor, setNewTagColor] = useState<'red' | 'gold' | 'gray'>('gray');
@@ -103,6 +104,25 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
       vibrate();
       setFormData(prev => ({ ...prev, tags: prev.tags?.filter((_, index) => index !== indexToRemove) }));
   };
+
+  // --- Show Card View ---
+  if (showCard) {
+      return (
+          <div className="fixed inset-0 z-[100] bg-black flex flex-col justify-center p-8 animate-fade-in" onClick={() => setShowCard(false)}>
+              <div className="text-center space-y-8">
+                  <div>
+                      <p className="text-xs text-neutral-500 uppercase tracking-widest mb-2">Location</p>
+                      <h1 className="text-4xl font-bold text-white leading-tight">{formData.title}</h1>
+                  </div>
+                  <div>
+                      <p className="text-xs text-neutral-500 uppercase tracking-widest mb-2">Address</p>
+                      <p className="text-2xl text-white leading-relaxed">{formData.location}</p>
+                  </div>
+                  <p className="text-[10px] text-neutral-600 mt-12">Tap to close</p>
+              </div>
+          </div>
+      );
+  }
 
   if (isEditing) {
     return (
@@ -212,12 +232,13 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
         onClick={() => { if(isSelectMode && onSelect) onSelect(item.id); }} // Allow clicking card to select
       >
         {!isSelectMode && (
-            <button onClick={() => { vibrate(); setIsEditing(true); }} className="absolute top-2 right-2 p-1.5 text-neutral-600 hover:text-white transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-            </button>
+            <div className="absolute top-2 right-2 flex gap-2">
+                <button onClick={(e) => { e.stopPropagation(); vibrate(); setShowCard(true); }} className="text-neutral-400 hover:text-white text-[10px] font-bold border border-neutral-700 px-2 rounded hover:bg-neutral-800 transition">SHOW</button>
+                <button onClick={(e) => { e.stopPropagation(); vibrate(); setIsEditing(true); }} className="text-neutral-600 hover:text-white transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1">✎</button>
+            </div>
         )}
         
-        <div className="flex justify-between items-start mb-1 pr-6">
+        <div className="flex justify-between items-start mb-1 pr-16">
             <div>
                 <h3 className="text-base font-bold text-neutral-200 leading-tight tracking-wide">{item.title}</h3>
                 {item.weather && <div className="text-[10px] text-blue-300 mt-0.5 flex items-center gap-1">☁️ {item.weather}</div>}
