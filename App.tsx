@@ -21,6 +21,60 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(DEFAULT_RATES);
   
+  // --- Dynamic App Icon Generation (iOS PNG Fix) ---
+  useEffect(() => {
+      const generateIcon = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = 512;
+          canvas.height = 512;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+
+          // 1. Background
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(0, 0, 512, 512);
+
+          // 2. Globe Circle
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 25;
+          ctx.beginPath();
+          ctx.arc(256, 230, 180, 0, Math.PI * 2); // Moved up slightly (y=230)
+          ctx.stroke();
+
+          // 3. Globe Lines (Equator)
+          ctx.lineWidth = 15;
+          ctx.beginPath();
+          ctx.ellipse(256, 230, 180, 60, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          // 4. Globe Lines (Meridian)
+          ctx.beginPath();
+          ctx.moveTo(256, 50);
+          ctx.lineTo(256, 410);
+          ctx.stroke();
+
+          // 5. Text "KH"
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 110px sans-serif'; // Big bold text
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.letterSpacing = '10px';
+          ctx.fillText('KH', 256, 450); // Positioned at bottom
+
+          // 6. Convert to PNG Data URI
+          const pngUrl = canvas.toDataURL('image/png');
+
+          // 7. Update Head Tags
+          const linkFavicon = document.getElementById('favicon') as HTMLLinkElement;
+          const linkApple = document.getElementById('apple-icon') as HTMLLinkElement;
+          
+          if (linkFavicon) linkFavicon.href = pngUrl;
+          if (linkApple) linkApple.href = pngUrl;
+      };
+
+      generateIcon();
+  }, []);
+
   // --- Fetch Real-time Rates ---
   useEffect(() => {
       fetch('https://api.exchangerate-api.com/v4/latest/HKD')
@@ -115,7 +169,6 @@ const App: React.FC = () => {
           setChecklist(currentTrip.checklist || []);
           setTripNotes(currentTrip.notes || '');
           if (selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
-          // Reset selection on trip change
           setIsSelectMode(false);
           setSelectedItemIds(new Set());
       }
