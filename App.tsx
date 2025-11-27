@@ -23,7 +23,7 @@ const App: React.FC = () => {
 
   // --- Clock for Live Mode ---
   useEffect(() => {
-      const timer = setInterval(() => setNow(new Date()), 60000); // Update every minute
+      const timer = setInterval(() => setNow(new Date()), 60000); 
       return () => clearInterval(timer);
   }, []);
   
@@ -160,8 +160,7 @@ const App: React.FC = () => {
 
   // --- Live Mode Helper ---
   const isLiveItem = (item: ItineraryItem, index: number, items: ItineraryItem[]) => {
-      // 1. Check Date
-      const dateStr = currentDayPlan.date.split(' ')[0]; // YYYY-MM-DD
+      const dateStr = currentDayPlan.date.split(' ')[0]; 
       const planDate = new Date(dateStr);
       const isSameDate = planDate.getFullYear() === now.getFullYear() &&
                          planDate.getMonth() === now.getMonth() &&
@@ -169,18 +168,15 @@ const App: React.FC = () => {
       
       if (!isSameDate) return false;
 
-      // 2. Check Time
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      
       const itemTimeParts = item.time.split(':');
       const itemMinutes = parseInt(itemTimeParts[0]) * 60 + parseInt(itemTimeParts[1]);
 
-      let nextItemMinutes = 24 * 60; // Default to end of day
+      let nextItemMinutes = 24 * 60; 
       if (index < items.length - 1) {
           const nextParts = items[index + 1].time.split(':');
           nextItemMinutes = parseInt(nextParts[0]) * 60 + parseInt(nextParts[1]);
       } else {
-          // If last item, assume it lasts 2 hours
           nextItemMinutes = itemMinutes + 120; 
       }
 
@@ -328,7 +324,6 @@ const App: React.FC = () => {
       setItinerary(prev => prev.map(day => {
           if (day.dayId === selectedDay) {
               const { backupItems, ...rest } = day;
-              // Clear analysis fields too
               return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined };
           }
           return day;
@@ -373,7 +368,7 @@ const App: React.FC = () => {
       const origin = encodeURIComponent(validItems[0].location);
       const destination = encodeURIComponent(validItems[validItems.length - 1].location);
       const waypoints = validItems.slice(1, -1).slice(0, 9).map(i => encodeURIComponent(i.location)).join('|');
-      let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`; // Changed to walking for better overview
+      let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`; 
       if (waypoints) url += `&waypoints=${waypoints}`;
       window.open(url, '_blank');
   };
@@ -680,7 +675,6 @@ const App: React.FC = () => {
                             className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden h-32 flex flex-col justify-between ${activeTripId === trip.id ? 'border-white' : 'border-neutral-800 hover:border-neutral-600'}`}
                             style={trip.coverImage ? { backgroundImage: `url(${trip.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                         >
-                             {/* Overlay for image readablity */}
                              <div className={`absolute inset-0 ${trip.coverImage ? 'bg-black/60' : 'bg-neutral-900'} z-0`}></div>
                              
                              {!trip.coverImage && (
