@@ -11,7 +11,10 @@ interface Props {
 
 const TypeIcon: React.FC<{ type: ItemType }> = ({ type }) => {
   switch (type) {
-    case ItemType.FOOD: return <span className="text-base">🥢</span>;
+    case ItemType.FOOD: return <span className="text-base">🍽️</span>;
+    case ItemType.RAMEN: return <span className="text-base">🍜</span>;
+    case ItemType.COFFEE: return <span className="text-base">☕</span>;
+    case ItemType.ALCOHOL: return <span className="text-base">🍺</span>;
     case ItemType.TRANSPORT: return <span className="text-base">🚄</span>;
     case ItemType.SHOPPING: return <span className="text-base">🛍️</span>;
     case ItemType.HOTEL: return <span className="text-base">🏨</span>;
