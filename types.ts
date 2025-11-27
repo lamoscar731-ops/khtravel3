@@ -6,7 +6,8 @@ export enum ItemType {
   ALCOHOL = 'ALCOHOL',
   TRANSPORT = 'TRANSPORT',
   SHOPPING = 'SHOPPING',
-  HOTEL = 'HOTEL'
+  HOTEL = 'HOTEL',
+  MISC = 'MISC'
 }
 
 export enum Currency {
@@ -42,7 +43,7 @@ export interface DayPlan {
   date: string;
   weatherSummary?: string;
   items: ItineraryItem[];
-  backupItems?: ItineraryItem[]; // Stores original items before AI enrichment
+  backupItems?: ItineraryItem[];
 }
 
 export interface BudgetProps {
