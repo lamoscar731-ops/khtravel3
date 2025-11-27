@@ -93,10 +93,6 @@ const App: React.FC = () => {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [tripNotes, setTripNotes] = useState<string>('');
 
-  // Selection Mode State
-  const [isSelectMode, setIsSelectMode] = useState(false);
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
-
   const [userFlag, setUserFlag] = useState<string>(() => {
     return localStorage.getItem('kuro_flag') || "🇯🇵";
   });
@@ -115,8 +111,6 @@ const App: React.FC = () => {
           setChecklist(currentTrip.checklist || []);
           setTripNotes(currentTrip.notes || '');
           if (selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
-          setIsSelectMode(false);
-          setSelectedItemIds(new Set());
       }
       localStorage.setItem('kuro_active_trip_id', activeTripId);
   }, [activeTripId]);
@@ -217,6 +211,65 @@ const App: React.FC = () => {
       } catch (e) { alert("Invalid code."); }
   };
 
+  // --- Export to Calendar (.ics) ---
+  const handleExportCalendar = () => {
+      vibrate();
+      let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//kh.travel//Trip Planner//EN\n";
+      
+      itinerary.forEach(day => {
+          day.items.forEach(item => {
+              if (item.title && item.time) {
+                  // Construct Date Time
+                  // day.date format is YYYY-MM-DD (sometimes with day name, need to parse)
+                  const dateStr = day.date.split(' ')[0].replace(/-/g, ''); // YYYYMMDD
+                  const timeStr = item.time.replace(':', '') + '00'; // HHMMSS
+                  const startDateTime = `${dateStr}T${timeStr}`;
+                  
+                  // Assume 1 hour duration
+                  let endHour = parseInt(item.time.split(':')[0]) + 1;
+                  const endTimeStr = (endHour < 10 ? '0' + endHour : endHour) + item.time.split(':')[1] + '00';
+                  const endDateTime = `${dateStr}T${endTimeStr}`;
+
+                  icsContent += "BEGIN:VEVENT\n";
+                  icsContent += `SUMMARY:${item.title}\n`;
+                  icsContent += `DTSTART:${startDateTime}\n`;
+                  icsContent += `DTEND:${endDateTime}\n`;
+                  if (item.location) icsContent += `LOCATION:${item.location}\n`;
+                  if (item.description) icsContent += `DESCRIPTION:${item.description}\n`;
+                  icsContent += "END:VEVENT\n";
+              }
+          });
+      });
+      
+      icsContent += "END:VCALENDAR";
+
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `trip_${destination}.ics`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
+  // --- Copy as Text ---
+  const handleCopyText = () => {
+      vibrate();
+      let text = `✈️ TRIP TO ${destination}\n\n`;
+      itinerary.forEach(day => {
+          text += `📅 DAY ${day.dayId} (${day.date})\n`;
+          day.items.forEach(item => {
+              text += `${item.time} ${item.title}\n`;
+              if(item.location) text += `📍 ${item.location}\n`;
+              text += `\n`;
+          });
+          text += `----------------\n`;
+      });
+      
+      navigator.clipboard.writeText(text).then(() => alert("Itinerary copied to clipboard!"));
+  };
+
   const handleEnrichItinerary = async () => {
     vibrate();
     setIsLoading(true);
@@ -269,55 +322,27 @@ const App: React.FC = () => {
       }
   };
 
-  // --- Selection Logic ---
-  const toggleSelectMode = () => {
-      vibrate();
-      setIsSelectMode(!isSelectMode);
-      setSelectedItemIds(new Set()); // Clear selection when toggling
-  };
-
-  const handleToggleItemSelection = (id: string) => {
-      vibrate();
-      const newSet = new Set(selectedItemIds);
-      if (newSet.has(id)) {
-          newSet.delete(id);
-      } else {
-          newSet.add(id);
-      }
-      setSelectedItemIds(newSet);
-  };
-
   // --- Map Route ---
   const handleMapRoute = () => {
       vibrate();
-      
-      // 1. Get all valid items with locations
-      let validItems = currentDayPlan.items.filter(i => 
+      const validItems = currentDayPlan.items.filter(i => 
           i.location && i.location.trim() !== '' && !i.location.includes('TBD') && !i.location.includes('Location TBD')
       );
-
-      // 2. If Select Mode is active AND items are selected, filter by selection
-      if (isSelectMode && selectedItemIds.size > 0) {
-          validItems = validItems.filter(item => selectedItemIds.has(item.id));
-      }
-
-      if (validItems.length === 0) { alert("Select items with locations."); return; }
-      
+      if (validItems.length === 0) { alert("Add locations to map."); return; }
       if (validItems.length === 1) {
            const query = encodeURIComponent(validItems[0].location);
            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
            return;
       }
-
       const origin = encodeURIComponent(validItems[0].location);
       const destination = encodeURIComponent(validItems[validItems.length - 1].location);
-      // Google Maps waypoints limit
       const waypoints = validItems.slice(1, -1).slice(0, 9).map(i => encodeURIComponent(i.location)).join('|');
       let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=transit`;
       if (waypoints) url += `&waypoints=${waypoints}`;
       window.open(url, '_blank');
   };
 
+  // --- Auto-Sort & CRUD ---
   const sortItems = (items: ItineraryItem[]) => [...items].sort((a, b) => a.time.localeCompare(b.time));
   const handleUpdateItem = (updatedItem: ItineraryItem) => {
     setItinerary(prev => prev.map(day => {
@@ -400,6 +425,21 @@ const App: React.FC = () => {
       return dateStr;
   };
 
+  // --- Selection Logic ---
+  const toggleSelectMode = () => {
+      vibrate();
+      setIsSelectMode(!isSelectMode);
+      setSelectedItemIds(new Set()); 
+  };
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const handleToggleItemSelection = (id: string) => {
+      vibrate();
+      const newSet = new Set(selectedItemIds);
+      if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
+      setSelectedItemIds(newSet);
+  };
+
   return (
     <div className="min-h-screen bg-black pb-24 text-neutral-200 font-sans relative">
       {/* Settings Modal */}
@@ -413,9 +453,19 @@ const App: React.FC = () => {
                           <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">Sync / Share Trip</h4>
                           <p className="text-[9px] text-neutral-400 mb-3 leading-relaxed">Copy the code below.</p>
                           <button onClick={handleExport} className="w-full bg-white text-black py-2 rounded-lg text-xs font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase"><span>📋 Copy Trip Data</span></button>
-                          <div className="relative">
+                          
+                          <div className="relative mb-4">
                               <input value={importData} onChange={(e) => setImportData(e.target.value)} placeholder="Paste code..." className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none pr-16" />
                               <button onClick={handleImport} disabled={!importData} className="absolute right-1 top-1 bottom-1 bg-neutral-800 text-white px-3 rounded text-[10px] font-bold disabled:opacity-50 hover:bg-neutral-700">LOAD</button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                              <button onClick={handleExportCalendar} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1">
+                                  <span>📅 Export .ics</span>
+                              </button>
+                              <button onClick={handleCopyText} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1">
+                                  <span>📝 Copy Text</span>
+                              </button>
                           </div>
                       </div>
                       
@@ -430,7 +480,7 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* Flag Selector Modal */}
+      {/* Flag & Notes Modals (kept same) */}
       {showFlagSelector && (
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
                <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-xs shadow-2xl relative">
@@ -444,8 +494,6 @@ const App: React.FC = () => {
                </div>
           </div>
       )}
-
-      {/* Notes Modal */}
       {showNotes && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col px-6 pb-6 pt-[calc(env(safe-area-inset-top)+20px)] animate-fade-in">
               <div className="flex justify-between items-center mb-4">
@@ -455,13 +503,7 @@ const App: React.FC = () => {
                   </h3>
                   <button onClick={() => setShowNotes(false)} className="text-neutral-500 hover:text-white p-2 text-xl">✕</button>
               </div>
-              <textarea 
-                  className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-sm text-neutral-300 focus:outline-none focus:border-neutral-700 resize-none leading-relaxed placeholder-neutral-700"
-                  placeholder="Type anything here... (Wifi passwords, locker codes, shopping list)"
-                  value={tripNotes}
-                  onChange={(e) => setTripNotes(e.target.value)}
-                  autoFocus
-              />
+              <textarea className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-sm text-neutral-300 focus:outline-none focus:border-neutral-700 resize-none leading-relaxed placeholder-neutral-700" placeholder="Type notes..." value={tripNotes} onChange={(e) => setTripNotes(e.target.value)} autoFocus />
               <div className="mt-2 text-center text-[10px] text-neutral-600">Autosaved to Trip</div>
           </div>
       )}
@@ -481,7 +523,9 @@ const App: React.FC = () => {
               <button onClick={() => { vibrate(); setShowNotes(true); }} className="text-neutral-500 hover:text-white transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
               </button>
-              <button onClick={() => setShowSettings(true)} className="text-neutral-500 hover:text-white text-[10px] uppercase">SHARE</button>
+              <button onClick={() => setShowSettings(true)} className="text-neutral-500 hover:text-white transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              </button>
               <div onClick={handleFlagClick} className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center cursor-pointer active:opacity-70 transition-transform hover:scale-105 shadow-glow text-lg">
                 {userFlag}
               </div>
