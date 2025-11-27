@@ -27,7 +27,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
             time: { type: Type.STRING },
             title: { type: Type.STRING },
             location: { type: Type.STRING },
-            type: { type: Type.STRING, enum: [ItemType.SIGHTSEEING, ItemType.FOOD, ItemType.SHOPPING, ItemType.TRANSPORT, ItemType.HOTEL] },
+            type: { type: Type.STRING, enum: [ItemType.SIGHTSEEING, ItemType.FOOD, ItemType.RAMEN, ItemType.COFFEE, ItemType.ALCOHOL, ItemType.TRANSPORT, ItemType.SHOPPING, ItemType.HOTEL] },
             description: { type: Type.STRING },
             tips: { type: Type.ARRAY, items: { type: Type.STRING } },
             tags: {
