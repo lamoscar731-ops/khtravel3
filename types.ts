@@ -42,8 +42,8 @@ export interface DayPlan {
   dayId: number;
   date: string;
   weatherSummary?: string;
-  paceAnalysis?: string; // e.g. "Relaxed", "Rushed"
-  logicWarning?: string; // e.g. "Backtracking detected"
+  paceAnalysis?: string; // New: AI Pace Analysis
+  logicWarning?: string; // New: AI Logic Warning
   items: ItineraryItem[];
   backupItems?: ItineraryItem[];
 }
@@ -103,5 +103,5 @@ export interface Trip {
   totalBudget?: number;
   checklist?: ChecklistItem[];
   notes?: string;
-  coverImage?: string; // New
+  coverImage?: string; // New: Cover Image URL
 }
