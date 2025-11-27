@@ -34,32 +34,54 @@ const App: React.FC = () => {
           ctx.fillStyle = '#000000';
           ctx.fillRect(0, 0, 512, 512);
 
-          // 2. Globe Circle
+          // Config
+          const cx = 256;
+          const cy = 215; // Moved up to create space
+          const r = 135;  // Radius (Scaled down)
+          
           ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 25;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.lineWidth = 12; // Thin lines
+
+          // 2. Outer Circle
           ctx.beginPath();
-          ctx.arc(256, 230, 180, 0, Math.PI * 2); // Moved up slightly (y=230)
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
           ctx.stroke();
 
-          // 3. Globe Lines (Equator)
-          ctx.lineWidth = 15;
+          // 3. Equator (Horizontal Line)
           ctx.beginPath();
-          ctx.ellipse(256, 230, 180, 60, 0, 0, Math.PI * 2);
+          ctx.moveTo(cx - r, cy);
+          ctx.lineTo(cx + r, cy);
           ctx.stroke();
           
-          // 4. Globe Lines (Meridian)
+          // 4. Meridians (Curved Lines matching Lucide icon style)
+          // Right Curve
           ctx.beginPath();
-          ctx.moveTo(256, 50);
-          ctx.lineTo(256, 410);
+          ctx.moveTo(cx, cy - r);
+          // Control points to create the elliptical curve shape
+          ctx.bezierCurveTo(cx + r * 0.7, cy - r * 0.2, cx + r * 0.7, cy + r * 0.2, cx, cy + r);
+          ctx.stroke();
+
+          // Left Curve
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - r);
+          ctx.bezierCurveTo(cx - r * 0.7, cy - r * 0.2, cx - r * 0.7, cy + r * 0.2, cx, cy + r);
           ctx.stroke();
 
           // 5. Text "KH"
           ctx.fillStyle = '#FFFFFF';
-          ctx.font = 'bold 110px sans-serif'; // Big bold text
+          // Using standard sans-serif but thin weight if possible, fallback to normal
+          ctx.font = '300 85px sans-serif'; 
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.letterSpacing = '10px';
-          ctx.fillText('KH', 256, 450); // Positioned at bottom
+          // spacing
+          const textY = 420; 
+          
+          // Manual letter spacing drawing for better control
+          const letterSpacing = 20;
+          ctx.fillText('K', cx - 35 - letterSpacing/2, textY);
+          ctx.fillText('H', cx + 35 + letterSpacing/2, textY);
 
           // 6. Convert to PNG Data URI
           const pngUrl = canvas.toDataURL('image/png');
