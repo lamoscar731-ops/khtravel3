@@ -9,7 +9,7 @@ interface Props {
   isSelectMode?: boolean;
   isSelected?: boolean;
   onSelect?: (id: string) => void;
-  isActive?: boolean; // New prop for Live Mode
+  isActive?: boolean;
 }
 
 // Safe haptic feedback helper
@@ -135,7 +135,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                     <TypeIcon type={formData.type} />
                 </div>
             </div>
-            <div className="flex-1 bg-neutral-900 border border-neutral-700 rounded-lg p-3 shadow-xl mb-3 relative ring-1 ring-neutral-700">
+            <div className="flex-1 min-w-0 bg-neutral-900 border border-neutral-700 rounded-lg p-3 shadow-xl mb-3 relative ring-1 ring-neutral-700">
                 <div className="space-y-3">
                     <div className="grid grid-cols-3 gap-2">
                          <div className="col-span-1">
@@ -204,6 +204,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
 
   return (
     <div className="flex gap-3 mb-2 relative group">
+      {/* Connector Line - Hidden in Select Mode to avoid visual clutter with checkbox */}
       {!isLast && !isSelectMode && <div className="absolute left-[15px] top-8 bottom-[-16px] w-[2px] bg-neutral-800 z-0"></div>}
       
       {isSelectMode && (
@@ -218,7 +219,6 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
       )}
 
       <div className="flex flex-col items-center min-w-[32px] z-10">
-        {/* Live Indicator Dot */}
         {isActive && <div className="absolute -left-[3px] top-[14px] w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-glow-red z-30"></div>}
         
         <div className={`text-xs mb-0.5 tracking-tight ${isActive ? 'text-white font-bold' : 'text-neutral-500'}`}>{item.time}</div>
@@ -228,7 +228,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
       </div>
 
       <div 
-        className={`flex-1 bg-neutral-900 border rounded-lg p-3 shadow-sm mb-3 relative transition-all ${!isSelectMode ? 'hover:border-neutral-700' : ''} ${isActive ? 'border-red-900/50 shadow-glow-red-sm' : 'border-neutral-800'}`}
+        className={`flex-1 min-w-0 bg-neutral-900 border rounded-lg p-3 shadow-sm mb-3 relative transition-all ${!isSelectMode ? 'hover:border-neutral-700' : ''} ${isActive ? 'border-red-900/50 shadow-glow-red-sm' : 'border-neutral-800'}`}
         onClick={() => { if(isSelectMode && onSelect) onSelect(item.id); }}
       >
         {!isSelectMode && (
@@ -271,7 +271,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-neutral-800">
             <span 
                 onClick={(e) => { e.stopPropagation(); handleLocationClick(); }} 
-                className="text-[9px] text-neutral-600 truncate flex-1 mr-4 cursor-pointer hover:text-neutral-400 active:text-white transition-colors relative"
+                className="text-[9px] text-neutral-600 truncate flex-1 min-w-0 mr-4 cursor-pointer hover:text-neutral-400 active:text-white transition-colors relative"
             >
                 {showCopied ? <span className="text-green-400 font-bold">COPIED!</span> : item.location}
             </span>
