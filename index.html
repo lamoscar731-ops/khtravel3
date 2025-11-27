@@ -8,8 +8,7 @@
     <meta name="theme-color" content="#000000" />
     <title>kh.travel</title>
     
-    <!-- App Icons (Base64 Encoded to prevent syntax errors) -->
-    <!-- Icon Design: Black globe with "KH" text at the bottom -->
+    <!-- App Icons (Base64 Encoded with KH Text) -->
     <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iYmxhY2siLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLC01KSI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMzUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iNSIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0xNSA1MGg3ME01MCAxNXY3ME01MCAxNWMxMiAwIDIwIDE2IDIwIDM1cy04IDM1LTIwIDM1LTIwLTE2LTIwLTM1IDgtMzUgMjAtMzV6IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiLz48L2c+PHRleHQgeD0iNTAiIHk9IjkyIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBsZXR0ZXItc3BhY2luZz0iMiI+S0g8L3RleHQ+PC9zdmc+">
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iYmxhY2siLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLC01KSI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMzUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iNSIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0xNSA1MGg3ME01MCAxNXY3ME01MCAxNWMxMiAwIDIwIDE2IDIwIDM1cy04IDM1LTIwIDM1LTIwLTE2LTIwLTM1IDgtMzUgMjAtMzV6IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIGZpbGw9Im5vbmUiLz48L2c+PHRleHQgeD0iNTAiIHk9IjkyIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBsZXR0ZXItc3BhY2luZz0iMiI+S0g8L3RleHQ+PC9zdmc+">
     
@@ -47,24 +46,10 @@
       select { -webkit-appearance: none; }
     </style>
 
-    <!-- Polyfill for process.env to prevent crashes in Preview -->
+    <!-- Polyfill for process.env -->
     <script>
       window.process = window.process || { env: {} };
     </script>
-
-    <!-- Import Map for Preview Environment (Ignored by Vite in production/local dev) -->
-    <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "vite": "https://aistudiocdn.com/vite@^7.2.4",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/"
-  }
-}
-</script>
 </head>
 <body>
     <div id="root"></div>
