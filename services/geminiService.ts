@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { DayPlan, ItemType } from "../types";
 
@@ -82,3 +81,43 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
     };
   }
 };
+
+export const generatePackingList = async (destination: string): Promise<string[]> => {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) throw new Error("Missing API Key");
+  
+    const ai = getAiClient(apiKey);
+    const modelId = "gemini-2.5-flash";
+  
+    const schema = {
+      type: Type.OBJECT,
+      properties: {
+        items: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING }
+        }
+      }
+    };
+  
+    const prompt = `
+      List 6-8 essential packing items for a trip to ${destination}. 
+      Consider the current season. 
+      Keep items short (e.g., "Universal Adapter", "Raincoat").
+    `;
+  
+    try {
+      const response = await ai.models.generateContent({
+        model: modelId,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: schema,
+        },
+      });
+      const result = JSON.parse(response.text || '{"items": []}');
+      return result.items || [];
+    } catch (e) {
+      console.error(e);
+      return ["Passport", "Chargers", "Cash", "Clothes"];
+    }
+  };
