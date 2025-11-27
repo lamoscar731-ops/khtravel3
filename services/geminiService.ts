@@ -17,6 +17,8 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
       dayId: { type: Type.INTEGER },
       date: { type: Type.STRING },
       weatherSummary: { type: Type.STRING, description: "Concise weather forecast (Temp, Humidity only)." },
+      paceAnalysis: { type: Type.STRING, description: "One word analysis of the schedule pace (e.g. RELAXED, MODERATE, RUSHED)" },
+      logicWarning: { type: Type.STRING, description: "Brief warning if route is illogical (e.g. 'Backtracking detected') or null if fine." },
       items: {
         type: Type.ARRAY,
         items: {
@@ -26,7 +28,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
             time: { type: Type.STRING },
             title: { type: Type.STRING },
             location: { type: Type.STRING },
-            type: { type: Type.STRING, enum: [ItemType.SIGHTSEEING, ItemType.FOOD, ItemType.RAMEN, ItemType.COFFEE, ItemType.ALCOHOL, ItemType.TRANSPORT, ItemType.SHOPPING, ItemType.HOTEL] },
+            type: { type: Type.STRING, enum: [ItemType.SIGHTSEEING, ItemType.FOOD, ItemType.RAMEN, ItemType.COFFEE, ItemType.ALCOHOL, ItemType.TRANSPORT, ItemType.SHOPPING, ItemType.HOTEL, ItemType.MISC] },
             description: { type: Type.STRING },
             tips: { type: Type.ARRAY, items: { type: Type.STRING } },
             tags: {
@@ -49,10 +51,11 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
 
   const prompt = `
     Analyze this itinerary for Day ${currentPlan.dayId} (${currentPlan.date}).
-    1. Update 'weatherSummary' with just Temperature and Humidity (e.g., "24°C, 65% Humidity"). Do not add descriptive text.
-    2. Enhance descriptions briefly.
-    3. Add "tips".
-    4. Tag items.
+    1. Update 'weatherSummary'.
+    2. Analyze the 'paceAnalysis' based on number of items and time gaps.
+    3. Check location logic for 'logicWarning' (e.g. zigzagging route).
+    4. Enhance descriptions and add specific tips (Must Eat / Photo Spot).
+    5. Tag items.
     
     Current Items:
     ${JSON.stringify(currentPlan.items)}
@@ -83,27 +86,50 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
 };
 
 export const generatePackingList = async (destination: string): Promise<string[]> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("Missing API Key");
+
+  const ai = getAiClient(apiKey);
+  const modelId = "gemini-2.5-flash";
+
+  const prompt = `Generate a concise packing checklist for a trip to ${destination}. Return a JSON array of strings only. Focus on essentials.`;
+  
+  const schema = {
+    type: Type.ARRAY,
+    items: { type: Type.STRING }
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: modelId,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: schema,
+      },
+    });
+    return JSON.parse(response.text || '[]') as string[];
+  } catch (error) {
+    return ["Passport", "Wallet", "Phone"];
+  }
+};
+
+export const generateAfterPartySuggestions = async (location: string, time: string): Promise<string[]> => {
     const apiKey = process.env.API_KEY;
     if (!apiKey) throw new Error("Missing API Key");
   
     const ai = getAiClient(apiKey);
     const modelId = "gemini-2.5-flash";
   
-    const schema = {
-      type: Type.OBJECT,
-      properties: {
-        items: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING }
-        }
-      }
-    };
-  
     const prompt = `
-      List 6-8 essential packing items for a trip to ${destination}. 
-      Consider the current season. 
-      Keep items short (e.g., "Universal Adapter", "Raincoat").
+      I am at ${location} at ${time}. Suggest 3 specific late-night spots nearby (Ramen, Izakaya, Bar, or Donki).
+      Return a JSON array of strings. Each string should be "Name - Brief reason".
     `;
+    
+    const schema = {
+      type: Type.ARRAY,
+      items: { type: Type.STRING }
+    };
   
     try {
       const response = await ai.models.generateContent({
@@ -114,10 +140,8 @@ export const generatePackingList = async (destination: string): Promise<string[]
           responseSchema: schema,
         },
       });
-      const result = JSON.parse(response.text || '{"items": []}');
-      return result.items || [];
-    } catch (e) {
-      console.error(e);
-      return ["Passport", "Chargers", "Cash", "Clothes"];
+      return JSON.parse(response.text || '[]') as string[];
+    } catch (error) {
+      return ["Don Quijote (Always Open)", "Ichiran Ramen", "Convenience Store"];
     }
   };
