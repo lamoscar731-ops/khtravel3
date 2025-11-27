@@ -324,7 +324,8 @@ const App: React.FC = () => {
       setItinerary(prev => prev.map(day => {
           if (day.dayId === selectedDay) {
               const { backupItems, ...rest } = day;
-              return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined };
+              // Clear analysis fields and forecast
+              return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined, forecast: undefined };
           }
           return day;
       }));
@@ -574,10 +575,20 @@ const App: React.FC = () => {
                             </div>
                             {itinerary.length > 1 && (<button onClick={handleDeleteDay} className="mt-1 text-[9px] text-red-900 hover:text-red-500 transition-colors flex items-center gap-1 uppercase">🗑️ Delete Day</button>)}
                         </div>
-                        {currentDayPlan.weatherSummary && (
-                            <div className="text-right pt-0.5"><div className="text-lg">☁️</div><div className="text-[9px] text-neutral-400 max-w-[80px] leading-tight mt-0.5">{currentDayPlan.weatherSummary}</div></div>
-                        )}
                     </div>
+                    {/* 7-Day Forecast Widget */}
+                    {currentDayPlan.forecast && currentDayPlan.forecast.length > 0 && (
+                        <div className="mt-3 flex overflow-x-auto no-scrollbar gap-2 pb-1">
+                            {currentDayPlan.forecast.map((f, i) => (
+                                <div key={i} className="min-w-[50px] bg-neutral-900 border border-neutral-800 rounded p-1.5 flex flex-col items-center">
+                                    <span className="text-[8px] text-neutral-500 font-mono">{f.date}</span>
+                                    <span className="text-base my-0.5">{f.icon}</span>
+                                    <span className="text-[9px] font-bold text-neutral-300">{f.temp}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    
                     {/* Logic/Pace Analysis Display */}
                     {(currentDayPlan.paceAnalysis || currentDayPlan.logicWarning) && (
                         <div className="mt-2 flex gap-2 flex-wrap">
@@ -675,6 +686,7 @@ const App: React.FC = () => {
                             className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden h-32 flex flex-col justify-between ${activeTripId === trip.id ? 'border-white' : 'border-neutral-800 hover:border-neutral-600'}`}
                             style={trip.coverImage ? { backgroundImage: `url(${trip.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                         >
+                             {/* Overlay for image readablity */}
                              <div className={`absolute inset-0 ${trip.coverImage ? 'bg-black/60' : 'bg-neutral-900'} z-0`}></div>
                              
                              {!trip.coverImage && (
