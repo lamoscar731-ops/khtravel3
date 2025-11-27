@@ -6,6 +6,9 @@ interface Props {
   isLast: boolean;
   onSave: (item: ItineraryItem) => void;
   onDelete: (id: string) => void;
+  isSelectMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: (id: string) => void;
 }
 
 // Safe haptic feedback helper
@@ -24,13 +27,13 @@ const TypeIcon: React.FC<{ type: ItemType }> = ({ type }) => {
     case ItemType.TRANSPORT: return <span className="text-base">🚄</span>;
     case ItemType.SHOPPING: return <span className="text-base">🛍️</span>;
     case ItemType.HOTEL: return <span className="text-base">🏨</span>;
-    case ItemType.MISC: return <span className="text-base">🧩</span>; // Added MISC icon
+    case ItemType.MISC: return <span className="text-base">🧩</span>;
     case ItemType.SIGHTSEEING: 
     default: return <span className="text-base">⛩️</span>;
   }
 };
 
-export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete }) => {
+export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete, isSelectMode, isSelected, onSelect }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<ItineraryItem>(item);
   const [newTagLabel, setNewTagLabel] = useState('');
@@ -51,7 +54,6 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
 
   const handleLocationClick = () => {
       vibrate();
-      // Safe clipboard write
       if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(item.location).then(() => {
               setShowCopied(true);
@@ -181,17 +183,40 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
 
   return (
     <div className="flex gap-3 mb-2 relative group">
-      {!isLast && <div className="absolute left-[15px] top-8 bottom-[-16px] w-[2px] bg-neutral-800 z-0"></div>}
+      {/* Connector Line - Hidden in Select Mode to avoid visual clutter with checkbox */}
+      {!isLast && !isSelectMode && <div className="absolute left-[15px] top-8 bottom-[-16px] w-[2px] bg-neutral-800 z-0"></div>}
+      
+      {/* Checkbox for Select Mode */}
+      {isSelectMode && (
+          <div className="flex flex-col items-center justify-center min-w-[20px] z-20">
+              <button 
+                onClick={() => onSelect && onSelect(item.id)} 
+                className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-white border-white' : 'border-neutral-600 bg-black'}`}
+              >
+                  {isSelected && <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+              </button>
+          </div>
+      )}
+
+      {/* Time & Icon */}
       <div className="flex flex-col items-center min-w-[32px] z-10">
         <div className="text-xs text-neutral-500 mb-0.5 tracking-tight">{item.time}</div>
         <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center shadow-sm relative">
           <TypeIcon type={item.type} />
         </div>
       </div>
-      <div className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg p-3 shadow-sm mb-3 relative transition-colors hover:border-neutral-700">
-        <button onClick={() => { vibrate(); setIsEditing(true); }} className="absolute top-2 right-2 p-1.5 text-neutral-600 hover:text-white transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-        </button>
+
+      {/* Content Card */}
+      <div 
+        className={`flex-1 bg-neutral-900 border border-neutral-800 rounded-lg p-3 shadow-sm mb-3 relative transition-colors ${!isSelectMode ? 'hover:border-neutral-700' : ''}`}
+        onClick={() => { if(isSelectMode && onSelect) onSelect(item.id); }} // Allow clicking card to select
+      >
+        {!isSelectMode && (
+            <button onClick={() => { vibrate(); setIsEditing(true); }} className="absolute top-2 right-2 p-1.5 text-neutral-600 hover:text-white transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+            </button>
+        )}
+        
         <div className="flex justify-between items-start mb-1 pr-6">
             <div>
                 <h3 className="text-base font-bold text-neutral-200 leading-tight tracking-wide">{item.title}</h3>
@@ -219,12 +244,12 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
         )}
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-neutral-800">
             <span 
-                onClick={handleLocationClick} 
+                onClick={(e) => { e.stopPropagation(); handleLocationClick(); }} 
                 className="text-[9px] text-neutral-600 truncate max-w-[120px] cursor-pointer hover:text-neutral-400 active:text-white transition-colors relative"
             >
                 {showCopied ? <span className="text-green-400 font-bold">COPIED!</span> : item.location}
             </span>
-            <button onClick={handleNavClick} className="flex items-center gap-1.5 bg-neutral-100 text-black px-3 py-1 rounded-full text-[9px] font-bold hover:bg-neutral-300 transition-colors uppercase">
+            <button onClick={(e) => { e.stopPropagation(); handleNavClick(); }} className="flex items-center gap-1.5 bg-neutral-100 text-black px-3 py-1 rounded-full text-[9px] font-bold hover:bg-neutral-300 transition-colors uppercase">
                 <span>NAVIGATE</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
             </button>
