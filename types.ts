@@ -42,8 +42,10 @@ export interface DayPlan {
   dayId: number;
   date: string;
   weatherSummary?: string;
+  paceAnalysis?: string; // e.g. "Relaxed", "Rushed"
+  logicWarning?: string; // e.g. "Backtracking detected"
   items: ItineraryItem[];
-  backupItems?: ItineraryItem[]; // Stores original items before AI enrichment
+  backupItems?: ItineraryItem[];
 }
 
 export interface BudgetProps {
@@ -100,5 +102,6 @@ export interface Trip {
   contacts: EmergencyContact[];
   totalBudget?: number;
   checklist?: ChecklistItem[];
-  notes?: string; // New: Trip-based scratchpad
+  notes?: string;
+  coverImage?: string; // New
 }
