@@ -1,13 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
-import { BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency } from '../types';
+import { BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, ChecklistItem } from '../types';
 
 interface UtilitiesProps {
     budget: BudgetProps[];
     flights: FlightInfo[];
     hotels: HotelInfo[];
     contacts: EmergencyContact[];
-    rates: Record<string, number>; // New prop for real-time rates
+    checklist?: ChecklistItem[];
+    totalBudget?: number;
+    rates: Record<string, number>;
     
     onAddFlight: () => void;
     onUpdateFlight: (data: FlightInfo) => void;
@@ -24,6 +25,14 @@ interface UtilitiesProps {
     onAddContact: () => void;
     onUpdateContact: (item: EmergencyContact) => void;
     onDeleteContact: (id: string) => void;
+
+    // New Props
+    onUpdateTotalBudget: (amount: number) => void;
+    onAddChecklist: (text: string) => void;
+    onToggleChecklist: (id: string) => void;
+    onDeleteChecklist: (id: string) => void;
+    onAiChecklist: () => void;
+    isLoadingAi: boolean;
 }
 
 const InputField = ({ label, value, onChange, placeholder }: { label: string, value: string | number, onChange: (val: string) => void, placeholder?: string }) => (
@@ -159,7 +168,6 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
     useEffect(() => { setData(item); }, [item]);
     const handleSave = () => { onUpdate({...data, cost: Number(data.cost)}); setIsEditing(false); };
     
-    // Calculate using passed real-time rates
     const rate = rates[item.currency] || 1;
     const hkdAmount = Math.round(item.cost * rate);
 
@@ -186,11 +194,30 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
     )
 }
 
-export const Utilities: React.FC<UtilitiesProps> = ({ budget, flights, hotels, contacts, onAddFlight, onUpdateFlight, onDeleteFlight, onAddHotel, onUpdateHotel, onDeleteHotel, onAddBudget, onUpdateBudget, onDeleteBudget, onAddContact, onUpdateContact, onDeleteContact, rates }) => {
+export const Utilities: React.FC<UtilitiesProps> = ({ 
+    budget, flights, hotels, contacts, checklist, totalBudget, rates,
+    onAddFlight, onUpdateFlight, onDeleteFlight, 
+    onAddHotel, onUpdateHotel, onDeleteHotel, 
+    onAddBudget, onUpdateBudget, onDeleteBudget, 
+    onAddContact, onUpdateContact, onDeleteContact,
+    onUpdateTotalBudget, onAddChecklist, onToggleChecklist, onDeleteChecklist, onAiChecklist, isLoadingAi
+}) => {
+  const [newChecklistText, setNewChecklistText] = useState('');
+
   const totalBudgetHkd = budget.reduce((acc, curr) => {
       const rate = rates[curr.currency] || 1;
       return acc + (curr.cost * rate);
   }, 0);
+
+  const budgetProgress = totalBudget ? Math.min((totalBudgetHkd / totalBudget) * 100, 100) : 0;
+  const isOverBudget = totalBudget && totalBudgetHkd > totalBudget;
+
+  const handleAddChecklistKey = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && newChecklistText.trim()) {
+          onAddChecklist(newChecklistText);
+          setNewChecklistText('');
+      }
+  };
 
   return (
     <div className="space-y-4 pb-24">
@@ -199,22 +226,70 @@ export const Utilities: React.FC<UtilitiesProps> = ({ budget, flights, hotels, c
           {flights.map(f => <FlightItem key={f.id} flight={f} onUpdate={onUpdateFlight} onDelete={onDeleteFlight} />)}
           {flights.length === 0 && <div className="text-center py-4 border border-dashed border-neutral-800 rounded-lg text-neutral-600 text-[10px]">No flights added</div>}
       </section>
+      
       <section>
           <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Accommodation</h2><button onClick={onAddHotel} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
           {hotels.map(h => <HotelItem key={h.id} hotel={h} onUpdate={onUpdateHotel} onDelete={onDeleteHotel} />)}
           {hotels.length === 0 && <div className="text-center py-4 border border-dashed border-neutral-800 rounded-lg text-neutral-600 text-[10px]">No hotels added</div>}
       </section>
+      
       <section>
         <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Emergency</h2><button onClick={onAddContact} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
         <div className="grid grid-cols-2 gap-2">{contacts.map(contact => <ContactItem key={contact.id} item={contact} onUpdate={onUpdateContact} onDelete={onDeleteContact} />)}</div>
       </section>
+      
       <section>
         <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Budget Tracker</h2></div>
+        
+        {/* Progress Bar */}
+        <div className="mb-3 bg-neutral-900 border border-neutral-800 rounded-lg p-3">
+             <div className="flex justify-between text-[9px] text-neutral-500 mb-1 font-bold tracking-wider">
+                 <span>SPENT: HK${Math.round(totalBudgetHkd).toLocaleString()}</span>
+                 <span>GOAL: <input type="number" className="bg-transparent border-b border-neutral-700 w-[60px] text-right text-white focus:outline-none" value={totalBudget || ''} onChange={(e) => onUpdateTotalBudget(Number(e.target.value))} placeholder="Set" /></span>
+             </div>
+             <div className="h-2 w-full bg-neutral-800 rounded-full overflow-hidden">
+                 <div className={`h-full transition-all duration-500 ${isOverBudget ? 'bg-red-500' : 'bg-white'}`} style={{ width: `${budgetProgress}%` }}></div>
+             </div>
+             {isOverBudget && <div className="text-[9px] text-red-500 text-right mt-1 font-bold">OVER BUDGET!</div>}
+        </div>
+
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">
             {budget.map((item) => <BudgetItem key={item.id} item={item} onUpdate={onUpdateBudget} onDelete={onDeleteBudget} rates={rates} />)}
             <button onClick={onAddBudget} className="w-full py-2 text-[10px] text-neutral-500 hover:text-white hover:bg-neutral-800 transition border-b border-neutral-800">+ Add Expense</button>
-            <div className="bg-neutral-950/50 p-3 flex justify-between items-center"><span className="text-[10px] font-bold text-neutral-400">TOTAL EST. (HKD)</span><span className="text-sm font-bold text-white font-mono">HK${Math.round(totalBudgetHkd).toLocaleString()}</span></div>
         </div>
+      </section>
+
+      <section>
+          <div className="flex justify-between items-end mb-2 ml-1">
+              <h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Packing List</h2>
+              <button onClick={onAiChecklist} disabled={isLoadingAi} className="text-amber-200 hover:text-amber-100 text-[10px] flex items-center gap-1">
+                  {isLoadingAi ? <span className="animate-pulse">Thinking...</span> : <><span>✨ AI Suggest</span></>}
+              </button>
+          </div>
+          <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">
+              <div className="p-2 border-b border-neutral-800 flex gap-2">
+                  <input 
+                    className="bg-transparent text-white text-xs w-full focus:outline-none placeholder-neutral-600" 
+                    placeholder="Add item..." 
+                    value={newChecklistText}
+                    onChange={(e) => setNewChecklistText(e.target.value)}
+                    onKeyDown={handleAddChecklistKey}
+                  />
+                  <button onClick={() => { if(newChecklistText) { onAddChecklist(newChecklistText); setNewChecklistText(''); }}} className="text-neutral-500 text-[10px] font-bold">+</button>
+              </div>
+              <div>
+                  {checklist?.map(item => (
+                      <div key={item.id} className="flex items-center gap-3 p-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/30 group">
+                          <button onClick={() => onToggleChecklist(item.id)} className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${item.checked ? 'bg-neutral-200 border-neutral-200' : 'border-neutral-600'}`}>
+                              {item.checked && <span className="text-black text-[10px] font-bold">✓</span>}
+                          </button>
+                          <span className={`text-xs flex-1 ${item.checked ? 'text-neutral-600 line-through' : 'text-neutral-200'}`}>{item.text}</span>
+                          <button onClick={() => onDeleteChecklist(item.id)} className="text-neutral-700 hover:text-red-500 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                      </div>
+                  ))}
+                  {(!checklist || checklist.length === 0) && <div className="text-center py-4 text-neutral-600 text-[10px]">List is empty</div>}
+              </div>
+          </div>
       </section>
     </div>
   );
