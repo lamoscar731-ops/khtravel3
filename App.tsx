@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
 import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES } from './constants';
-import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip } from './types';
-import { enrichItineraryWithGemini } from './services/geminiService';
+import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem } from './types';
+import { enrichItineraryWithGemini, generatePackingList } from './services/geminiService';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
 
@@ -16,7 +16,6 @@ const App: React.FC = () => {
   
   // --- Fetch Real-time Rates ---
   useEffect(() => {
-      // ExchangeRate-API (Free tier, base HKD)
       fetch('https://api.exchangerate-api.com/v4/latest/HKD')
         .then(res => res.json())
         .then(data => {
@@ -41,6 +40,7 @@ const App: React.FC = () => {
       const savedTrips = localStorage.getItem('kuro_trips');
       if (savedTrips) return JSON.parse(savedTrips);
       const oldItinerary = localStorage.getItem('kuro_itinerary');
+      // Migration for old data or fresh start
       if (oldItinerary) {
           const migratedTrip: Trip = {
               id: `trip-${Date.now()}`,
@@ -51,6 +51,8 @@ const App: React.FC = () => {
               hotels: JSON.parse(localStorage.getItem('kuro_hotels') || JSON.stringify(INITIAL_HOTELS)),
               budget: JSON.parse(localStorage.getItem('kuro_budget') || JSON.stringify(INITIAL_BUDGET)),
               contacts: JSON.parse(localStorage.getItem('kuro_contacts') || JSON.stringify(INITIAL_CONTACTS)),
+              totalBudget: 20000,
+              checklist: []
           };
           return [migratedTrip];
       }
@@ -62,7 +64,9 @@ const App: React.FC = () => {
           flights: INITIAL_FLIGHTS,
           hotels: INITIAL_HOTELS,
           budget: INITIAL_BUDGET,
-          contacts: INITIAL_CONTACTS
+          contacts: INITIAL_CONTACTS,
+          totalBudget: 20000,
+          checklist: []
       }];
   });
 
@@ -77,6 +81,8 @@ const App: React.FC = () => {
   const [hotels, setHotels] = useState<HotelInfo[]>([]);
   const [budget, setBudget] = useState<BudgetProps[]>([]);
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
+  const [totalBudget, setTotalBudget] = useState<number>(20000);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
 
   // User Flag
   const [userFlag, setUserFlag] = useState<string>(() => {
@@ -93,6 +99,8 @@ const App: React.FC = () => {
           setHotels(currentTrip.hotels);
           setBudget(currentTrip.budget);
           setContacts(currentTrip.contacts);
+          setTotalBudget(currentTrip.totalBudget || 20000);
+          setChecklist(currentTrip.checklist || []);
           if (selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
       }
       localStorage.setItem('kuro_active_trip_id', activeTripId);
@@ -103,14 +111,14 @@ const App: React.FC = () => {
       setTrips(prevTrips => {
           const newTrips = prevTrips.map(t => {
               if (t.id === activeTripId) {
-                  return { ...t, destination, itinerary, flights, hotels, budget, contacts };
+                  return { ...t, destination, itinerary, flights, hotels, budget, contacts, totalBudget, checklist };
               }
               return t;
           });
           localStorage.setItem('kuro_trips', JSON.stringify(newTrips));
           return newTrips;
       });
-  }, [destination, itinerary, flights, hotels, budget, contacts]);
+  }, [destination, itinerary, flights, hotels, budget, contacts, totalBudget, checklist]);
 
   useEffect(() => { localStorage.setItem('kuro_flag', userFlag); }, [userFlag]);
 
@@ -123,12 +131,13 @@ const App: React.FC = () => {
           id: `trip-${Date.now()}`,
           destination: 'NEW TRIP',
           startDate: new Date().toISOString().split('T')[0],
-          // Start with a clean slate
           itinerary: [{ dayId: 1, date: new Date().toISOString().split('T')[0], items: [] }],
           flights: [],
           hotels: [],
           budget: [],
-          contacts: []
+          contacts: [],
+          totalBudget: 20000,
+          checklist: []
       };
       setTrips(prev => [...prev, newTrip]);
       setActiveTripId(newTrip.id);
@@ -206,49 +215,49 @@ const App: React.FC = () => {
       }));
   };
 
-  // --- Map Route (Option 1) ---
-  const handleMapRoute = () => {
-      // Filter out invalid or TBD locations
-      const validItems = currentDayPlan.items.filter(i => 
-          i.location && 
-          i.location.trim() !== '' && 
-          !i.location.includes('TBD') && 
-          !i.location.includes('Location TBD')
-      );
-
-      if (validItems.length === 0) {
-          alert("Add locations to map.");
-          return;
+  const handleAiChecklist = async () => {
+      setIsLoading(true);
+      try {
+          const suggestions = await generatePackingList(destination);
+          const newItems: ChecklistItem[] = suggestions.map(text => ({
+              id: `cl-${Date.now()}-${Math.random()}`,
+              text,
+              checked: false
+          }));
+          // Merge avoiding duplicates
+          setChecklist(prev => {
+              const existingTexts = new Set(prev.map(i => i.text.toLowerCase()));
+              const uniqueNew = newItems.filter(i => !existingTexts.has(i.text.toLowerCase()));
+              return [...prev, ...uniqueNew];
+          });
+      } catch (e) {
+          alert("AI Offline");
+      } finally {
+          setIsLoading(false);
       }
+  };
 
+  // --- Map Route ---
+  const handleMapRoute = () => {
+      const validItems = currentDayPlan.items.filter(i => 
+          i.location && i.location.trim() !== '' && !i.location.includes('TBD') && !i.location.includes('Location TBD')
+      );
+      if (validItems.length === 0) { alert("Add locations to map."); return; }
       if (validItems.length === 1) {
            const query = encodeURIComponent(validItems[0].location);
            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
            return;
       }
-
       const origin = encodeURIComponent(validItems[0].location);
       const destination = encodeURIComponent(validItems[validItems.length - 1].location);
-      
-      // Google Maps supports up to 9 waypoints (excluding origin/dest)
-      // Taking items between start and end
-      const waypoints = validItems
-          .slice(1, -1) // remove first and last
-          .slice(0, 9)  // limit to 9
-          .map(i => encodeURIComponent(i.location))
-          .join('|');
-
+      const waypoints = validItems.slice(1, -1).slice(0, 9).map(i => encodeURIComponent(i.location)).join('|');
       let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=transit`;
       if (waypoints) url += `&waypoints=${waypoints}`;
-
       window.open(url, '_blank');
   };
 
   // --- Auto-Sort Logic ---
-  const sortItems = (items: ItineraryItem[]) => {
-      return [...items].sort((a, b) => a.time.localeCompare(b.time));
-  };
-
+  const sortItems = (items: ItineraryItem[]) => [...items].sort((a, b) => a.time.localeCompare(b.time));
   const handleUpdateItem = (updatedItem: ItineraryItem) => {
     setItinerary(prev => prev.map(day => {
       if (day.dayId !== selectedDay) return day;
@@ -256,14 +265,12 @@ const App: React.FC = () => {
       return { ...day, items: sortItems(newItems) };
     }));
   };
-
   const handleDeleteItem = (itemId: string) => {
     setItinerary(prev => prev.map(day => {
         if (day.dayId !== selectedDay) return day;
         return { ...day, items: day.items.filter(item => item.id !== itemId) };
     }));
   };
-
   const handleAddItem = () => {
     const newItem: ItineraryItem = {
         id: `${selectedDay}-${Date.now()}`,
@@ -315,6 +322,11 @@ const App: React.FC = () => {
   const handleAddContact = () => setContacts(prev => [...prev, { id: `c-${Date.now()}`, name: 'Contact', number: '', note: '' }]);
   const handleUpdateContact = (u: EmergencyContact) => setContacts(prev => prev.map(c => c.id === u.id ? u : c));
   const handleDeleteContact = (id: string) => setContacts(prev => prev.filter(c => c.id !== id));
+  
+  // Checklist Handlers
+  const handleAddChecklist = (text: string) => setChecklist(prev => [...prev, { id: `cl-${Date.now()}`, text, checked: false }]);
+  const handleToggleChecklist = (id: string) => setChecklist(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
+  const handleDeleteChecklist = (id: string) => setChecklist(prev => prev.filter(i => i.id !== id));
 
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [tempDate, setTempDate] = useState('');
@@ -458,7 +470,33 @@ const App: React.FC = () => {
         ) : activeTab === Tab.UTILITIES ? (
             <>
                  <h2 className="text-base font-bold text-white mb-3 uppercase tracking-tight">Trip Utilities</h2>
-                 <Utilities budget={budget} flights={flights} hotels={hotels} contacts={contacts} onUpdateFlight={handleUpdateFlight} onUpdateHotel={handleUpdateHotel} onAddFlight={handleAddFlight} onAddHotel={handleAddHotel} onDeleteFlight={handleDeleteFlight} onDeleteHotel={handleDeleteHotel} onAddBudget={handleAddBudget} onUpdateBudget={handleUpdateBudget} onDeleteBudget={handleDeleteBudget} onAddContact={handleAddContact} onUpdateContact={handleUpdateContact} onDeleteContact={handleDeleteContact} rates={exchangeRates} />
+                 <Utilities 
+                    budget={budget} 
+                    flights={flights} 
+                    hotels={hotels} 
+                    contacts={contacts} 
+                    checklist={checklist}
+                    totalBudget={totalBudget}
+                    rates={exchangeRates} 
+                    onUpdateFlight={handleUpdateFlight} 
+                    onUpdateHotel={handleUpdateHotel} 
+                    onAddFlight={handleAddFlight} 
+                    onAddHotel={handleAddHotel} 
+                    onDeleteFlight={handleDeleteFlight} 
+                    onDeleteHotel={handleDeleteHotel} 
+                    onAddBudget={handleAddBudget} 
+                    onUpdateBudget={handleUpdateBudget} 
+                    onDeleteBudget={handleDeleteBudget} 
+                    onAddContact={handleAddContact} 
+                    onUpdateContact={handleUpdateContact} 
+                    onDeleteContact={handleDeleteContact}
+                    onUpdateTotalBudget={setTotalBudget}
+                    onAddChecklist={handleAddChecklist}
+                    onToggleChecklist={handleToggleChecklist}
+                    onDeleteChecklist={handleDeleteChecklist}
+                    onAiChecklist={handleAiChecklist}
+                    isLoadingAi={isLoading}
+                />
             </>
         ) : (
             <>
