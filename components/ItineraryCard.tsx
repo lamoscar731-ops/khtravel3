@@ -203,10 +203,8 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
 
   return (
     <div className="flex gap-3 mb-2 relative group">
-      {/* Connector Line - Hidden in Select Mode to avoid visual clutter with checkbox */}
       {!isLast && !isSelectMode && <div className="absolute left-[15px] top-8 bottom-[-16px] w-[2px] bg-neutral-800 z-0"></div>}
       
-      {/* Checkbox for Select Mode */}
       {isSelectMode && (
           <div className="flex flex-col items-center justify-center min-w-[20px] z-20">
               <button 
@@ -218,7 +216,6 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
           </div>
       )}
 
-      {/* Time & Icon */}
       <div className="flex flex-col items-center min-w-[32px] z-10">
         <div className="text-xs text-neutral-500 mb-0.5 tracking-tight">{item.time}</div>
         <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center shadow-sm relative">
@@ -226,19 +223,17 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
         </div>
       </div>
 
-      {/* Content Card */}
       <div 
         className={`flex-1 bg-neutral-900 border border-neutral-800 rounded-lg p-3 shadow-sm mb-3 relative transition-colors ${!isSelectMode ? 'hover:border-neutral-700' : ''}`}
-        onClick={() => { if(isSelectMode && onSelect) onSelect(item.id); }} // Allow clicking card to select
+        onClick={() => { if(isSelectMode && onSelect) onSelect(item.id); }}
       >
         {!isSelectMode && (
-            <div className="absolute top-2 right-2 flex gap-2">
-                <button onClick={(e) => { e.stopPropagation(); vibrate(); setShowCard(true); }} className="text-neutral-400 hover:text-white text-[10px] font-bold border border-neutral-700 px-2 rounded hover:bg-neutral-800 transition">SHOW</button>
-                <button onClick={(e) => { e.stopPropagation(); vibrate(); setIsEditing(true); }} className="text-neutral-600 hover:text-white transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1">✎</button>
-            </div>
+            <button onClick={(e) => { e.stopPropagation(); vibrate(); setIsEditing(true); }} className="absolute top-2 right-2 p-1 text-neutral-600 hover:text-white transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+            </button>
         )}
         
-        <div className="flex justify-between items-start mb-1 pr-16">
+        <div className="flex justify-between items-start mb-1 pr-8">
             <div>
                 <h3 className="text-base font-bold text-neutral-200 leading-tight tracking-wide">{item.title}</h3>
                 {item.weather && <div className="text-[10px] text-blue-300 mt-0.5 flex items-center gap-1">☁️ {item.weather}</div>}
@@ -270,10 +265,23 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
             >
                 {showCopied ? <span className="text-green-400 font-bold">COPIED!</span> : item.location}
             </span>
-            <button onClick={(e) => { e.stopPropagation(); handleNavClick(); }} className="flex items-center gap-1.5 bg-neutral-100 text-black px-3 py-1 rounded-full text-[9px] font-bold hover:bg-neutral-300 transition-colors uppercase">
-                <span>NAVIGATE</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
-            </button>
+            <div className="flex items-center gap-3">
+                {/* Show (Eye) Button */}
+                <button 
+                    onClick={(e) => { e.stopPropagation(); vibrate(); setShowCard(true); }} 
+                    className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                
+                {/* Navigate (GPS) Button */}
+                <button 
+                    onClick={(e) => { e.stopPropagation(); handleNavClick(); }} 
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-neutral-100 text-black hover:bg-neutral-300 transition-colors shadow-glow"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                </button>
+            </div>
         </div>
       </div>
     </div>
