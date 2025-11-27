@@ -1,4 +1,3 @@
-
 export enum ItemType {
   SIGHTSEEING = 'SIGHTSEEING',
   FOOD = 'FOOD',
@@ -83,6 +82,12 @@ export interface EmergencyContact {
   note: string;
 }
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  checked: boolean;
+}
+
 export interface Trip {
   id: string;
   destination: string;
@@ -92,4 +97,6 @@ export interface Trip {
   hotels: HotelInfo[];
   budget: BudgetProps[];
   contacts: EmergencyContact[];
+  totalBudget?: number;
+  checklist?: ChecklistItem[];
 }
