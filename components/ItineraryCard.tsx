@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ItineraryItem, ItemType, Tag } from '../types';
 
@@ -8,6 +7,8 @@ interface Props {
   onSave: (item: ItineraryItem) => void;
   onDelete: (id: string) => void;
 }
+
+const vibrate = () => { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10); };
 
 const TypeIcon: React.FC<{ type: ItemType }> = ({ type }) => {
   switch (type) {
@@ -27,16 +28,26 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
   const [formData, setFormData] = useState<ItineraryItem>(item);
   const [newTagLabel, setNewTagLabel] = useState('');
   const [newTagColor, setNewTagColor] = useState<'red' | 'gold' | 'gray'>('gray');
+  const [showCopied, setShowCopied] = useState(false);
 
   useEffect(() => { setFormData(item); }, [item]);
 
   const handleNavClick = () => {
+    vibrate();
     if (item.mapsUrl && item.mapsUrl.trim().length > 0) {
         window.open(item.mapsUrl, '_blank');
     } else {
         const query = encodeURIComponent(item.navQuery || item.location);
         window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
     }
+  };
+
+  const handleLocationClick = () => {
+      vibrate();
+      navigator.clipboard.writeText(item.location).then(() => {
+          setShowCopied(true);
+          setTimeout(() => setShowCopied(false), 2000);
+      });
   };
 
   const handleMapUrlPaste = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,6 +70,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
   };
 
   const handleSave = () => {
+    vibrate();
     onSave({ ...formData, navQuery: formData.location });
     setIsEditing(false);
   };
@@ -69,12 +81,14 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
 
   const handleAddTag = () => {
       if (!newTagLabel.trim()) return;
+      vibrate();
       const newTag: Tag = { label: newTagLabel, color: newTagColor };
       setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), newTag] }));
       setNewTagLabel('');
   };
 
   const handleRemoveTag = (indexToRemove: number) => {
+      vibrate();
       setFormData(prev => ({ ...prev, tags: prev.tags?.filter((_, index) => index !== indexToRemove) }));
   };
 
@@ -93,12 +107,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
                     <div className="grid grid-cols-3 gap-2">
                          <div className="col-span-1">
                             <label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Time</label>
-                            <input 
-                                type="time" 
-                                value={formData.time} 
-                                onChange={(e) => handleChange('time', e.target.value)} 
-                                className="w-full bg-transparent border-b border-neutral-700 text-white text-sm py-0.5 focus:outline-none focus:border-neutral-400 [color-scheme:dark]" 
-                            />
+                            <input type="time" value={formData.time} onChange={(e) => handleChange('time', e.target.value)} className="w-full bg-transparent border-b border-neutral-700 text-white text-sm py-0.5 focus:outline-none focus:border-neutral-400 [color-scheme:dark]" />
                         </div>
                         <div className="col-span-2">
                              <label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Type</label>
@@ -147,7 +156,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
                     <div className="flex gap-2 pt-1">
                         <button onClick={handleSave} className="flex-1 bg-neutral-100 text-black py-1.5 rounded text-[10px] font-bold hover:bg-white uppercase">SAVE</button>
                         <button onClick={() => setIsEditing(false)} className="flex-1 bg-neutral-800 text-neutral-300 py-1.5 rounded text-[10px] font-bold hover:bg-neutral-700 uppercase">CANCEL</button>
-                        <button onClick={() => onDelete(item.id)} className="w-8 bg-red-950/30 text-red-400 border border-red-900/50 rounded flex items-center justify-center hover:bg-red-900/50 text-[10px]">🗑️</button>
+                        <button onClick={() => { vibrate(); onDelete(item.id); }} className="w-8 bg-red-950/30 text-red-400 border border-red-900/50 rounded flex items-center justify-center hover:bg-red-900/50 text-[10px]">🗑️</button>
                     </div>
                 </div>
             </div>
@@ -165,7 +174,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
         </div>
       </div>
       <div className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg p-3 shadow-sm mb-3 relative transition-colors hover:border-neutral-700">
-        <button onClick={() => setIsEditing(true)} className="absolute top-2 right-2 p-1.5 text-neutral-600 hover:text-white transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+        <button onClick={() => { vibrate(); setIsEditing(true); }} className="absolute top-2 right-2 p-1.5 text-neutral-600 hover:text-white transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
         </button>
         <div className="flex justify-between items-start mb-1 pr-6">
@@ -194,7 +203,12 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete 
             </div>
         )}
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-neutral-800">
-            <span className="text-[9px] text-neutral-600 truncate max-w-[120px]">{item.location}</span>
+            <span 
+                onClick={handleLocationClick} 
+                className="text-[9px] text-neutral-600 truncate max-w-[120px] cursor-pointer hover:text-neutral-400 active:text-white transition-colors relative"
+            >
+                {showCopied ? <span className="text-green-400 font-bold">COPIED!</span> : item.location}
+            </span>
             <button onClick={handleNavClick} className="flex items-center gap-1.5 bg-neutral-100 text-black px-3 py-1 rounded-full text-[9px] font-bold hover:bg-neutral-300 transition-colors uppercase">
                 <span>NAVIGATE</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
