@@ -6,9 +6,7 @@ interface UtilitiesProps {
     flights: FlightInfo[];
     hotels: HotelInfo[];
     contacts: EmergencyContact[];
-    checklist?: ChecklistItem[];
-    totalBudget?: number;
-    rates: Record<string, number>;
+    rates: Record<string, number>; 
     
     onAddFlight: () => void;
     onUpdateFlight: (data: FlightInfo) => void;
@@ -32,9 +30,9 @@ interface UtilitiesProps {
     onDeleteChecklist: (id: string) => void;
     onAiChecklist: () => void;
     isLoadingAi: boolean;
+    checklist: ChecklistItem[];
+    totalBudget: number;
 }
-
-const vibrate = () => { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10); };
 
 const InputField = ({ label, value, onChange, placeholder }: { label: string, value: string | number, onChange: (val: string) => void, placeholder?: string }) => (
     <div className="mb-2">
@@ -47,14 +45,14 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState(flight);
     useEffect(() => { setFormData(flight); }, [flight]);
-    const handleSave = () => { vibrate(); onUpdate(formData); setIsEditing(false); };
+    const handleSave = () => { onUpdate(formData); setIsEditing(false); };
 
     if (isEditing) {
         return (
             <div className="bg-neutral-900 border border-neutral-700 rounded-lg p-3 shadow-xl ring-1 ring-neutral-700 mb-3">
                 <h3 className="text-white text-xs font-bold mb-3 flex justify-between items-center">Edit Flight
                     <div className="flex gap-2">
-                         <button onClick={() => { vibrate(); onDelete(flight.id); }} className="text-red-400 text-[10px] border border-red-900/50 px-1.5 rounded">Del</button>
+                         <button onClick={() => onDelete(flight.id)} className="text-red-400 text-[10px] border border-red-900/50 px-1.5 rounded">Del</button>
                         <button onClick={() => setIsEditing(false)} className="text-neutral-500 text-[10px] hover:text-white">Cancel</button>
                         <button onClick={handleSave} className="text-neutral-950 bg-white px-2 py-0.5 rounded text-[10px] font-bold">Save</button>
                     </div>
@@ -76,7 +74,7 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
     }
     return (
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-3 shadow-sm relative mb-3 group">
-             <button onClick={() => { vibrate(); setIsEditing(true); }} className="absolute top-2 right-2 text-neutral-600 hover:text-white text-[10px] opacity-50 hover:opacity-100 p-1">✎</button>
+             <button onClick={() => setIsEditing(true)} className="absolute top-2 right-2 text-neutral-600 hover:text-white text-[10px] opacity-50 hover:opacity-100 p-1">✎</button>
             <div className="flex justify-between items-center mb-3 border-b border-neutral-800 pb-3">
                 <div className="text-center"><span className="text-xl font-bold text-white block">{flight.departureAirport}</span><span className="text-[9px] text-neutral-500">{flight.departureTime}</span></div>
                 <div className="flex flex-col items-center w-full px-4"><span className="text-[9px] text-neutral-500 tracking-widest mb-0.5">{flight.flightNumber}</span><div className="w-full h-[1px] bg-neutral-600 relative flex items-center justify-between"><div className="w-1 h-1 bg-neutral-400 rounded-full"></div><div className="text-[8px] text-neutral-600 absolute top-1.5 w-full text-center">{flight.departureDate === flight.arrivalDate ? 'Same Day' : '+1 Day'}</div><div className="w-1.5 h-1.5 bg-neutral-200 rounded-full"></div></div></div>
@@ -94,14 +92,14 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState(hotel);
     useEffect(() => { setFormData(hotel); }, [hotel]);
-    const handleSave = () => { vibrate(); onUpdate(formData); setIsEditing(false); };
+    const handleSave = () => { onUpdate(formData); setIsEditing(false); };
 
     if (isEditing) {
         return (
              <div className="bg-neutral-900 border border-neutral-700 rounded-lg p-3 shadow-xl ring-1 ring-neutral-700 mb-3">
                  <h3 className="text-white text-xs font-bold mb-3 flex justify-between items-center">Edit Hotel
                     <div className="flex gap-2">
-                        <button onClick={() => { vibrate(); onDelete(hotel.id); }} className="text-red-400 text-[10px] border border-red-900/50 px-1.5 rounded">Del</button>
+                        <button onClick={() => onDelete(hotel.id)} className="text-red-400 text-[10px] border border-red-900/50 px-1.5 rounded">Del</button>
                         <button onClick={() => setIsEditing(false)} className="text-neutral-500 text-[10px] hover:text-white">Cancel</button>
                         <button onClick={handleSave} className="text-neutral-950 bg-white px-2 py-0.5 rounded text-[10px] font-bold">Save</button>
                     </div>
@@ -120,7 +118,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     }
     return (
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-3 shadow-sm mb-3 relative group">
-             <button onClick={() => { vibrate(); setIsEditing(true); }} className="absolute top-2 right-2 text-neutral-600 hover:text-white text-[10px] opacity-50 hover:opacity-100 p-1">✎</button>
+             <button onClick={() => setIsEditing(true)} className="absolute top-2 right-2 text-neutral-600 hover:text-white text-[10px] opacity-50 hover:opacity-100 p-1">✎</button>
             <div className="flex justify-between items-start mb-1 pr-6">
                 <h3 className="text-sm text-white font-medium pr-4">{formData.name}</h3>
                 <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">Confirmed</span>
@@ -138,7 +136,7 @@ const ContactItem: React.FC<{ item: EmergencyContact, onUpdate: (c: EmergencyCon
     const [isEditing, setIsEditing] = useState(false);
     const [data, setData] = useState(item);
     useEffect(() => { setData(item); }, [item]);
-    const handleSave = () => { vibrate(); onUpdate(data); setIsEditing(false); };
+    const handleSave = () => { onUpdate(data); setIsEditing(false); };
 
     if(isEditing) {
         return (
@@ -147,14 +145,14 @@ const ContactItem: React.FC<{ item: EmergencyContact, onUpdate: (c: EmergencyCon
                 <input className="bg-transparent border-b border-neutral-600 text-white font-mono text-sm font-bold focus:outline-none" value={data.number} onChange={e => setData({...data, number: e.target.value})} placeholder="Phone Number" />
                 <input className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none" value={data.note} onChange={e => setData({...data, note: e.target.value})} placeholder="Note" />
                 <div className="flex justify-end gap-2 mt-1">
-                     <button onClick={() => { vibrate(); onDelete(item.id); }} className="text-red-400 text-[10px] px-1">Delete</button>
+                     <button onClick={() => onDelete(item.id)} className="text-red-400 text-[10px] px-1">Delete</button>
                      <button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">Done</button>
                 </div>
             </div>
         )
     }
     return (
-        <button onClick={() => { vibrate(); setIsEditing(true); }} className="bg-neutral-900 border border-neutral-800 p-3 rounded-lg flex flex-col items-center justify-center gap-0.5 active:bg-neutral-800 transition relative group">
+        <button onClick={() => setIsEditing(true)} className="bg-neutral-900 border border-neutral-800 p-3 rounded-lg flex flex-col items-center justify-center gap-0.5 active:bg-neutral-800 transition relative group">
             <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"><span className="text-[9px] text-neutral-600">✎</span></div>
             <span className="text-xl">{item.name.toLowerCase().includes('police') ? '👮' : item.name.toLowerCase().includes('ambulance') ? '🚑' : '📞'}</span>
             <span className="text-sm text-white font-bold font-mono">{item.number}</span>
@@ -167,7 +165,7 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
     const [isEditing, setIsEditing] = useState(false);
     const [data, setData] = useState(item);
     useEffect(() => { setData(item); }, [item]);
-    const handleSave = () => { vibrate(); onUpdate({...data, cost: Number(data.cost)}); setIsEditing(false); };
+    const handleSave = () => { onUpdate({...data, cost: Number(data.cost)}); setIsEditing(false); };
     
     // Calculate using passed real-time rates
     const rate = rates[item.currency] || 1;
@@ -185,13 +183,13 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
                     <select value={data.category} onChange={(e) => setData({...data, category: e.target.value})} className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none w-1/2 appearance-none">
                         {Object.values(ItemType).map(t => <option key={t} value={t} className="bg-neutral-900 text-white">{t}</option>)}
                     </select>
-                    <div className="flex gap-2"><button onClick={() => { vibrate(); onDelete(item.id); }} className="text-red-400 text-[10px] px-2 border border-red-900/50 rounded">Del</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">OK</button></div>
+                    <div className="flex gap-2"><button onClick={() => onDelete(item.id)} className="text-red-400 text-[10px] px-2 border border-red-900/50 rounded">Del</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">OK</button></div>
                 </div>
              </div>
         )
     }
     return (
-        <div onClick={() => { vibrate(); setIsEditing(true); }} className="p-3 flex justify-between items-center border-b border-neutral-800 hover:bg-neutral-800/30 transition cursor-pointer group">
+        <div onClick={() => setIsEditing(true)} className="p-3 flex justify-between items-center border-b border-neutral-800 hover:bg-neutral-800/30 transition cursor-pointer group">
             <div><div className="text-xs text-neutral-200 group-hover:text-white">{item.item}</div><div className="text-[9px] text-neutral-500">{item.category}</div></div>
             <div className="text-right">
                 <div className="text-xs text-neutral-300 font-mono group-hover:text-white">{item.currency === Currency.JPY ? '¥' : item.currency === Currency.USD ? '$' : item.currency} {item.cost.toLocaleString()}</div>
@@ -225,7 +223,6 @@ export const Utilities: React.FC<UtilitiesProps> = ({
 
   const handleAddChecklistKey = (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && newChecklistText.trim()) {
-          vibrate();
           onAddChecklist(newChecklistText);
           setNewChecklistText('');
       }
@@ -287,7 +284,7 @@ export const Utilities: React.FC<UtilitiesProps> = ({
                     onChange={(e) => setNewChecklistText(e.target.value)}
                     onKeyDown={handleAddChecklistKey}
                   />
-                  <button onClick={() => { if(newChecklistText) { vibrate(); onAddChecklist(newChecklistText); setNewChecklistText(''); }}} className="text-neutral-500 text-[10px] font-bold">+</button>
+                  <button onClick={() => { if(newChecklistText) { onAddChecklist(newChecklistText); setNewChecklistText(''); }}} className="text-neutral-500 text-[10px] font-bold">+</button>
               </div>
               <div>
                   {checklist?.map(item => (
@@ -296,7 +293,7 @@ export const Utilities: React.FC<UtilitiesProps> = ({
                               {item.checked && <span className="text-black text-[10px] font-bold">✓</span>}
                           </button>
                           <span className={`text-xs flex-1 ${item.checked ? 'text-neutral-600 line-through' : 'text-neutral-200'}`}>{item.text}</span>
-                          <button onClick={() => { vibrate(); onDeleteChecklist(item.id); }} className="text-neutral-700 hover:text-red-500 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                          <button onClick={() => onDeleteChecklist(item.id)} className="text-neutral-700 hover:text-red-500 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
                       </div>
                   ))}
                   {(!checklist || checklist.length === 0) && <div className="text-center py-4 text-neutral-600 text-[10px]">List is empty</div>}
