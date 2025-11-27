@@ -58,7 +58,8 @@ const App: React.FC = () => {
               budget: JSON.parse(localStorage.getItem('kuro_budget') || JSON.stringify(INITIAL_BUDGET)),
               contacts: JSON.parse(localStorage.getItem('kuro_contacts') || JSON.stringify(INITIAL_CONTACTS)),
               totalBudget: 20000,
-              checklist: []
+              checklist: [],
+              notes: ''
           };
           return [migratedTrip];
       }
@@ -72,7 +73,8 @@ const App: React.FC = () => {
           budget: INITIAL_BUDGET,
           contacts: INITIAL_CONTACTS,
           totalBudget: 20000,
-          checklist: []
+          checklist: [],
+          notes: ''
       }];
   });
 
@@ -89,6 +91,7 @@ const App: React.FC = () => {
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [totalBudget, setTotalBudget] = useState<number>(20000);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [tripNotes, setTripNotes] = useState<string>('');
 
   const [userFlag, setUserFlag] = useState<string>(() => {
     return localStorage.getItem('kuro_flag') || "🇯🇵";
@@ -106,6 +109,7 @@ const App: React.FC = () => {
           setContacts(currentTrip.contacts);
           setTotalBudget(currentTrip.totalBudget || 20000);
           setChecklist(currentTrip.checklist || []);
+          setTripNotes(currentTrip.notes || '');
           if (selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
       }
       localStorage.setItem('kuro_active_trip_id', activeTripId);
@@ -116,14 +120,25 @@ const App: React.FC = () => {
       setTrips(prevTrips => {
           const newTrips = prevTrips.map(t => {
               if (t.id === activeTripId) {
-                  return { ...t, destination, itinerary, flights, hotels, budget, contacts, totalBudget, checklist };
+                  return { 
+                      ...t, 
+                      destination, 
+                      itinerary, 
+                      flights, 
+                      hotels, 
+                      budget, 
+                      contacts, 
+                      totalBudget, 
+                      checklist,
+                      notes: tripNotes
+                  };
               }
               return t;
           });
           localStorage.setItem('kuro_trips', JSON.stringify(newTrips));
           return newTrips;
       });
-  }, [destination, itinerary, flights, hotels, budget, contacts, totalBudget, checklist]);
+  }, [destination, itinerary, flights, hotels, budget, contacts, totalBudget, checklist, tripNotes]);
 
   useEffect(() => { localStorage.setItem('kuro_flag', userFlag); }, [userFlag]);
 
@@ -143,7 +158,8 @@ const App: React.FC = () => {
           budget: [],
           contacts: [],
           totalBudget: 20000,
-          checklist: []
+          checklist: [],
+          notes: ''
       };
       setTrips(prev => [...prev, newTrip]);
       setActiveTripId(newTrip.id);
@@ -164,6 +180,7 @@ const App: React.FC = () => {
 
   const [showSettings, setShowSettings] = useState(false);
   const [showFlagSelector, setShowFlagSelector] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const [importData, setImportData] = useState('');
   
   const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
@@ -392,6 +409,27 @@ const App: React.FC = () => {
           </div>
       )}
 
+      {/* Notes Modal */}
+      {showNotes && (
+          <div className="fixed inset-0 z-[100] bg-black flex flex-col p-6 animate-fade-in">
+              <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                      Quick Notes
+                  </h3>
+                  <button onClick={() => setShowNotes(false)} className="text-neutral-500 hover:text-white p-2">✕</button>
+              </div>
+              <textarea 
+                  className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-sm text-neutral-300 focus:outline-none focus:border-neutral-700 resize-none leading-relaxed placeholder-neutral-700"
+                  placeholder="Type anything here... (Wifi passwords, locker codes, shopping list)"
+                  value={tripNotes}
+                  onChange={(e) => setTripNotes(e.target.value)}
+                  autoFocus
+              />
+              <div className="mt-2 text-center text-[10px] text-neutral-600">Autosaved to Trip</div>
+          </div>
+      )}
+
       {/* Header */}
       <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-neutral-900 pt-[env(safe-area-inset-top)]">
         <div className="px-5 py-2 mt-2 flex justify-between items-center">
@@ -403,7 +441,10 @@ const App: React.FC = () => {
                 <h1 onClick={() => setIsEditingDest(true)} className="text-lg font-bold tracking-widest text-white cursor-pointer active:opacity-50 border-b border-transparent hover:border-neutral-700 transition-all uppercase">{destination}</h1>
              )}
           </div>
-          <div className="flex gap-3 items-center">
+          <div className="flex gap-4 items-center">
+              <button onClick={() => { vibrate(); setShowNotes(true); }} className="text-neutral-500 hover:text-white transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+              </button>
               <button onClick={() => setShowSettings(true)} className="text-neutral-500 hover:text-white text-[10px] uppercase">SHARE</button>
               <div onClick={handleFlagClick} className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center cursor-pointer active:opacity-70 transition-transform hover:scale-105 shadow-glow text-lg">
                 {userFlag}
@@ -478,33 +519,7 @@ const App: React.FC = () => {
         ) : activeTab === Tab.UTILITIES ? (
             <>
                  <h2 className="text-base font-bold text-white mb-3 uppercase tracking-tight">Trip Utilities</h2>
-                 <Utilities 
-                    budget={budget} 
-                    flights={flights} 
-                    hotels={hotels} 
-                    contacts={contacts} 
-                    checklist={checklist}
-                    totalBudget={totalBudget}
-                    rates={exchangeRates} 
-                    onUpdateFlight={handleUpdateFlight} 
-                    onUpdateHotel={handleUpdateHotel} 
-                    onAddFlight={handleAddFlight} 
-                    onAddHotel={handleAddHotel} 
-                    onDeleteFlight={handleDeleteFlight} 
-                    onDeleteHotel={handleDeleteHotel} 
-                    onAddBudget={handleAddBudget} 
-                    onUpdateBudget={handleUpdateBudget} 
-                    onDeleteBudget={handleDeleteBudget} 
-                    onAddContact={handleAddContact} 
-                    onUpdateContact={handleUpdateContact} 
-                    onDeleteContact={handleDeleteContact}
-                    onUpdateTotalBudget={setTotalBudget}
-                    onAddChecklist={handleAddChecklist}
-                    onToggleChecklist={handleToggleChecklist}
-                    onDeleteChecklist={handleDeleteChecklist}
-                    onAiChecklist={handleAiChecklist}
-                    isLoadingAi={isLoading}
-                />
+                 <Utilities budget={budget} flights={flights} hotels={hotels} contacts={contacts} onUpdateFlight={handleUpdateFlight} onUpdateHotel={handleUpdateHotel} onAddFlight={handleAddFlight} onAddHotel={handleAddHotel} onDeleteFlight={handleDeleteFlight} onDeleteHotel={handleDeleteHotel} onAddBudget={handleAddBudget} onUpdateBudget={handleUpdateBudget} onDeleteBudget={handleDeleteBudget} onAddContact={handleAddContact} onUpdateContact={handleUpdateContact} onDeleteContact={handleDeleteContact} rates={exchangeRates} onUpdateTotalBudget={setTotalBudget} onAddChecklist={handleAddChecklist} onToggleChecklist={handleToggleChecklist} onDeleteChecklist={handleDeleteChecklist} onAiChecklist={handleAiChecklist} isLoadingAi={isLoading} checklist={checklist} totalBudget={totalBudget} />
             </>
         ) : (
             <>
