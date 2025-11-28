@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ItineraryItem, ItemType, Tag } from '../types';
+import { ItineraryItem, ItemType, Tag, Language } from '../types';
+import { TRANSLATIONS } from '../constants';
 
 interface Props {
   item: ItineraryItem;
@@ -10,6 +11,7 @@ interface Props {
   isSelected?: boolean;
   onSelect?: (id: string) => void;
   isActive?: boolean;
+  lang: Language;
 }
 
 const vibrate = () => { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10); };
@@ -28,13 +30,15 @@ const TypeIcon: React.FC<{ type: ItemType }> = ({ type }) => {
   }
 };
 
-export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete, isSelectMode, isSelected, onSelect, isActive }) => {
+export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete, isSelectMode, isSelected, onSelect, isActive, lang }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showCard, setShowCard] = useState(false);
   const [formData, setFormData] = useState<ItineraryItem>(item);
   const [newTagLabel, setNewTagLabel] = useState('');
   const [newTagColor, setNewTagColor] = useState<'red' | 'gold' | 'gray'>('gray');
   const [showCopied, setShowCopied] = useState(false);
+
+  const T = TRANSLATIONS;
 
   useEffect(() => { setFormData(item); }, [item]);
 
@@ -101,7 +105,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                 <div className="text-xs text-neutral-500 mb-1 opacity-50">{formData.time}</div>
                 <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center relative shadow-inner"><TypeIcon type={formData.type} /></div>
             </div>
-            <div className="flex-1 bg-neutral-900 border border-neutral-700 rounded-lg p-3 shadow-xl mb-3 relative ring-1 ring-neutral-700">
+            <div className="flex-1 min-w-0 bg-neutral-900 border border-neutral-700 rounded-lg p-3 shadow-xl mb-3 relative ring-1 ring-neutral-700">
                 <div className="space-y-3">
                     <div className="grid grid-cols-3 gap-2">
                          <div className="col-span-1"><label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Time</label><input type="time" value={formData.time} onChange={(e) => handleChange('time', e.target.value)} className="w-full bg-transparent border-b border-neutral-700 text-white text-sm py-0.5 focus:outline-none focus:border-neutral-400 [color-scheme:dark]" /></div>
@@ -112,8 +116,8 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                     <div><label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Location</label><input type="text" value={formData.location} onChange={(e) => handleChange('location', e.target.value)} className="w-full bg-transparent border-b border-neutral-700 text-neutral-300 text-[10px] py-0.5 focus:outline-none focus:border-neutral-400" /></div>
                     <div><label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Description</label><textarea value={formData.description || ''} onChange={(e) => handleChange('description', e.target.value)} rows={2} className="w-full bg-transparent border-b border-neutral-700 text-neutral-400 text-[10px] py-0.5 focus:outline-none focus:border-neutral-400 resize-none leading-relaxed normal-case" placeholder="Desc..." /></div>
                     <div className="flex gap-2 pt-1">
-                        <button onClick={handleSave} className="flex-1 bg-neutral-100 text-black py-1.5 rounded text-[10px] font-bold hover:bg-white uppercase">SAVE</button>
-                        <button onClick={() => setIsEditing(false)} className="flex-1 bg-neutral-800 text-neutral-300 py-1.5 rounded text-[10px] font-bold hover:bg-neutral-700 uppercase">CANCEL</button>
+                        <button onClick={handleSave} className="flex-1 bg-neutral-100 text-black py-1.5 rounded text-[10px] font-bold hover:bg-white uppercase">{T.SAVE[lang]}</button>
+                        <button onClick={() => setIsEditing(false)} className="flex-1 bg-neutral-800 text-neutral-300 py-1.5 rounded text-[10px] font-bold hover:bg-neutral-700 uppercase">{T.CANCEL[lang]}</button>
                         <button onClick={() => { vibrate(); onDelete(item.id); }} className="w-8 bg-red-950/30 text-red-400 border border-red-900/50 rounded flex items-center justify-center hover:bg-red-900/50 text-[10px]">🗑️</button>
                     </div>
                 </div>
