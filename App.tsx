@@ -228,6 +228,7 @@ const App: React.FC = () => {
   const [destSearch, setDestSearch] = useState('');
 
   const [importData, setImportData] = useState('');
+  const coverInputRef = useRef<HTMLInputElement>(null);
   
   const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
   const handleSelectFlag = (flag: string) => { vibrate(); setUserFlag(flag); setShowFlagSelector(false); };
@@ -236,7 +237,37 @@ const App: React.FC = () => {
       vibrate();
       setDestination(city);
       setShowDestSelector(false);
-      // No automatic SOS update here anymore
+  };
+
+  // --- Cover Image Upload Logic ---
+  const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // Basic compression logic using Canvas
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 600; // Limit width to save space
+              const scaleSize = MAX_WIDTH / img.width;
+              canvas.width = MAX_WIDTH;
+              canvas.height = img.height * scaleSize;
+
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  // Compress to JPEG with 0.5 quality
+                  const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                  setCoverImage(dataUrl);
+              }
+          };
+          if(event.target?.result) {
+              img.src = event.target.result as string;
+          }
+      };
+      reader.readAsDataURL(file);
   };
 
   const handleExport = () => {
@@ -467,7 +498,28 @@ const App: React.FC = () => {
                       {/* Cover Photo Input */}
                       <div>
                           <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">Trip Cover Image</h4>
-                          <input value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="Paste image URL (e.g. Unsplash)" className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none" />
+                          <div className="flex gap-2">
+                              <input 
+                                value={coverImage} 
+                                onChange={(e) => setCoverImage(e.target.value)} 
+                                placeholder="Paste image URL..." 
+                                className="flex-1 bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none" 
+                              />
+                              <button 
+                                onClick={() => coverInputRef.current?.click()} 
+                                className="bg-neutral-800 border border-neutral-700 text-white px-3 rounded-lg text-[10px] font-bold whitespace-nowrap"
+                              >
+                                  UPLOAD
+                              </button>
+                              <input 
+                                type="file" 
+                                ref={coverInputRef} 
+                                className="hidden" 
+                                accept="image/*" 
+                                onChange={handleCoverImageUpload} 
+                              />
+                          </div>
+                          <p className="text-[9px] text-neutral-600 mt-1">Supports URL or Photo Upload (Auto-compressed)</p>
                       </div>
 
                       <div>
