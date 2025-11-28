@@ -39,7 +39,7 @@ const vibrate = () => { if (typeof navigator !== 'undefined' && navigator.vibrat
 const InputField = ({ label, value, onChange, placeholder }: { label: string, value: string | number, onChange: (val: string) => void, placeholder?: string }) => (
     <div className="mb-2">
         <label className="text-[9px] text-neutral-500 uppercase font-bold block mb-0.5">{label}</label>
-        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full bg-transparent border-b border-neutral-700 text-white text-xs py-0.5 focus:outline-none focus:border-neutral-400" />
+        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full bg-transparent border-b border-neutral-700 text-white text-xs py-0.5 focus:outline-none focus:border-neutral-400 uppercase" />
     </div>
 );
 
@@ -172,9 +172,9 @@ const ContactItem: React.FC<{ item: EmergencyContact, onUpdate: (c: EmergencyCon
     if(isEditing) {
         return (
             <div className="bg-neutral-800 border border-neutral-700 p-2 rounded-lg flex flex-col gap-1 relative">
-                <input className="bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none" value={data.name} onChange={e => setData({...data, name: e.target.value})} placeholder="Name" />
+                <input className="bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none uppercase" value={data.name} onChange={e => setData({...data, name: e.target.value})} placeholder="Name" />
                 <input className="bg-transparent border-b border-neutral-600 text-white font-mono text-sm font-bold focus:outline-none" value={data.number} onChange={e => setData({...data, number: e.target.value})} placeholder="Phone Number" />
-                <input className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none" value={data.note} onChange={e => setData({...data, note: e.target.value})} placeholder="Note" />
+                <input className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none uppercase" value={data.note} onChange={e => setData({...data, note: e.target.value})} placeholder="Note" />
                 <div className="flex justify-end gap-2 mt-1">
                      <button onClick={() => { vibrate(); onDelete(item.id); }} className="text-red-400 text-[10px] px-1">DEL</button>
                      <button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">DONE</button>
@@ -187,7 +187,7 @@ const ContactItem: React.FC<{ item: EmergencyContact, onUpdate: (c: EmergencyCon
             <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"><span className="text-[9px] text-neutral-600">✎</span></div>
             <span className="text-xl">{item.name.toLowerCase().includes('police') ? '👮' : item.name.toLowerCase().includes('ambulance') ? '🚑' : '📞'}</span>
             <span className="text-sm text-white font-bold font-mono">{item.number}</span>
-            <span className="text-[9px] text-neutral-500">{item.name}</span>
+            <span className="text-[9px] text-neutral-500 uppercase">{item.name}</span>
         </button>
     );
 }
@@ -206,12 +206,12 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
         return (
              <div className="p-3 border-b border-neutral-800 bg-neutral-800/50">
                 <div className="grid grid-cols-6 gap-2 mb-1">
-                    <div className="col-span-4"><input className="w-full bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none" value={data.item} onChange={e => setData({...data, item: e.target.value})} placeholder="Item" /></div>
+                    <div className="col-span-4"><input className="w-full bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none uppercase" value={data.item} onChange={e => setData({...data, item: e.target.value})} placeholder="Item" /></div>
                     <div className="col-span-2"><select className="w-full bg-neutral-900 text-white text-[10px] border border-neutral-600 rounded p-0.5" value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})}>{Object.keys(rates).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                 </div>
                 <div className="flex gap-2 mb-1"><input className="bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none flex-1 text-right" type="number" value={data.cost} onChange={e => setData({...data, cost: Number(e.target.value)})} placeholder="Cost" /></div>
                 <div className="flex justify-between items-center">
-                    <select value={data.category} onChange={(e) => setData({...data, category: e.target.value})} className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none w-1/2 appearance-none">
+                    <select value={data.category} onChange={(e) => setData({...data, category: e.target.value})} className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none w-1/2 appearance-none uppercase">
                         {Object.values(ItemType).map(t => <option key={t} value={t} className="bg-neutral-900 text-white">{t}</option>)}
                     </select>
                     <div className="flex gap-2"><button onClick={() => { vibrate(); onDelete(item.id); }} className="text-red-400 text-[10px] px-2 border border-red-900/50 rounded">DEL</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">OK</button></div>
@@ -221,7 +221,7 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
     }
     return (
         <div onClick={() => { vibrate(); setIsEditing(true); }} className="p-3 flex justify-between items-center border-b border-neutral-800 hover:bg-neutral-800/30 transition cursor-pointer group">
-            <div><div className="text-xs text-neutral-200 group-hover:text-white">{item.item}</div><div className="text-[9px] text-neutral-500">{item.category}</div></div>
+            <div><div className="text-xs text-neutral-200 group-hover:text-white uppercase">{item.item}</div><div className="text-[9px] text-neutral-500 uppercase">{item.category}</div></div>
             <div className="text-right">
                 <div className="text-xs text-neutral-300 font-mono group-hover:text-white">{item.currency === Currency.JPY ? '¥' : item.currency === Currency.USD ? '$' : item.currency} {item.cost.toLocaleString()}</div>
                 {item.currency !== Currency.HKD && (<div className="text-[9px] text-neutral-500 font-mono">≈ HK${hkdAmount.toLocaleString()}</div>)}
@@ -325,7 +325,7 @@ export const Utilities: React.FC<UtilitiesProps> = ({
                               {item.checked && <span className="text-black text-[10px] font-bold">✓</span>}
                           </button>
                           <span className={`text-xs flex-1 ${item.checked ? 'text-neutral-600 line-through' : 'text-neutral-200'}`}>{item.text}</span>
-                          <button onClick={() => { vibrate(); onDeleteChecklist(item.id); }} className="text-neutral-700 hover:text-red-500 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                          <button onClick={() => { vibrate(); onDeleteChecklist(item.id); }} className="text-neutral-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition px-2">✕</button>
                       </div>
                   ))}
                   {(!checklist || checklist.length === 0) && <div className="text-center py-4 text-neutral-600 text-[10px]">List is empty</div>}
