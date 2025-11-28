@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
-import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES } from './constants';
-import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem } from './types';
-import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions } from './services/geminiService';
+import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES } from './constants';
+import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact } from './types';
+import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions, generateLocalSOS } from './services/geminiService';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
 
@@ -155,7 +155,6 @@ const App: React.FC = () => {
 
   useEffect(() => { localStorage.setItem('kuro_flag', userFlag); }, [userFlag]);
 
-  const [isEditingDest, setIsEditingDest] = useState<boolean>(false);
   const currentDayPlan = itinerary.find(d => d.dayId === selectedDay) || (itinerary[0] || { dayId: 1, date: 'N/A', items: [] });
 
   // --- Live Mode Helper ---
@@ -221,11 +220,38 @@ const App: React.FC = () => {
   const [showFlagSelector, setShowFlagSelector] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showAfterParty, setShowAfterParty] = useState(false);
-  const [afterPartyRecs, setAfterPartyRecs] = useState<string[]>([]);
+  const [afterPartyRecs, setAfterPartyRecs] = useState<AfterPartyRec[]>([]);
+  
+  // Destination Selector
+  const [showDestSelector, setShowDestSelector] = useState(false);
+  const [destSearch, setDestSearch] = useState('');
+
   const [importData, setImportData] = useState('');
   
   const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
   const handleSelectFlag = (flag: string) => { vibrate(); setUserFlag(flag); setShowFlagSelector(false); };
+
+  const handleSelectDestination = async (city: string) => {
+      vibrate();
+      setDestination(city);
+      setShowDestSelector(false);
+      
+      // Trigger Local SOS update
+      try {
+          const sosContacts = await generateLocalSOS(city);
+          if (sosContacts.length > 0) {
+              setContacts(prev => {
+                  const existingNums = new Set(prev.map(c => c.number));
+                  const newContacts = sosContacts.filter(c => !existingNums.has(c.number)).map(c => ({
+                      id: `sos-${Date.now()}-${Math.random()}`,
+                      ...c
+                  }));
+                  return [...prev, ...newContacts];
+              });
+              alert(`Emergency contacts updated for ${city}`);
+          }
+      } catch (e) { console.error("SOS Gen Failed"); }
+  };
 
   const handleExport = () => {
       vibrate();
@@ -474,17 +500,81 @@ const App: React.FC = () => {
                   
                   <div className="space-y-3">
                       {afterPartyRecs.map((rec, idx) => (
-                          <div key={idx} className="p-3 bg-neutral-800 rounded-lg border border-neutral-700">
-                              <p className="text-xs text-neutral-200 leading-relaxed">{rec}</p>
+                          <div 
+                            key={idx} 
+                            className="p-3 bg-neutral-800 rounded-lg border border-neutral-700 active:bg-neutral-700 transition-colors cursor-pointer flex justify-between items-center group"
+                            onClick={() => {
+                                vibrate();
+                                const query = encodeURIComponent(rec.name + " " + destination);
+                                window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+                            }}
+                          >
+                              <div>
+                                  <h4 className="text-xs font-bold text-white">{rec.name}</h4>
+                                  <p className="text-[10px] text-neutral-400">{rec.reason}</p>
+                              </div>
+                              <span className="text-neutral-600 group-hover:text-white">↗</span>
                           </div>
                       ))}
                       {afterPartyRecs.length === 0 && <p className="text-xs text-neutral-500">No recommendations found.</p>}
                   </div>
                   
                   <div className="mt-6 text-center">
-                      <button onClick={() => { vibrate(); const query = encodeURIComponent(currentDayPlan.items[currentDayPlan.items.length-1]?.location + " bars ramen"); window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">Search on Maps</button>
+                      <button onClick={() => { vibrate(); const query = encodeURIComponent(destination + " late night bars ramen"); window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">Search City on Maps</button>
                   </div>
               </div>
+          </div>
+      )}
+
+      {/* Destination Selector Modal */}
+      {showDestSelector && (
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
+               <div className="flex justify-between items-center mb-6">
+                   <h3 className="text-lg font-bold text-white uppercase tracking-wider">Select Destination</h3>
+                   <button onClick={() => setShowDestSelector(false)} className="text-neutral-500 hover:text-white p-2 text-xl">✕</button>
+               </div>
+               
+               <input 
+                  autoFocus
+                  className="bg-neutral-900 border border-neutral-700 rounded-lg p-4 text-sm text-white mb-4 w-full outline-none focus:border-white"
+                  placeholder="Search city..."
+                  value={destSearch}
+                  onChange={(e) => setDestSearch(e.target.value)}
+               />
+
+               <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
+                   {Object.entries(COUNTRY_CITIES).map(([country, cities]) => {
+                       const filteredCities = cities.filter(c => c.toLowerCase().includes(destSearch.toLowerCase()));
+                       if (filteredCities.length === 0 && destSearch) return null;
+                       
+                       return (
+                           <div key={country}>
+                               <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2 sticky top-0 bg-black py-1">{country}</h4>
+                               <div className="grid grid-cols-2 gap-2">
+                                   {filteredCities.map(city => (
+                                       <button 
+                                          key={city} 
+                                          onClick={() => handleSelectDestination(city)}
+                                          className="text-left p-3 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-600 text-xs text-white font-medium active:scale-95 transition-all"
+                                       >
+                                           {city}
+                                       </button>
+                                   ))}
+                               </div>
+                           </div>
+                       )
+                   })}
+                   
+                   {/* Custom Input Option */}
+                   {destSearch && (
+                       <div className="mt-4 pt-4 border-t border-neutral-800">
+                           <p className="text-[10px] text-neutral-500 mb-2">Can't find it?</p>
+                           <button onClick={() => handleSelectDestination(destSearch)} className="w-full text-left p-3 rounded-lg bg-neutral-800 text-white text-xs font-bold">
+                               Use "{destSearch}"
+                           </button>
+                       </div>
+                   )}
+               </div>
           </div>
       )}
 
@@ -495,7 +585,9 @@ const App: React.FC = () => {
                    <button onClick={() => setShowFlagSelector(false)} className="absolute top-3 right-3 text-neutral-500 hover:text-white">✕</button>
                    <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider text-center">Select Country</h3>
                    <div className="grid grid-cols-5 gap-3">
-                       {FLAGS.map(flag => <button key={flag} onClick={() => handleSelectFlag(flag)} className="text-2xl hover:scale-125 transition-transform p-1">{flag}</button>)}
+                       {FLAGS.map(flag => (
+                           <button key={flag} onClick={() => handleSelectFlag(flag)} className="text-2xl hover:scale-125 transition-transform p-1">{flag}</button>
+                       ))}
                    </div>
                </div>
           </div>
@@ -509,7 +601,13 @@ const App: React.FC = () => {
                   </h3>
                   <button onClick={() => setShowNotes(false)} className="text-neutral-500 hover:text-white p-2 text-xl">✕</button>
               </div>
-              <textarea className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-sm text-neutral-300 focus:outline-none focus:border-neutral-700 resize-none leading-relaxed placeholder-neutral-700" placeholder="Type anything..." value={tripNotes} onChange={(e) => setTripNotes(e.target.value)} autoFocus />
+              <textarea 
+                  className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-sm text-neutral-300 focus:outline-none focus:border-neutral-700 resize-none leading-relaxed placeholder-neutral-700"
+                  placeholder="Type anything here... (Wifi passwords, locker codes, shopping list)"
+                  value={tripNotes}
+                  onChange={(e) => setTripNotes(e.target.value)}
+                  autoFocus
+              />
               <div className="mt-2 text-center text-[10px] text-neutral-600">Autosaved to Trip</div>
           </div>
       )}
@@ -517,13 +615,11 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-neutral-900 pt-[env(safe-area-inset-top)]">
         <div className="px-5 py-2 mt-2 flex justify-between items-center">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" onClick={() => { vibrate(); setShowDestSelector(true); }}>
              <span className="text-neutral-500 text-[10px] font-normal uppercase tracking-wider">Trip to</span>
-             {isEditingDest ? (
-                 <input autoFocus className="bg-transparent text-lg font-bold text-white tracking-widest w-[100px] border-b border-white outline-none uppercase" value={destination} onChange={(e) => setDestination(e.target.value.toUpperCase())} onBlur={() => setIsEditingDest(false)} />
-             ) : (
-                <h1 onClick={() => setIsEditingDest(true)} className="text-lg font-bold tracking-widest text-white cursor-pointer active:opacity-50 border-b border-transparent hover:border-neutral-700 transition-all uppercase">{destination}</h1>
-             )}
+             <h1 className="text-lg font-bold tracking-widest text-white cursor-pointer active:opacity-50 border-b border-transparent hover:border-neutral-700 transition-all uppercase flex items-center gap-1">
+                 {destination} <span className="text-[8px] text-neutral-600">▼</span>
+             </h1>
           </div>
           <div className="flex gap-4 items-center">
               <button onClick={() => { vibrate(); setShowNotes(true); }} className="text-neutral-500 hover:text-white transition-colors">
