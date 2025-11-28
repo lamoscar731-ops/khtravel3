@@ -1,9 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { DayPlan, ItemType, AfterPartyRec, SOSContact } from "../types";
+import { DayPlan, ItemType, AfterPartyRec, SOSContact, Language } from "../types";
 
 const getAiClient = (apiKey: string) => new GoogleGenAI({ apiKey });
 
-export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<DayPlan> => {
+const getLangInstruction = (lang: Language) => 
+    lang === 'TC' ? "Reply in Traditional Chinese (Hong Kong usage)." : "Reply in English.";
+
+export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Language): Promise<DayPlan> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("Missing API Key");
 
@@ -15,21 +18,20 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
     properties: {
       dayId: { type: Type.INTEGER },
       date: { type: Type.STRING },
-      weatherSummary: { type: Type.STRING }, // Legacy
+      weatherSummary: { type: Type.STRING }, 
       forecast: { 
         type: Type.ARRAY,
-        description: "7-day weather forecast starting from this day.",
         items: {
             type: Type.OBJECT,
             properties: {
-                date: { type: Type.STRING, description: "MM/DD" },
-                icon: { type: Type.STRING, description: "Emoji" },
-                temp: { type: Type.STRING, description: "Temp e.g. 24°" }
+                date: { type: Type.STRING },
+                icon: { type: Type.STRING },
+                temp: { type: Type.STRING }
             }
         }
       },
-      paceAnalysis: { type: Type.STRING, description: "Analysis: RELAXED, MODERATE, or RUSHED" },
-      logicWarning: { type: Type.STRING, description: "Logic warning e.g. 'Backtracking' or null" },
+      paceAnalysis: { type: Type.STRING },
+      logicWarning: { type: Type.STRING },
       items: {
         type: Type.ARRAY,
         items: {
@@ -42,7 +44,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
             type: { type: Type.STRING, enum: [ItemType.SIGHTSEEING, ItemType.FOOD, ItemType.RAMEN, ItemType.COFFEE, ItemType.ALCOHOL, ItemType.TRANSPORT, ItemType.SHOPPING, ItemType.HOTEL, ItemType.MISC] },
             description: { type: Type.STRING },
             tips: { type: Type.ARRAY, items: { type: Type.STRING } },
-            weather: { type: Type.STRING, description: "Temp & Humidity only" },
+            weather: { type: Type.STRING },
             navQuery: { type: Type.STRING }
           }
         }
@@ -52,10 +54,11 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
 
   const prompt = `
     Analyze itinerary Day ${currentPlan.dayId} (${currentPlan.date}).
-    1. Generate 7-day forecast (Date, Icon, Temp).
-    2. Analyze pace (RELAXED/MODERATE/RUSHED).
-    3. Check logic (Backtracking?).
-    4. Enhance descriptions & add tips (Must Eat/Photo Spot).
+    ${getLangInstruction(lang)}
+    1. Generate 7-day forecast (Date MM/DD, Icon Emoji, Temp).
+    2. Analyze pace (One word: RELAXED/MODERATE/RUSHED).
+    3. Check logic (Warning if backtracking, else null).
+    4. Enhance descriptions & add tips.
     5. DO NOT generate tags.
     
     Items: ${JSON.stringify(currentPlan.items)}
@@ -71,16 +74,15 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan): Promise<D
     if (!resultText) throw new Error("No response");
     return JSON.parse(resultText) as DayPlan;
   } catch (error) {
-    console.error("Enrich Error", error);
     return { ...currentPlan, weatherSummary: "Offline" };
   }
 };
 
-export const generatePackingList = async (destination: string): Promise<string[]> => {
+export const generatePackingList = async (destination: string, lang: Language): Promise<string[]> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("Missing API Key");
   const ai = getAiClient(apiKey);
-  const prompt = `Packing checklist for ${destination}. JSON array of strings only. Essentials.`;
+  const prompt = `Packing checklist for ${destination}. Essentials only. ${getLangInstruction(lang)}. Return JSON array of strings.`;
   const schema = { type: Type.ARRAY, items: { type: Type.STRING } };
   try {
     const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
@@ -88,12 +90,13 @@ export const generatePackingList = async (destination: string): Promise<string[]
   } catch (error) { return ["Passport", "Wallet"]; }
 };
 
-export const generateAfterPartySuggestions = async (location: string, time: string): Promise<AfterPartyRec[]> => {
+export const generateAfterPartySuggestions = async (location: string, time: string, lang: Language): Promise<AfterPartyRec[]> => {
     const apiKey = process.env.API_KEY;
     if (!apiKey) throw new Error("Missing API Key");
     const ai = getAiClient(apiKey);
     const prompt = `
-      I am at ${location} at ${time}. Suggest 3 specific late-night spots nearby (Ramen, Bar, Donki, Izakaya) that are OPEN LATE.
+      I am at ${location} at ${time}. Suggest 3 late-night spots (Ramen, Bar, Donki).
+      ${getLangInstruction(lang)}
       Return JSON array of objects: { name, type, reason }.
     `;
     const schema = {
@@ -113,15 +116,13 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
     } catch (error) { return []; }
 };
 
-export const generateLocalSOS = async (city: string): Promise<SOSContact[]> => {
+export const generateLocalSOS = async (city: string, lang: Language): Promise<SOSContact[]> => {
     const apiKey = process.env.API_KEY;
     if (!apiKey) throw new Error("Missing API Key");
     const ai = getAiClient(apiKey);
     const prompt = `
-      Provide 3 emergency contacts for a tourist in ${city}. 
-      1. Police
-      2. Ambulance/Fire
-      3. General Help or Consulate (Generic).
+      3 emergency contacts for ${city} (Police, Ambulance, Consulate).
+      ${getLangInstruction(lang)}
       Return JSON array of objects: { name, number, note }.
     `;
     const schema = {
