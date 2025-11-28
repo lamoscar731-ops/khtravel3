@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
-import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES } from './constants';
-import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact } from './types';
+import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES, TRANSLATIONS } from './constants';
+import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact, Language } from './types';
 import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions, generateLocalSOS } from './services/geminiService';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
@@ -20,6 +20,16 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(DEFAULT_RATES);
   const [now, setNow] = useState(new Date());
+  
+  // --- Language State ---
+  const [lang, setLang] = useState<Language>(() => {
+      return (localStorage.getItem('kuro_lang') as Language) || 'EN';
+  });
+  const T = TRANSLATIONS;
+
+  useEffect(() => {
+      localStorage.setItem('kuro_lang', lang);
+  }, [lang]);
 
   // --- Clock for Live Mode ---
   useEffect(() => {
@@ -349,11 +359,10 @@ const App: React.FC = () => {
     try {
         const itemsBackup = JSON.parse(JSON.stringify(currentDayPlan.items));
         const planToEnrich = { ...currentDayPlan };
-        const enrichedPlan = await enrichItineraryWithGemini(planToEnrich);
+        const enrichedPlan = await enrichItineraryWithGemini(planToEnrich, lang);
         
-        // --- NEW: Generate SOS Contacts here ---
         try {
-            const sosContacts = await generateLocalSOS(destination);
+            const sosContacts = await generateLocalSOS(destination, lang);
             if (sosContacts.length > 0) {
                 setContacts(prev => {
                     const existingNums = new Set(prev.map(c => c.number));
@@ -365,7 +374,6 @@ const App: React.FC = () => {
                 });
             }
         } catch (err) { console.error("SOS gen failed during check", err); }
-        // ---------------------------------------
 
         enrichedPlan.backupItems = itemsBackup;
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
@@ -395,7 +403,7 @@ const App: React.FC = () => {
       vibrate();
       setIsLoading(true);
       try {
-          const suggestions = await generatePackingList(destination);
+          const suggestions = await generatePackingList(destination, lang);
           const newItems: ChecklistItem[] = suggestions.map(text => ({ id: `cl-${Date.now()}-${Math.random()}`, text, checked: false }));
           setChecklist(prev => {
               const existingTexts = new Set(prev.map(i => i.text.toLowerCase()));
@@ -411,7 +419,7 @@ const App: React.FC = () => {
       setIsLoading(true);
       try {
           const lastItem = currentDayPlan.items[currentDayPlan.items.length - 1];
-          const recs = await generateAfterPartySuggestions(lastItem.location || destination, lastItem.time);
+          const recs = await generateAfterPartySuggestions(lastItem.location || destination, lastItem.time, lang);
           setAfterPartyRecs(recs);
           setShowAfterParty(true);
       } catch (e) { alert("AI Offline"); } finally { setIsLoading(false); }
@@ -451,7 +459,7 @@ const App: React.FC = () => {
   };
   const handleAddItem = () => {
     vibrate();
-    const newItem: ItineraryItem = { id: `${selectedDay}-${Date.now()}`, time: '12:00', title: 'New Activity', location: 'TBD', type: ItemType.SIGHTSEEING, description: 'Description...', navQuery: 'Tokyo', tags: [] };
+    const newItem: ItineraryItem = { id: `${selectedDay}-${Date.now()}`, time: '12:00', title: lang === 'TC' ? '新活動' : 'New Activity', location: 'TBD', type: ItemType.SIGHTSEEING, description: '...', navQuery: destination, tags: [] };
     setItinerary(prev => prev.map(day => { if (day.dayId !== selectedDay) return day; const newItems = [...day.items, newItem]; return { ...day, items: sortItems(newItems) }; }));
   };
 
@@ -468,7 +476,7 @@ const App: React.FC = () => {
   const handleAddBudget = () => { vibrate(); setBudget(prev => [...prev, { id: `b-${Date.now()}`, item: 'Expense', cost: 0, category: ItemType.MISC, currency: Currency.JPY }]); };
   const handleUpdateBudget = (u: BudgetProps) => setBudget(prev => prev.map(b => b.id === u.id ? u : b));
   const handleDeleteBudget = (id: string) => setBudget(prev => prev.filter(b => b.id !== id));
-  const handleAddContact = () => { vibrate(); setContacts(prev => [...prev, { id: `c-${Date.now()}`, name: 'Contact', number: '', note: '' }]); };
+  const handleAddContact = () => { vibrate(); setContacts(prev => [...prev, { id: `c-${Date.now()}`, name: lang === 'TC' ? '緊急聯絡' : 'CONTACT', number: '', note: '' }]); };
   const handleUpdateContact = (u: EmergencyContact) => setContacts(prev => prev.map(c => c.id === u.id ? u : c));
   const handleDeleteContact = (id: string) => setContacts(prev => prev.filter(c => c.id !== id));
   const handleAddChecklist = (text: string) => { vibrate(); setChecklist(prev => [...prev, { id: `cl-${Date.now()}`, text, checked: false }]); };
@@ -493,52 +501,52 @@ const App: React.FC = () => {
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
               <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative overflow-y-auto max-h-[80vh]">
                   <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
-                  <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider text-center">Settings</h3>
+                  <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider text-center">{T.SETTINGS[lang]}</h3>
                   <div className="space-y-6">
+                      
+                      {/* Language Toggle */}
+                      <div className="flex justify-center bg-neutral-800 rounded-lg p-1 mb-6">
+                          <button onClick={() => { vibrate(); setLang('EN'); }} className={`flex-1 py-2 rounded text-[10px] font-bold transition-all ${lang === 'EN' ? 'bg-white text-black shadow' : 'text-neutral-400 hover:text-white'}`}>ENGLISH</button>
+                          <button onClick={() => { vibrate(); setLang('TC'); }} className={`flex-1 py-2 rounded text-[10px] font-bold transition-all ${lang === 'TC' ? 'bg-white text-black shadow' : 'text-neutral-400 hover:text-white'}`}>繁體中文</button>
+                      </div>
+
                       {/* Cover Photo Input */}
                       <div>
-                          <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">Trip Cover Image</h4>
+                          <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">{T.TRIP_COVER[lang]}</h4>
                           <div className="flex gap-2">
                               <input 
                                 value={coverImage} 
                                 onChange={(e) => setCoverImage(e.target.value)} 
-                                placeholder="Paste image URL..." 
+                                placeholder="URL..." 
                                 className="flex-1 bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none" 
                               />
                               <button 
                                 onClick={() => coverInputRef.current?.click()} 
                                 className="bg-neutral-800 border border-neutral-700 text-white px-3 rounded-lg text-[10px] font-bold whitespace-nowrap"
                               >
-                                  UPLOAD
+                                  {T.UPLOAD[lang]}
                               </button>
-                              <input 
-                                type="file" 
-                                ref={coverInputRef} 
-                                className="hidden" 
-                                accept="image/*" 
-                                onChange={handleCoverImageUpload} 
-                              />
+                              <input type="file" ref={coverInputRef} className="hidden" accept="image/*" onChange={handleCoverImageUpload} />
                           </div>
-                          <p className="text-[9px] text-neutral-600 mt-1">Supports URL or Photo Upload (Auto-compressed)</p>
                       </div>
 
                       <div>
-                          <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">Sync / Share Trip</h4>
-                          <p className="text-[9px] text-neutral-400 mb-3 leading-relaxed">Copy the code below.</p>
-                          <button onClick={handleExport} className="w-full bg-white text-black py-2 rounded-lg text-xs font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase"><span>📋 Copy Trip Data</span></button>
+                          <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">{T.SYNC_SHARE[lang]}</h4>
+                          <p className="text-[9px] text-neutral-400 mb-3 leading-relaxed">Copy code below.</p>
+                          <button onClick={handleExport} className="w-full bg-white text-black py-2 rounded-lg text-xs font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase"><span>📋 {T.COPY_CODE[lang]}</span></button>
                           <div className="relative mb-4">
                               <input value={importData} onChange={(e) => setImportData(e.target.value)} placeholder="Paste code..." className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none pr-16" />
-                              <button onClick={handleImport} disabled={!importData} className="absolute right-1 top-1 bottom-1 bg-neutral-800 text-white px-3 rounded text-[10px] font-bold disabled:opacity-50 hover:bg-neutral-700">LOAD</button>
+                              <button onClick={handleImport} disabled={!importData} className="absolute right-1 top-1 bottom-1 bg-neutral-800 text-white px-3 rounded text-[10px] font-bold disabled:opacity-50 hover:bg-neutral-700">{T.LOAD[lang]}</button>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
-                              <button onClick={handleExportCalendar} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1"><span>📅 Export .ics</span></button>
-                              <button onClick={handleCopyText} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1"><span>📝 Copy Text</span></button>
+                              <button onClick={handleExportCalendar} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1"><span>📅 {T.EXPORT_ICS[lang]}</span></button>
+                              <button onClick={handleCopyText} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1"><span>📝 {T.COPY_TEXT[lang]}</span></button>
                           </div>
                       </div>
                       
                       <div className="border-t border-neutral-800 pt-4 mt-4">
-                        <h4 className="text-[10px] text-red-500 font-bold uppercase mb-2">Danger Zone</h4>
-                        <button onClick={handleDeleteTrip} className="w-full border border-red-900/50 bg-red-950/20 text-red-400 py-3 rounded-lg text-xs font-bold hover:bg-red-900/40 uppercase transition-colors">🗑️ Delete Current Trip</button>
+                        <h4 className="text-[10px] text-red-500 font-bold uppercase mb-2">{T.DANGER_ZONE[lang]}</h4>
+                        <button onClick={handleDeleteTrip} className="w-full border border-red-900/50 bg-red-950/20 text-red-400 py-3 rounded-lg text-xs font-bold hover:bg-red-900/40 uppercase transition-colors">🗑️ {T.DELETE_TRIP[lang]}</button>
                       </div>
                   </div>
               </div>
@@ -550,7 +558,7 @@ const App: React.FC = () => {
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
               <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
                   <button onClick={() => setShowAfterParty(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
-                  <h3 className="text-lg font-bold text-white mb-1 uppercase tracking-wider">Nearby Gems</h3>
+                  <h3 className="text-lg font-bold text-white mb-1 uppercase tracking-wider">{T.NEARBY_GEMS[lang]}</h3>
                   <p className="text-[10px] text-neutral-500 mb-6">Late night spots near your last location.</p>
                   
                   <div className="space-y-3">
@@ -575,7 +583,7 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="mt-6 text-center">
-                      <button onClick={() => { vibrate(); window.open('https://www.google.com/maps', '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">Open Google Maps</button>
+                      <button onClick={() => { vibrate(); window.open('https://www.google.com/maps', '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">{T.SEARCH_MAPS[lang]}</button>
                   </div>
               </div>
           </div>
@@ -585,7 +593,7 @@ const App: React.FC = () => {
       {showDestSelector && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
                <div className="flex justify-between items-center mb-6">
-                   <h3 className="text-lg font-bold text-white uppercase tracking-wider">Select Destination</h3>
+                   <h3 className="text-lg font-bold text-white uppercase tracking-wider">{T.SELECT_DEST[lang]}</h3>
                    <button onClick={() => setShowDestSelector(false)} className="text-neutral-500 hover:text-white p-2 text-xl">✕</button>
                </div>
                
@@ -634,7 +642,7 @@ const App: React.FC = () => {
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
                <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-xs shadow-2xl relative">
                    <button onClick={() => setShowFlagSelector(false)} className="absolute top-3 right-3 text-neutral-500 hover:text-white">✕</button>
-                   <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider text-center">Select Country</h3>
+                   <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider text-center">{T.SELECT_COUNTRY[lang]}</h3>
                    <div className="grid grid-cols-5 gap-3">
                        {FLAGS.map(flag => (
                            <button key={flag} onClick={() => handleSelectFlag(flag)} className="text-2xl hover:scale-125 transition-transform p-1">{flag}</button>
@@ -648,13 +656,13 @@ const App: React.FC = () => {
               <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                      Quick Notes
+                      {T.QUICK_NOTES[lang]}
                   </h3>
                   <button onClick={() => setShowNotes(false)} className="text-neutral-500 hover:text-white p-2 text-xl">✕</button>
               </div>
               <textarea 
                   className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-sm text-neutral-300 focus:outline-none focus:border-neutral-700 resize-none leading-relaxed placeholder-neutral-700"
-                  placeholder="Type anything here... (Wifi passwords, locker codes, shopping list)"
+                  placeholder="Type anything here..."
                   value={tripNotes}
                   onChange={(e) => setTripNotes(e.target.value)}
                   autoFocus
@@ -667,7 +675,7 @@ const App: React.FC = () => {
       <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-neutral-900 pt-[env(safe-area-inset-top)]">
         <div className="px-5 py-2 mt-2 flex justify-between items-center">
           <div className="flex items-center gap-2" onClick={() => { vibrate(); setShowDestSelector(true); }}>
-             <span className="text-neutral-500 text-[10px] font-normal uppercase tracking-wider">Trip to</span>
+             <span className="text-neutral-500 text-[10px] font-normal uppercase tracking-wider">{T.TRIP_TO[lang]}</span>
              <h1 className="text-lg font-bold tracking-widest text-white cursor-pointer active:opacity-50 border-b border-transparent hover:border-neutral-700 transition-all uppercase flex items-center gap-1">
                  {destination} <span className="text-[8px] text-neutral-600">▼</span>
              </h1>
@@ -690,7 +698,7 @@ const App: React.FC = () => {
             <div className="flex px-5 pb-2 overflow-x-auto no-scrollbar gap-2 items-center">
                 {itinerary.map(day => (
                     <button key={day.dayId} onClick={() => { vibrate(); setSelectedDay(day.dayId); }} className={`flex flex-col items-center min-w-[44px] p-1.5 rounded-lg transition-all border ${selectedDay === day.dayId ? 'bg-neutral-100 text-black border-neutral-100 shadow-glow' : 'bg-neutral-900 text-neutral-500 border-neutral-800 hover:border-neutral-700'}`}>
-                        <span className="text-[8px] uppercase font-bold tracking-wider">Day {day.dayId}</span>
+                        <span className="text-[8px] uppercase font-bold tracking-wider">{T.DAY[lang]} {day.dayId}</span>
                         <span className="text-xs font-bold font-mono">{getFormattedDate(day.date)}</span>
                     </button>
                 ))}
@@ -707,7 +715,7 @@ const App: React.FC = () => {
                     <div className="flex justify-between items-start">
                         <div className="flex-1">
                             <div className="flex items-center gap-2">
-                                <h2 className="text-base font-bold text-white uppercase tracking-tight">Itinerary</h2>
+                                <h2 className="text-base font-bold text-white uppercase tracking-tight">{T.ITINERARY[lang]}</h2>
                                 {isEditingDate ? (
                                     <div className="flex items-center gap-1">
                                         <input type="date" className="bg-neutral-800 text-[10px] text-white p-1 rounded border border-neutral-700 outline-none w-[100px] [color-scheme:dark]" value={tempDate} onChange={e => setTempDate(e.target.value)} />
@@ -720,7 +728,7 @@ const App: React.FC = () => {
                                     </button>
                                 )}
                             </div>
-                            {itinerary.length > 1 && (<button onClick={handleDeleteDay} className="mt-1 text-[9px] text-red-900 hover:text-red-500 transition-colors flex items-center gap-1 uppercase">🗑️ Delete Day</button>)}
+                            {itinerary.length > 1 && (<button onClick={handleDeleteDay} className="mt-1 text-[9px] text-red-900 hover:text-red-500 transition-colors flex items-center gap-1 uppercase">🗑️ {T.DELETE[lang]} Day</button>)}
                         </div>
                     </div>
                     {/* 7-Day Forecast Widget */}
@@ -750,13 +758,13 @@ const App: React.FC = () => {
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </button>
                     <button onClick={handleMapRoute} className="flex-1 bg-neutral-100 border border-white text-black py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:bg-neutral-300 transition-all active:scale-[0.98] uppercase">
-                        🗺️ MAP ROUTE {isSelectMode && selectedItemIds.size > 0 ? `(${selectedItemIds.size})` : ''}
+                        🗺️ {T.MAP_ROUTE[lang]} {isSelectMode && selectedItemIds.size > 0 ? `(${selectedItemIds.size})` : ''}
                     </button>
                     <button onClick={handleEnrichItinerary} disabled={isLoading} className="flex-1 bg-gradient-to-r from-neutral-800 to-neutral-900 border border-neutral-700 text-neutral-300 py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:border-neutral-500 transition-all active:scale-[0.98] uppercase">
-                        {isLoading ? <span className="animate-pulse">Analyzing...</span> : <><span>✨ AI GUIDE CHECK</span></>}
+                        {isLoading ? <span className="animate-pulse">Thinking...</span> : <><span>✨ {T.AI_CHECK[lang]}</span></>}
                     </button>
                     {currentDayPlan.backupItems && (
-                        <button onClick={handleResetDay} className="w-16 bg-neutral-900 border border-neutral-800 text-red-400 py-2 rounded-lg text-[10px] font-bold hover:border-red-900 hover:bg-red-950/20 uppercase">RESET</button>
+                        <button onClick={handleResetDay} className="w-16 bg-neutral-900 border border-neutral-800 text-red-400 py-2 rounded-lg text-[10px] font-bold hover:border-red-900 hover:bg-red-950/20 uppercase">{T.RESET[lang]}</button>
                     )}
                 </div>
 
@@ -772,25 +780,26 @@ const App: React.FC = () => {
                             isSelected={selectedItemIds.has(item.id)}
                             onSelect={handleToggleItemSelection}
                             isActive={isLiveItem(item, index, currentDayPlan.items)}
+                            lang={lang}
                         />
                     ))}
                     <div className="flex gap-2 mb-4 mt-2 relative group">
                         <div className="absolute left-[13px] top-0 bottom-8 w-[2px] bg-gradient-to-b from-neutral-800 to-transparent z-0"></div>
                         <div className="flex flex-col items-center min-w-[28px] z-10 opacity-50"><div className="w-7 h-7 rounded-full border border-neutral-800 border-dashed flex items-center justify-center"><span className="text-neutral-500 text-[10px]">+</span></div></div>
-                        <button onClick={handleAddItem} className="flex-1 h-10 border border-dashed border-neutral-800 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 transition-all active:scale-95 uppercase text-[9px] font-bold tracking-widest">+ ADD ACTIVITY</button>
+                        <button onClick={handleAddItem} className="flex-1 h-10 border border-dashed border-neutral-800 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 transition-all active:scale-95 uppercase text-[9px] font-bold tracking-widest">+ {T.ADD_ACTIVITY[lang]}</button>
                     </div>
                     
                     {/* After Party Button */}
                     <div className="mb-8">
                         <button onClick={handleAfterParty} className="w-full py-3 bg-neutral-900/50 border border-neutral-800 rounded-lg text-amber-200/50 hover:text-amber-200 hover:bg-neutral-900 text-[10px] font-bold tracking-widest uppercase transition-all">
-                            ✨ Next Stop?
+                            ✨ {T.NEXT_STOP[lang]}
                         </button>
                     </div>
                 </div>
             </>
         ) : activeTab === Tab.UTILITIES ? (
             <>
-                 <h2 className="text-base font-bold text-white mb-3 uppercase tracking-tight">Trip Utilities</h2>
+                 <h2 className="text-base font-bold text-white mb-3 uppercase tracking-tight">{T.WALLET[lang]} / {T.ITINERARY[lang]}</h2>
                  <Utilities 
                     budget={budget} 
                     flights={flights} 
@@ -817,13 +826,14 @@ const App: React.FC = () => {
                     onDeleteChecklist={handleDeleteChecklist}
                     onAiChecklist={handleAiChecklist}
                     isLoadingAi={isLoading}
+                    lang={lang}
                 />
             </>
         ) : (
             <>
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-base font-bold text-white uppercase tracking-tight">My Trips</h2>
-                    <button onClick={handleCreateTrip} className="bg-white text-black text-[10px] font-bold px-3 py-1 rounded active:scale-95 transition-transform uppercase">+ New Trip</button>
+                    <h2 className="text-base font-bold text-white uppercase tracking-tight">{T.MY_TRIPS[lang]}</h2>
+                    <button onClick={handleCreateTrip} className="bg-white text-black text-[10px] font-bold px-3 py-1 rounded active:scale-95 transition-transform uppercase">+ {T.NEW_TRIP[lang]}</button>
                 </div>
                 <div className="grid gap-2">
                     {trips.map(trip => (
@@ -833,7 +843,6 @@ const App: React.FC = () => {
                             className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden h-32 flex flex-col justify-between ${activeTripId === trip.id ? 'border-white' : 'border-neutral-800 hover:border-neutral-600'}`}
                             style={trip.coverImage ? { backgroundImage: `url(${trip.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                         >
-                             {/* Overlay for image readablity */}
                              <div className={`absolute inset-0 ${trip.coverImage ? 'bg-black/60' : 'bg-neutral-900'} z-0`}></div>
                              
                              {!trip.coverImage && (
@@ -847,10 +856,10 @@ const App: React.FC = () => {
                                      <div className="text-[9px] font-bold tracking-widest mb-0.5 text-neutral-400">{trip.startDate}</div>
                                      <h3 className="text-xl font-black uppercase tracking-tight leading-none mb-0.5 text-white">{trip.destination}</h3>
                                  </div>
-                                 {activeTripId === trip.id && <span className="bg-white text-black text-[8px] font-bold px-2 py-0.5 rounded-full">ACTIVE</span>}
+                                 {activeTripId === trip.id && <span className="bg-white text-black text-[8px] font-bold px-2 py-0.5 rounded-full">{T.ACTIVE[lang]}</span>}
                              </div>
                              <div className="relative z-10 text-[9px] font-medium text-neutral-400">
-                                 {trip.itinerary.length} Days • {trip.flights.length} Flights
+                                 {trip.itinerary.length} {T.DAY[lang]} • {trip.flights.length} {T.FLIGHTS[lang]}
                              </div>
                         </div>
                     ))}
@@ -860,21 +869,21 @@ const App: React.FC = () => {
       </main>
 
       <div className="fixed bottom-[70px] w-full text-center pointer-events-none z-0">
-          <span className="text-[8px] text-neutral-500 font-mono tracking-widest uppercase opacity-50">COPYRIGHT KH 2025</span>
+          <span className="text-[8px] text-neutral-500 font-mono tracking-widest uppercase opacity-50">{T.COPYRIGHT[lang]}</span>
       </div>
 
       <nav className="fixed bottom-0 w-full bg-black/95 backdrop-blur-xl border-t border-neutral-900 pb-safe-bottom z-50">
         <div className="flex justify-around items-center h-[60px] max-w-lg mx-auto">
             <button onClick={() => { vibrate(); setActiveTab(Tab.ITINERARY); }} className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === Tab.ITINERARY ? 'text-white' : 'text-neutral-600'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                <span className="text-[8px] font-medium uppercase tracking-wider">Schedule</span>
+                <span className="text-[8px] font-medium uppercase tracking-wider">{T.SCHEDULE[lang]}</span>
             </button>
             <button onClick={() => { vibrate(); setActiveTab(Tab.TRIPS); }} className={`w-10 h-10 rounded-full flex items-center justify-center -mt-5 shadow-lg active:scale-95 transition-all ${activeTab === Tab.TRIPS ? 'bg-white text-black shadow-white/20' : 'bg-neutral-800 text-neutral-400 shadow-black border border-neutral-700'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
             </button>
             <button onClick={() => { vibrate(); setActiveTab(Tab.UTILITIES); }} className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === Tab.UTILITIES ? 'text-white' : 'text-neutral-600'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-                <span className="text-[8px] font-medium uppercase tracking-wider">Wallet</span>
+                <span className="text-[8px] font-medium uppercase tracking-wider">{T.WALLET[lang]}</span>
             </button>
         </div>
       </nav>
