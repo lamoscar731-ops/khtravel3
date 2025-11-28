@@ -1,3 +1,5 @@
+export type Language = 'EN' | 'TC';
+
 export enum ItemType {
   SIGHTSEEING = 'SIGHTSEEING',
   FOOD = 'FOOD',
@@ -47,10 +49,10 @@ export interface ItineraryItem {
 export interface DayPlan {
   dayId: number;
   date: string;
-  weatherSummary?: string; // Kept for legacy
-  forecast?: WeatherForecast[]; // New: 7-Day Forecast
-  paceAnalysis?: string; // New: AI Analysis
-  logicWarning?: string; // New: AI Analysis
+  weatherSummary?: string;
+  forecast?: WeatherForecast[];
+  paceAnalysis?: string;
+  logicWarning?: string;
   items: ItineraryItem[];
   backupItems?: ItineraryItem[];
 }
@@ -122,5 +124,5 @@ export interface Trip {
   totalBudget?: number;
   checklist?: ChecklistItem[];
   notes?: string;
-  coverImage?: string; // New: Cover Image URL
+  coverImage?: string;
 }
