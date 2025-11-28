@@ -155,6 +155,7 @@ const App: React.FC = () => {
 
   useEffect(() => { localStorage.setItem('kuro_flag', userFlag); }, [userFlag]);
 
+  const [isEditingDest, setIsEditingDest] = useState<boolean>(false);
   const currentDayPlan = itinerary.find(d => d.dayId === selectedDay) || (itinerary[0] || { dayId: 1, date: 'N/A', items: [] });
 
   // --- Live Mode Helper ---
@@ -231,26 +232,11 @@ const App: React.FC = () => {
   const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
   const handleSelectFlag = (flag: string) => { vibrate(); setUserFlag(flag); setShowFlagSelector(false); };
 
-  const handleSelectDestination = async (city: string) => {
+  const handleSelectDestination = (city: string) => {
       vibrate();
       setDestination(city);
       setShowDestSelector(false);
-      
-      // Trigger Local SOS update
-      try {
-          const sosContacts = await generateLocalSOS(city);
-          if (sosContacts.length > 0) {
-              setContacts(prev => {
-                  const existingNums = new Set(prev.map(c => c.number));
-                  const newContacts = sosContacts.filter(c => !existingNums.has(c.number)).map(c => ({
-                      id: `sos-${Date.now()}-${Math.random()}`,
-                      ...c
-                  }));
-                  return [...prev, ...newContacts];
-              });
-              alert(`Emergency contacts updated for ${city}`);
-          }
-      } catch (e) { console.error("SOS Gen Failed"); }
+      // No automatic SOS update here anymore
   };
 
   const handleExport = () => {
@@ -333,6 +319,23 @@ const App: React.FC = () => {
         const itemsBackup = JSON.parse(JSON.stringify(currentDayPlan.items));
         const planToEnrich = { ...currentDayPlan };
         const enrichedPlan = await enrichItineraryWithGemini(planToEnrich);
+        
+        // --- NEW: Generate SOS Contacts here ---
+        try {
+            const sosContacts = await generateLocalSOS(destination);
+            if (sosContacts.length > 0) {
+                setContacts(prev => {
+                    const existingNums = new Set(prev.map(c => c.number));
+                    const newContacts = sosContacts.filter(c => !existingNums.has(c.number)).map(c => ({
+                        id: `sos-${Date.now()}-${Math.random()}`,
+                        ...c
+                    }));
+                    return [...prev, ...newContacts];
+                });
+            }
+        } catch (err) { console.error("SOS gen failed during check", err); }
+        // ---------------------------------------
+
         enrichedPlan.backupItems = itemsBackup;
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
@@ -520,7 +523,7 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="mt-6 text-center">
-                      <button onClick={() => { vibrate(); const query = encodeURIComponent(destination + " late night bars ramen"); window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">Search City on Maps</button>
+                      <button onClick={() => { vibrate(); window.open('https://www.google.com/maps', '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">Open Google Maps</button>
                   </div>
               </div>
           </div>
@@ -545,35 +548,31 @@ const App: React.FC = () => {
                <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
                    {Object.entries(COUNTRY_CITIES).map(([country, cities]) => {
                        const filteredCities = cities.filter(c => c.toLowerCase().includes(destSearch.toLowerCase()));
-                       if (filteredCities.length === 0 && destSearch) return null;
+                       if (filteredCities.length === 0 && destSearch && country !== "OTHERS") return null;
                        
                        return (
                            <div key={country}>
                                <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2 sticky top-0 bg-black py-1">{country}</h4>
-                               <div className="grid grid-cols-2 gap-2">
-                                   {filteredCities.map(city => (
-                                       <button 
-                                          key={city} 
-                                          onClick={() => handleSelectDestination(city)}
-                                          className="text-left p-3 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-600 text-xs text-white font-medium active:scale-95 transition-all"
-                                       >
-                                           {city}
-                                       </button>
-                                   ))}
-                               </div>
+                               {country === "OTHERS" ? (
+                                   <button onClick={() => handleSelectDestination(destSearch || "OTHERS")} className="w-full text-left p-3 rounded-lg bg-neutral-800 text-white text-xs font-bold">
+                                       {destSearch ? `Use "${destSearch}"` : "Type Custom Destination Above"}
+                                   </button>
+                               ) : (
+                                   <div className="grid grid-cols-2 gap-2">
+                                       {filteredCities.map(city => (
+                                           <button 
+                                              key={city} 
+                                              onClick={() => handleSelectDestination(city)}
+                                              className="text-left p-3 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-600 text-xs text-white font-medium active:scale-95 transition-all"
+                                           >
+                                               {city}
+                                           </button>
+                                       ))}
+                                   </div>
+                               )}
                            </div>
                        )
                    })}
-                   
-                   {/* Custom Input Option */}
-                   {destSearch && (
-                       <div className="mt-4 pt-4 border-t border-neutral-800">
-                           <p className="text-[10px] text-neutral-500 mb-2">Can't find it?</p>
-                           <button onClick={() => handleSelectDestination(destSearch)} className="w-full text-left p-3 rounded-lg bg-neutral-800 text-white text-xs font-bold">
-                               Use "{destSearch}"
-                           </button>
-                       </div>
-                   )}
                </div>
           </div>
       )}
