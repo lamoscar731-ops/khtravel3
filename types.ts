@@ -25,9 +25,9 @@ export interface Tag {
 }
 
 export interface WeatherForecast {
-  date: string; // e.g. "11/15"
-  icon: string; // e.g. "☀️"
-  temp: string; // e.g. "24°"
+    date: string;
+    icon: string;
+    temp: string;
 }
 
 export interface ItineraryItem {
@@ -47,10 +47,10 @@ export interface ItineraryItem {
 export interface DayPlan {
   dayId: number;
   date: string;
-  weatherSummary?: string; // Deprecated in UI, kept for backward compat
+  weatherSummary?: string; // Kept for legacy
   forecast?: WeatherForecast[]; // New: 7-Day Forecast
-  paceAnalysis?: string;
-  logicWarning?: string;
+  paceAnalysis?: string; // New: AI Analysis
+  logicWarning?: string; // New: AI Analysis
   items: ItineraryItem[];
   backupItems?: ItineraryItem[];
 }
@@ -98,6 +98,18 @@ export interface ChecklistItem {
   checked: boolean;
 }
 
+export interface AfterPartyRec {
+    name: string;
+    type: string;
+    reason: string;
+}
+
+export interface SOSContact {
+    name: string;
+    number: string;
+    note: string;
+}
+
 export interface Trip {
   id: string;
   destination: string;
@@ -110,5 +122,5 @@ export interface Trip {
   totalBudget?: number;
   checklist?: ChecklistItem[];
   notes?: string;
-  coverImage?: string;
+  coverImage?: string; // New: Cover Image URL
 }
