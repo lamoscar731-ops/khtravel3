@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
 import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES, TRANSLATIONS, EMERGENCY_DATA } from './constants';
-import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, Language } from './types';
+import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact, Language } from './types';
 import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions } from './services/geminiService';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
@@ -243,7 +243,7 @@ const App: React.FC = () => {
   const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
   const handleSelectFlag = (flag: string) => { vibrate(); setUserFlag(flag); setShowFlagSelector(false); };
 
-  // --- Select Destination Logic (Static Lookup) ---
+  // --- Select Destination Logic (Static SOS Lookup) ---
   const handleSelectDestination = (city: string) => {
       vibrate();
       setDestination(city);
@@ -261,7 +261,6 @@ const App: React.FC = () => {
       if (foundCountry && EMERGENCY_DATA[foundCountry]) {
           const staticContacts = EMERGENCY_DATA[foundCountry];
           setContacts(prev => {
-              // Avoid duplicates based on number
               const existingNums = new Set(prev.map(c => c.number));
               const newContacts = staticContacts.filter(c => !existingNums.has(c.number)).map(c => ({
                   id: `sos-${Date.now()}-${Math.random()}`,
@@ -512,7 +511,7 @@ const App: React.FC = () => {
                   <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
                   <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider text-center">{T.SETTINGS[lang]}</h3>
                   
-                  {/* Language Toggle (Short) */}
+                  {/* Language Toggle */}
                   <div className="absolute top-4 left-6 flex gap-2">
                       <button onClick={() => { vibrate(); setLang('EN'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'EN' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>EN</button>
                       <button onClick={() => { vibrate(); setLang('TC'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'TC' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>繁</button>
@@ -522,10 +521,10 @@ const App: React.FC = () => {
                       {/* Cover Photo Input */}
                       <div>
                           <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">{T.TRIP_COVER[lang]}</h4>
-                          <div className="flex gap-2">
-                              {/* If Base64, show indicator & clear button instead of long text */}
+                          <div className="flex gap-2 h-10">
+                              {/* If Base64, show indicator & clear button */}
                               {coverImage.startsWith('data:') ? (
-                                  <div className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg p-3 flex justify-between items-center">
+                                  <div className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 flex justify-between items-center">
                                       <span className="text-xs text-green-400 font-mono">Image Uploaded</span>
                                       <button onClick={() => setCoverImage('')} className="text-neutral-500 hover:text-white">✕</button>
                                   </div>
@@ -534,12 +533,12 @@ const App: React.FC = () => {
                                     value={coverImage} 
                                     onChange={(e) => setCoverImage(e.target.value)} 
                                     placeholder="URL..." 
-                                    className="flex-1 bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none" 
+                                    className="flex-1 bg-black border border-neutral-700 rounded-lg px-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none h-full" 
                                   />
                               )}
                               <button 
                                 onClick={() => coverInputRef.current?.click()} 
-                                className="bg-neutral-800 border border-neutral-700 text-white px-3 rounded-lg text-[10px] font-bold whitespace-nowrap"
+                                className="bg-neutral-800 border border-neutral-700 text-white px-4 rounded-lg text-[10px] font-bold whitespace-nowrap h-full flex items-center justify-center"
                               >
                                   {T.UPLOAD[lang]}
                               </button>
@@ -551,9 +550,9 @@ const App: React.FC = () => {
                           <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">{T.SYNC_SHARE[lang]}</h4>
                           <p className="text-[9px] text-neutral-400 mb-3 leading-relaxed">Copy code below.</p>
                           <button onClick={handleExport} className="w-full bg-white text-black py-2 rounded-lg text-xs font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase"><span>📋 {T.COPY_CODE[lang]}</span></button>
-                          <div className="relative mb-4">
-                              <input value={importData} onChange={(e) => setImportData(e.target.value)} placeholder="Paste code..." className="w-full bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none pr-16" />
-                              <button onClick={handleImport} disabled={!importData} className="absolute right-1 top-1 bottom-1 bg-neutral-800 text-white px-3 rounded text-[10px] font-bold disabled:opacity-50 hover:bg-neutral-700">{T.LOAD[lang]}</button>
+                          <div className="relative mb-4 h-10">
+                              <input value={importData} onChange={(e) => setImportData(e.target.value)} placeholder="Paste code..." className="w-full h-full bg-black border border-neutral-700 rounded-lg px-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none pr-16" />
+                              <button onClick={handleImport} disabled={!importData} className="absolute right-1 top-1 bottom-1 bg-neutral-800 text-white px-3 rounded-lg text-[10px] font-bold disabled:opacity-50 hover:bg-neutral-700 flex items-center">{T.LOAD[lang]}</button>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                               <button onClick={handleExportCalendar} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1"><span>📅 {T.EXPORT_ICS[lang]}</span></button>
