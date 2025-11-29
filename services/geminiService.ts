@@ -75,19 +75,26 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Lang
     
     const parsedResult = JSON.parse(resultText) as DayPlan;
 
-    // --- MERGE LOGIC: Preserve original fields (especially mapsUrl) ---
+    // --- ROBUST MERGE LOGIC ---
+    // We must preserve the original mapsUrl, id, and tags.
+    // AI might not return items in exact order, or might mess up IDs.
+    // Strategy: Try to match by ID, fallback to index.
     const mergedItems = parsedResult.items.map((newItem, index) => {
-        const originalItem = currentPlan.items[index];
-        // If no original item (AI added new one), use AI item as is
-        if (!originalItem) return newItem;
+        let originalItem = currentPlan.items.find(i => i.id === newItem.id);
         
+        // If ID match failed (AI changed ID), fallback to index
+        if (!originalItem && index < currentPlan.items.length) {
+            originalItem = currentPlan.items[index];
+        }
+
+        if (!originalItem) return newItem; // Completely new item from AI?
+
         return {
             ...newItem,
-            // Preserve critical user-defined fields that AI doesn't return or might mess up
-            id: originalItem.id, 
-            time: originalItem.time, 
-            mapsUrl: originalItem.mapsUrl, 
-            tags: originalItem.tags 
+            id: originalItem.id,         // Enforce original ID
+            time: originalItem.time,     // Enforce original Time (user knows best)
+            mapsUrl: originalItem.mapsUrl, // CRITICAL: Preserve Map URL
+            tags: originalItem.tags      // Preserve Tags
         };
     });
 
@@ -138,6 +145,5 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
 };
 
 export const generateLocalSOS = async (city: string, lang: Language): Promise<SOSContact[]> => {
-    // Deprecated (Using Static List), but kept to prevent build errors if called
-    return [];
+    return []; // Deprecated
 };
