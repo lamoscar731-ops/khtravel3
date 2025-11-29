@@ -46,7 +46,6 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Lang
             tips: { type: Type.ARRAY, items: { type: Type.STRING } },
             weather: { type: Type.STRING },
             navQuery: { type: Type.STRING }
-            // mapsUrl is NOT in schema, so AI won't return it, we must merge manually
           }
         }
       }
@@ -76,20 +75,19 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Lang
     
     const parsedResult = JSON.parse(resultText) as DayPlan;
 
-    // --- CRITICAL FIX: Merge original data back ---
-    // AI might return new IDs or miss mapsUrl. We map based on index if possible, or just trust order.
-    // Since AI processes the list in order, we can map by index.
+    // --- MERGE LOGIC: Preserve original fields (especially mapsUrl) ---
     const mergedItems = parsedResult.items.map((newItem, index) => {
         const originalItem = currentPlan.items[index];
-        if (!originalItem) return newItem; // New item added by AI? (Unlikely based on prompt)
+        // If no original item (AI added new one), use AI item as is
+        if (!originalItem) return newItem;
         
         return {
             ...newItem,
-            // Force keep original critical fields that AI might mess up or omit
+            // Preserve critical user-defined fields that AI doesn't return or might mess up
             id: originalItem.id, 
-            time: originalItem.time, // AI might change time format, keep user's
-            mapsUrl: originalItem.mapsUrl, // PRESERVE MAP URL
-            tags: originalItem.tags // Preserve manual tags
+            time: originalItem.time, 
+            mapsUrl: originalItem.mapsUrl, 
+            tags: originalItem.tags 
         };
     });
 
@@ -140,6 +138,6 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
 };
 
 export const generateLocalSOS = async (city: string, lang: Language): Promise<SOSContact[]> => {
-    // Deprecated in favor of static list, but kept for fallback
+    // Deprecated (Using Static List), but kept to prevent build errors if called
     return [];
 };
