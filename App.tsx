@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
 import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES, TRANSLATIONS, EMERGENCY_DATA } from './constants';
-import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact, Language } from './types';
+import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, Language } from './types';
 import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions } from './services/geminiService';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
@@ -243,7 +243,7 @@ const App: React.FC = () => {
   const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
   const handleSelectFlag = (flag: string) => { vibrate(); setUserFlag(flag); setShowFlagSelector(false); };
 
-  // --- Select Destination Logic (Updated to Static SOS Lookup) ---
+  // --- Select Destination Logic (Static Lookup) ---
   const handleSelectDestination = (city: string) => {
       vibrate();
       setDestination(city);
@@ -380,16 +380,11 @@ const App: React.FC = () => {
     vibrate();
     setIsLoading(true);
     try {
-        // 1. Create backup
         const itemsBackup = JSON.parse(JSON.stringify(currentDayPlan.items));
-        
-        // 2. Call AI
         const planToEnrich = { ...currentDayPlan };
         const enrichedPlan = await enrichItineraryWithGemini(planToEnrich, lang);
-
-        // 3. Preserve backup
-        enrichedPlan.backupItems = itemsBackup;
         
+        enrichedPlan.backupItems = itemsBackup;
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
         console.error("Failed to enrich", e);
@@ -865,6 +860,7 @@ const App: React.FC = () => {
                             className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden h-32 flex flex-col justify-between ${activeTripId === trip.id ? 'border-white' : 'border-neutral-800 hover:border-neutral-600'}`}
                             style={trip.coverImage ? { backgroundImage: `url(${trip.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                         >
+                             {/* Overlay for image readablity */}
                              <div className={`absolute inset-0 ${trip.coverImage ? 'bg-black/60' : 'bg-neutral-900'} z-0`}></div>
                              
                              {!trip.coverImage && (
