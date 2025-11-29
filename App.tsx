@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
-import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES, TRANSLATIONS } from './constants';
+import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES, TRANSLATIONS, EMERGENCY_DATA } from './constants';
 import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact, Language } from './types';
-import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions, generateLocalSOS } from './services/geminiService';
+import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions } from './services/geminiService';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
 
@@ -243,10 +243,33 @@ const App: React.FC = () => {
   const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
   const handleSelectFlag = (flag: string) => { vibrate(); setUserFlag(flag); setShowFlagSelector(false); };
 
+  // --- Select Destination Logic (Updated to Static SOS Lookup) ---
   const handleSelectDestination = (city: string) => {
       vibrate();
       setDestination(city);
       setShowDestSelector(false);
+
+      // Look up country key from city value in COUNTRY_CITIES
+      let foundCountry = '';
+      for (const [country, cities] of Object.entries(COUNTRY_CITIES)) {
+          if (cities.includes(city)) {
+              foundCountry = country;
+              break;
+          }
+      }
+      
+      if (foundCountry && EMERGENCY_DATA[foundCountry]) {
+          const staticContacts = EMERGENCY_DATA[foundCountry];
+          setContacts(prev => {
+              // Avoid duplicates based on number
+              const existingNums = new Set(prev.map(c => c.number));
+              const newContacts = staticContacts.filter(c => !existingNums.has(c.number)).map(c => ({
+                  id: `sos-${Date.now()}-${Math.random()}`,
+                  ...c
+              }));
+              return [...prev, ...newContacts];
+          });
+      }
   };
 
   // --- Cover Image Upload Logic ---
@@ -357,25 +380,16 @@ const App: React.FC = () => {
     vibrate();
     setIsLoading(true);
     try {
+        // 1. Create backup
         const itemsBackup = JSON.parse(JSON.stringify(currentDayPlan.items));
+        
+        // 2. Call AI
         const planToEnrich = { ...currentDayPlan };
         const enrichedPlan = await enrichItineraryWithGemini(planToEnrich, lang);
-        
-        try {
-            const sosContacts = await generateLocalSOS(destination, lang);
-            if (sosContacts.length > 0) {
-                setContacts(prev => {
-                    const existingNums = new Set(prev.map(c => c.number));
-                    const newContacts = sosContacts.filter(c => !existingNums.has(c.number)).map(c => ({
-                        id: `sos-${Date.now()}-${Math.random()}`,
-                        ...c
-                    }));
-                    return [...prev, ...newContacts];
-                });
-            }
-        } catch (err) { console.error("SOS gen failed during check", err); }
 
+        // 3. Preserve backup
         enrichedPlan.backupItems = itemsBackup;
+        
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
         console.error("Failed to enrich", e);
@@ -502,24 +516,32 @@ const App: React.FC = () => {
               <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative overflow-y-auto max-h-[80vh]">
                   <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
                   <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider text-center">{T.SETTINGS[lang]}</h3>
-                  <div className="space-y-6">
-                      
-                      {/* Language Toggle */}
-                      <div className="flex justify-center bg-neutral-800 rounded-lg p-1 mb-6">
-                          <button onClick={() => { vibrate(); setLang('EN'); }} className={`flex-1 py-2 rounded text-[10px] font-bold transition-all ${lang === 'EN' ? 'bg-white text-black shadow' : 'text-neutral-400 hover:text-white'}`}>ENGLISH</button>
-                          <button onClick={() => { vibrate(); setLang('TC'); }} className={`flex-1 py-2 rounded text-[10px] font-bold transition-all ${lang === 'TC' ? 'bg-white text-black shadow' : 'text-neutral-400 hover:text-white'}`}>繁體中文</button>
-                      </div>
+                  
+                  {/* Language Toggle (Short) */}
+                  <div className="absolute top-4 left-6 flex gap-2">
+                      <button onClick={() => { vibrate(); setLang('EN'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'EN' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>EN</button>
+                      <button onClick={() => { vibrate(); setLang('TC'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'TC' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>繁</button>
+                  </div>
 
+                  <div className="space-y-6 mt-4">
                       {/* Cover Photo Input */}
                       <div>
                           <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">{T.TRIP_COVER[lang]}</h4>
                           <div className="flex gap-2">
-                              <input 
-                                value={coverImage} 
-                                onChange={(e) => setCoverImage(e.target.value)} 
-                                placeholder="URL..." 
-                                className="flex-1 bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none" 
-                              />
+                              {/* If Base64, show indicator & clear button instead of long text */}
+                              {coverImage.startsWith('data:') ? (
+                                  <div className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg p-3 flex justify-between items-center">
+                                      <span className="text-xs text-green-400 font-mono">Image Uploaded</span>
+                                      <button onClick={() => setCoverImage('')} className="text-neutral-500 hover:text-white">✕</button>
+                                  </div>
+                              ) : (
+                                  <input 
+                                    value={coverImage} 
+                                    onChange={(e) => setCoverImage(e.target.value)} 
+                                    placeholder="URL..." 
+                                    className="flex-1 bg-black border border-neutral-700 rounded-lg p-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none" 
+                                  />
+                              )}
                               <button 
                                 onClick={() => coverInputRef.current?.click()} 
                                 className="bg-neutral-800 border border-neutral-700 text-white px-3 rounded-lg text-[10px] font-bold whitespace-nowrap"
