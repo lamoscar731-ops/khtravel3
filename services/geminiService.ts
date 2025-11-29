@@ -46,6 +46,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Lang
             tips: { type: Type.ARRAY, items: { type: Type.STRING } },
             weather: { type: Type.STRING },
             navQuery: { type: Type.STRING }
+            // mapsUrl is NOT in schema, so AI won't return it, we must merge manually
           }
         }
       }
@@ -72,7 +73,28 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Lang
     });
     const resultText = response.text;
     if (!resultText) throw new Error("No response");
-    return JSON.parse(resultText) as DayPlan;
+    
+    const parsedResult = JSON.parse(resultText) as DayPlan;
+
+    // --- CRITICAL FIX: Merge original data back ---
+    // AI might return new IDs or miss mapsUrl. We map based on index if possible, or just trust order.
+    // Since AI processes the list in order, we can map by index.
+    const mergedItems = parsedResult.items.map((newItem, index) => {
+        const originalItem = currentPlan.items[index];
+        if (!originalItem) return newItem; // New item added by AI? (Unlikely based on prompt)
+        
+        return {
+            ...newItem,
+            // Force keep original critical fields that AI might mess up or omit
+            id: originalItem.id, 
+            time: originalItem.time, // AI might change time format, keep user's
+            mapsUrl: originalItem.mapsUrl, // PRESERVE MAP URL
+            tags: originalItem.tags // Preserve manual tags
+        };
+    });
+
+    return { ...parsedResult, items: mergedItems };
+
   } catch (error) {
     return { ...currentPlan, weatherSummary: "Offline" };
   }
@@ -96,6 +118,7 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
     const ai = getAiClient(apiKey);
     const prompt = `
       I am at ${location} at ${time}. Suggest 3 late-night spots (Ramen, Bar, Donki).
+      MUST BE OPEN LATE or 24 HOURS.
       ${getLangInstruction(lang)}
       Return JSON array of objects: { name, type, reason }.
     `;
@@ -117,27 +140,6 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
 };
 
 export const generateLocalSOS = async (city: string, lang: Language): Promise<SOSContact[]> => {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error("Missing API Key");
-    const ai = getAiClient(apiKey);
-    const prompt = `
-      3 emergency contacts for ${city} (Police, Ambulance, Consulate).
-      ${getLangInstruction(lang)}
-      Return JSON array of objects: { name, number, note }.
-    `;
-    const schema = {
-      type: Type.ARRAY,
-      items: {
-          type: Type.OBJECT,
-          properties: {
-              name: { type: Type.STRING },
-              number: { type: Type.STRING },
-              note: { type: Type.STRING }
-          }
-      }
-    };
-    try {
-      const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
-      return JSON.parse(response.text || '[]') as SOSContact[];
-    } catch (error) { return []; }
+    // Deprecated in favor of static list, but kept for fallback
+    return [];
 };
