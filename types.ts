@@ -82,8 +82,6 @@ export interface FlightInfo {
   arrivalAirport: string;
   gate?: string;
   terminal?: string;
-  attachment?: string; // Base64 Data URI
-  attachmentType?: 'image' | 'pdf';
 }
 
 export interface HotelInfo {
@@ -93,8 +91,6 @@ export interface HotelInfo {
   checkIn: string;
   checkOut: string;
   bookingRef: string;
-  attachment?: string; // Base64 Data URI
-  attachmentType?: 'image' | 'pdf';
 }
 
 export interface EmergencyContact {
