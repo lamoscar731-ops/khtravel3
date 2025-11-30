@@ -59,7 +59,7 @@ const App: React.FC = () => {
         .catch(() => console.log("Using default rates"));
   }, []);
 
-  // --- Multi-Trip State Management (Safe Loading) ---
+  // --- Multi-Trip State Management (With Robust Migration) ---
   const [trips, setTrips] = useState<Trip[]>(() => {
       let initialTrips: any[] = [];
       try {
@@ -76,16 +76,25 @@ const App: React.FC = () => {
           const oldItinerary = localStorage.getItem('kuro_itinerary');
           if (oldItinerary) {
               try {
+                  // CRITICAL FIX: When migrating, ensure ALL list fields are initialized to []
+                  // Do NOT rely on localStorage.getItem returning valid JSON for other fields.
                   initialTrips = [{
                       id: `trip-${Date.now()}`,
                       destination: localStorage.getItem('kuro_destination') || 'TOKYO',
                       startDate: '2023-11-15',
                       itinerary: JSON.parse(oldItinerary),
-                      flights: JSON.parse(localStorage.getItem('kuro_flights') || '[]'),
-                      hotels: JSON.parse(localStorage.getItem('kuro_hotels') || '[]'),
-                      budget: JSON.parse(localStorage.getItem('kuro_budget') || '[]'),
-                      contacts: JSON.parse(localStorage.getItem('kuro_contacts') || '[]')
+                      flights: [], // Default to empty to prevent crash
+                      hotels: [],
+                      budget: [],
+                      contacts: []
                   }];
+                  
+                  // Try to load legacy aux data if it exists, safely
+                  try { initialTrips[0].flights = JSON.parse(localStorage.getItem('kuro_flights') || '[]'); } catch(e){}
+                  try { initialTrips[0].hotels = JSON.parse(localStorage.getItem('kuro_hotels') || '[]'); } catch(e){}
+                  try { initialTrips[0].budget = JSON.parse(localStorage.getItem('kuro_budget') || '[]'); } catch(e){}
+                  try { initialTrips[0].contacts = JSON.parse(localStorage.getItem('kuro_contacts') || '[]'); } catch(e){}
+
               } catch(e) {
                   initialTrips = [];
               }
@@ -106,18 +115,20 @@ const App: React.FC = () => {
           }];
       }
 
-      // DATA SANITIZATION: Ensure all fields exist to prevent crashes
+      // FINAL SANITIZATION: Ensure every trip object has all required arrays
       return initialTrips.map(t => ({
           id: t.id || `trip-${Math.random()}`,
           destination: t.destination || 'Unknown',
           startDate: t.startDate || '2024-01-01',
+          // Ensure arrays are arrays
           itinerary: Array.isArray(t.itinerary) ? t.itinerary : [],
           flights: Array.isArray(t.flights) ? t.flights : [],
           hotels: Array.isArray(t.hotels) ? t.hotels : [],
           budget: Array.isArray(t.budget) ? t.budget : [],
           contacts: Array.isArray(t.contacts) ? t.contacts : [],
-          totalBudget: typeof t.totalBudget === 'number' ? t.totalBudget : 20000,
           checklist: Array.isArray(t.checklist) ? t.checklist : [],
+          // Ensure other fields
+          totalBudget: typeof t.totalBudget === 'number' ? t.totalBudget : 20000,
           notes: t.notes || '',
           coverImage: t.coverImage || ''
       }));
@@ -133,17 +144,18 @@ const App: React.FC = () => {
   // Derived State for Active Trip (Initialized safely)
   const activeTrip = trips.find(t => t.id === activeTripId) || trips[0];
   
+  // Initialize state from activeTrip, guaranteeing no undefined values
   const [selectedDay, setSelectedDay] = useState<number>(1);
-  const [destination, setDestination] = useState<string>(activeTrip.destination);
-  const [itinerary, setItinerary] = useState<DayPlan[]>(activeTrip.itinerary || []);
-  const [flights, setFlights] = useState<FlightInfo[]>(activeTrip.flights || []);
-  const [hotels, setHotels] = useState<HotelInfo[]>(activeTrip.hotels || []);
-  const [budget, setBudget] = useState<BudgetProps[]>(activeTrip.budget || []);
-  const [contacts, setContacts] = useState<EmergencyContact[]>(activeTrip.contacts || []);
-  const [totalBudget, setTotalBudget] = useState<number>(activeTrip.totalBudget || 20000);
-  const [checklist, setChecklist] = useState<ChecklistItem[]>(activeTrip.checklist || []);
-  const [tripNotes, setTripNotes] = useState<string>(activeTrip.notes || '');
-  const [coverImage, setCoverImage] = useState<string>(activeTrip.coverImage || '');
+  const [destination, setDestination] = useState<string>(activeTrip?.destination || '');
+  const [itinerary, setItinerary] = useState<DayPlan[]>(activeTrip?.itinerary || []);
+  const [flights, setFlights] = useState<FlightInfo[]>(activeTrip?.flights || []);
+  const [hotels, setHotels] = useState<HotelInfo[]>(activeTrip?.hotels || []);
+  const [budget, setBudget] = useState<BudgetProps[]>(activeTrip?.budget || []);
+  const [contacts, setContacts] = useState<EmergencyContact[]>(activeTrip?.contacts || []);
+  const [totalBudget, setTotalBudget] = useState<number>(activeTrip?.totalBudget ?? 20000);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(activeTrip?.checklist || []);
+  const [tripNotes, setTripNotes] = useState<string>(activeTrip?.notes || '');
+  const [coverImage, setCoverImage] = useState<string>(activeTrip?.coverImage || '');
 
   const [userFlag, setUserFlag] = useState<string>(() => {
     return localStorage.getItem('kuro_flag') || "🇯🇵";
@@ -155,10 +167,10 @@ const App: React.FC = () => {
       if (currentTrip) {
           setDestination(currentTrip.destination || '');
           setItinerary(currentTrip.itinerary || []);
-          setFlights(currentTrip.flights || []);
-          setHotels(currentTrip.hotels || []);
-          setBudget(currentTrip.budget || []);
-          setContacts(currentTrip.contacts || []);
+          setFlights(currentTrip.flights || []); // Safe array
+          setHotels(currentTrip.hotels || []);   // Safe array
+          setBudget(currentTrip.budget || []);   // Safe array
+          setContacts(currentTrip.contacts || []); // Safe array
           setTotalBudget(currentTrip.totalBudget ?? 20000);
           setChecklist(currentTrip.checklist || []);
           setTripNotes(currentTrip.notes || '');
@@ -445,7 +457,7 @@ const App: React.FC = () => {
       setItinerary(prev => prev.map(day => {
           if (day.dayId === selectedDay) {
               const { backupItems, ...rest } = day;
-              // Clear analysis fields and forecast
+              // Clear analysis fields and forecast, but keep other fields
               return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined, forecast: undefined };
           }
           return day;
