@@ -75,7 +75,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Lang
     
     const parsedResult = JSON.parse(resultText) as DayPlan;
 
-    // --- FIX: MERGE LOGIC TO PRESERVE MAPS URL ---
+    // --- MERGE LOGIC: Preserve mapsUrl ---
     const mergedItems = parsedResult.items.map((newItem, index) => {
         let originalItem = currentPlan.items.find(i => i.id === newItem.id);
         if (!originalItem && index < currentPlan.items.length) {
@@ -87,7 +87,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Lang
             ...newItem,
             id: originalItem.id, 
             time: originalItem.time, 
-            mapsUrl: originalItem.mapsUrl, // Preserved
+            mapsUrl: originalItem.mapsUrl, 
             tags: originalItem.tags 
         };
     });
@@ -136,8 +136,4 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
       const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
       return JSON.parse(response.text || '[]') as AfterPartyRec[];
     } catch (error) { return []; }
-};
-
-export const generateLocalSOS = async (city: string, lang: Language): Promise<SOSContact[]> => {
-    return []; // Deprecated
 };
