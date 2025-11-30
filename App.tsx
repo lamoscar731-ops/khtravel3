@@ -23,7 +23,8 @@ const App: React.FC = () => {
   
   // --- Language State ---
   const [lang, setLang] = useState<Language>(() => {
-      return (localStorage.getItem('kuro_lang') as Language) || 'EN';
+      const savedLang = localStorage.getItem('kuro_lang');
+      return (savedLang === 'EN' || savedLang === 'TC') ? savedLang : 'EN';
   });
   const T = TRANSLATIONS;
 
@@ -58,86 +59,136 @@ const App: React.FC = () => {
         .catch(() => console.log("Using default rates"));
   }, []);
 
-  // --- Multi-Trip State Management ---
+  // --- Multi-Trip State Management (With Robust Migration) ---
   const [trips, setTrips] = useState<Trip[]>(() => {
-      const savedTrips = localStorage.getItem('kuro_trips');
-      if (savedTrips) return JSON.parse(savedTrips);
-      const oldItinerary = localStorage.getItem('kuro_itinerary');
-      if (oldItinerary) {
-          const migratedTrip: Trip = {
-              id: `trip-${Date.now()}`,
-              destination: localStorage.getItem('kuro_destination') || 'TOKYO',
-              startDate: '2023-11-15',
-              itinerary: JSON.parse(oldItinerary),
-              flights: JSON.parse(localStorage.getItem('kuro_flights') || JSON.stringify(INITIAL_FLIGHTS)),
-              hotels: JSON.parse(localStorage.getItem('kuro_hotels') || JSON.stringify(INITIAL_HOTELS)),
-              budget: JSON.parse(localStorage.getItem('kuro_budget') || JSON.stringify(INITIAL_BUDGET)),
-              contacts: JSON.parse(localStorage.getItem('kuro_contacts') || JSON.stringify(INITIAL_CONTACTS)),
-              totalBudget: 20000,
-              checklist: [],
-              notes: '',
-              coverImage: ''
-          };
-          return [migratedTrip];
+      let initialTrips: any[] = [];
+      
+      // 1. Try loading new format
+      try {
+          const savedTrips = localStorage.getItem('kuro_trips');
+          if (savedTrips) {
+              initialTrips = JSON.parse(savedTrips);
+          }
+      } catch (e) {
+          console.error("Failed to load trips", e);
       }
-      return [{
-          id: `trip-${Date.now()}`,
-          destination: 'TOKYO',
-          startDate: '2024-01-01',
-          itinerary: INITIAL_ITINERARY,
-          flights: INITIAL_FLIGHTS,
-          hotels: INITIAL_HOTELS,
-          budget: INITIAL_BUDGET,
-          contacts: INITIAL_CONTACTS,
-          totalBudget: 20000,
-          checklist: [],
-          notes: '',
-          coverImage: ''
-      }];
+
+      // 2. Migration: If no trips, check for old single-trip data
+      if (!Array.isArray(initialTrips) || initialTrips.length === 0) {
+          const oldItinerary = localStorage.getItem('kuro_itinerary');
+          if (oldItinerary) {
+              try {
+                  initialTrips = [{
+                      id: `trip-${Date.now()}`,
+                      destination: localStorage.getItem('kuro_destination') || 'TOKYO',
+                      startDate: '2023-11-15',
+                      itinerary: JSON.parse(oldItinerary),
+                      // Attempt to load old aux data, but don't trust it fully yet
+                      flights: [], 
+                      hotels: [],
+                      budget: [],
+                      contacts: []
+                  }];
+                  
+                  // Try parsing legacy aux data
+                  const f = localStorage.getItem('kuro_flights'); if(f) initialTrips[0].flights = JSON.parse(f);
+                  const h = localStorage.getItem('kuro_hotels'); if(h) initialTrips[0].hotels = JSON.parse(h);
+                  const b = localStorage.getItem('kuro_budget'); if(b) initialTrips[0].budget = JSON.parse(b);
+                  const c = localStorage.getItem('kuro_contacts'); if(c) initialTrips[0].contacts = JSON.parse(c);
+
+              } catch(e) {
+                  initialTrips = [];
+              }
+          }
+      }
+
+      // 3. Fallback: Default Template
+      if (!Array.isArray(initialTrips) || initialTrips.length === 0) {
+          initialTrips = [{
+              id: `trip-${Date.now()}`,
+              destination: 'TOKYO',
+              startDate: '2024-01-01',
+              itinerary: INITIAL_ITINERARY,
+              flights: INITIAL_FLIGHTS,
+              hotels: INITIAL_HOTELS,
+              budget: INITIAL_BUDGET,
+              contacts: INITIAL_CONTACTS
+          }];
+      }
+
+      // 4. SANITIZATION: Force correct types for ALL fields
+      // This is the key fix for "Black Screen"
+      return initialTrips.map(t => ({
+          id: t.id || `trip-${Math.random()}`,
+          destination: t.destination || 'Unknown',
+          startDate: t.startDate || '2024-01-01',
+          // Arrays: Strict check
+          itinerary: Array.isArray(t.itinerary) ? t.itinerary : [],
+          flights: Array.isArray(t.flights) ? t.flights : [],
+          hotels: Array.isArray(t.hotels) ? t.hotels : [],
+          budget: Array.isArray(t.budget) ? t.budget : [],
+          contacts: Array.isArray(t.contacts) ? t.contacts : [],
+          checklist: Array.isArray(t.checklist) ? t.checklist : [],
+          // Primitives
+          totalBudget: typeof t.totalBudget === 'number' ? t.totalBudget : 20000,
+          notes: t.notes || '',
+          coverImage: t.coverImage || ''
+      }));
   });
 
   const [activeTripId, setActiveTripId] = useState<string>(() => {
-      return localStorage.getItem('kuro_active_trip_id') || (trips.length > 0 ? trips[0].id : '');
+      const savedId = localStorage.getItem('kuro_active_trip_id');
+      if (savedId && trips.some(t => t.id === savedId)) return savedId;
+      return trips.length > 0 ? trips[0].id : '';
   });
 
+  // Derived State for Active Trip (Initialized safely)
+  const activeTrip = trips.find(t => t.id === activeTripId) || trips[0];
+  
+  // Initialize state from activeTrip, guaranteeing no undefined values
   const [selectedDay, setSelectedDay] = useState<number>(1);
-  const [destination, setDestination] = useState<string>('TOKYO');
-  const [itinerary, setItinerary] = useState<DayPlan[]>([]);
-  const [flights, setFlights] = useState<FlightInfo[]>([]);
-  const [hotels, setHotels] = useState<HotelInfo[]>([]);
-  const [budget, setBudget] = useState<BudgetProps[]>([]);
-  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
-  const [totalBudget, setTotalBudget] = useState<number>(20000);
-  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
-  const [tripNotes, setTripNotes] = useState<string>('');
-  const [coverImage, setCoverImage] = useState<string>('');
+  const [destination, setDestination] = useState<string>(activeTrip?.destination || '');
+  const [itinerary, setItinerary] = useState<DayPlan[]>(activeTrip?.itinerary || []);
+  const [flights, setFlights] = useState<FlightInfo[]>(activeTrip?.flights || []);
+  const [hotels, setHotels] = useState<HotelInfo[]>(activeTrip?.hotels || []);
+  const [budget, setBudget] = useState<BudgetProps[]>(activeTrip?.budget || []);
+  const [contacts, setContacts] = useState<EmergencyContact[]>(activeTrip?.contacts || []);
+  const [totalBudget, setTotalBudget] = useState<number>(activeTrip?.totalBudget ?? 20000);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(activeTrip?.checklist || []);
+  const [tripNotes, setTripNotes] = useState<string>(activeTrip?.notes || '');
+  const [coverImage, setCoverImage] = useState<string>(activeTrip?.coverImage || '');
 
   const [userFlag, setUserFlag] = useState<string>(() => {
     return localStorage.getItem('kuro_flag') || "🇯🇵";
   });
 
-  // --- Load Active Trip Data ---
+  // --- Load Active Trip Data when ID changes ---
   useEffect(() => {
       const currentTrip = trips.find(t => t.id === activeTripId);
       if (currentTrip) {
-          setDestination(currentTrip.destination);
-          setItinerary(currentTrip.itinerary);
-          setFlights(currentTrip.flights);
-          setHotels(currentTrip.hotels);
-          setBudget(currentTrip.budget);
-          setContacts(currentTrip.contacts);
-          setTotalBudget(currentTrip.totalBudget || 20000);
-          setChecklist(currentTrip.checklist || []);
+          setDestination(currentTrip.destination || '');
+          setItinerary(currentTrip.itinerary || []);
+          setFlights(Array.isArray(currentTrip.flights) ? currentTrip.flights : []);
+          setHotels(Array.isArray(currentTrip.hotels) ? currentTrip.hotels : []);
+          setBudget(Array.isArray(currentTrip.budget) ? currentTrip.budget : []);
+          setContacts(Array.isArray(currentTrip.contacts) ? currentTrip.contacts : []);
+          setTotalBudget(currentTrip.totalBudget ?? 20000);
+          setChecklist(Array.isArray(currentTrip.checklist) ? currentTrip.checklist : []);
           setTripNotes(currentTrip.notes || '');
           setCoverImage(currentTrip.coverImage || '');
-          if (selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
+          
+          // Reset day if out of bounds
+          if (currentTrip.itinerary && selectedDay > currentTrip.itinerary.length) {
+              setSelectedDay(1);
+          }
+          
           setIsSelectMode(false);
           setSelectedItemIds(new Set());
       }
       localStorage.setItem('kuro_active_trip_id', activeTripId);
   }, [activeTripId]);
 
-  // --- Sync Changes Back ---
+  // --- Sync Changes Back to Global State ---
   useEffect(() => {
       setTrips(prevTrips => {
           const newTrips = prevTrips.map(t => {
@@ -152,7 +203,7 @@ const App: React.FC = () => {
                       contacts, 
                       totalBudget, 
                       checklist,
-                      notes: tripNotes,
+                      notes: tripNotes, 
                       coverImage
                   };
               }
@@ -165,7 +216,7 @@ const App: React.FC = () => {
 
   useEffect(() => { localStorage.setItem('kuro_flag', userFlag); }, [userFlag]);
 
-  const [isEditingDest, setIsEditingDest] = useState<boolean>(false);
+  // Safe current day retrieval
   const currentDayPlan = itinerary.find(d => d.dayId === selectedDay) || (itinerary[0] || { dayId: 1, date: 'N/A', items: [] });
 
   // --- Live Mode Helper ---
@@ -180,12 +231,15 @@ const App: React.FC = () => {
 
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
       const itemTimeParts = item.time.split(':');
+      if (itemTimeParts.length < 2) return false;
       const itemMinutes = parseInt(itemTimeParts[0]) * 60 + parseInt(itemTimeParts[1]);
 
       let nextItemMinutes = 24 * 60; 
       if (index < items.length - 1) {
           const nextParts = items[index + 1].time.split(':');
-          nextItemMinutes = parseInt(nextParts[0]) * 60 + parseInt(nextParts[1]);
+          if (nextParts.length >= 2) {
+              nextItemMinutes = parseInt(nextParts[0]) * 60 + parseInt(nextParts[1]);
+          }
       } else {
           nextItemMinutes = itemMinutes + 120; 
       }
@@ -222,7 +276,9 @@ const App: React.FC = () => {
           const newTrips = trips.filter(t => t.id !== activeTripId);
           setTrips(newTrips);
           localStorage.setItem('kuro_trips', JSON.stringify(newTrips));
-          setActiveTripId(newTrips[0].id);
+          // Set new active trip carefully
+          const nextTrip = newTrips[0];
+          setActiveTripId(nextTrip.id);
           setShowSettings(false);
       }
   };
@@ -261,6 +317,7 @@ const App: React.FC = () => {
       if (foundCountry && EMERGENCY_DATA[foundCountry]) {
           const staticContacts = EMERGENCY_DATA[foundCountry];
           setContacts(prev => {
+              // Avoid duplicates based on number
               const existingNums = new Set(prev.map(c => c.number));
               const newContacts = staticContacts.filter(c => !existingNums.has(c.number)).map(c => ({
                   id: `sos-${Date.now()}-${Math.random()}`,
@@ -383,6 +440,7 @@ const App: React.FC = () => {
         const planToEnrich = { ...currentDayPlan };
         const enrichedPlan = await enrichItineraryWithGemini(planToEnrich, lang);
         
+        // Note: No automatic SOS update here anymore, strictly manual/static
         enrichedPlan.backupItems = itemsBackup;
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
@@ -511,7 +569,7 @@ const App: React.FC = () => {
                   <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
                   <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider text-center">{T.SETTINGS[lang]}</h3>
                   
-                  {/* Language Toggle */}
+                  {/* Language Toggle (Short) */}
                   <div className="absolute top-4 left-6 flex gap-2">
                       <button onClick={() => { vibrate(); setLang('EN'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'EN' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>EN</button>
                       <button onClick={() => { vibrate(); setLang('TC'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'TC' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>繁</button>
