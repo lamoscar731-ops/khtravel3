@@ -46,19 +46,13 @@ export interface ItineraryItem {
   mapsUrl?: string;
 }
 
-export interface ForecastItem {
-  date: string;
-  icon: string;
-  temp: string;
-}
-
 export interface DayPlan {
   dayId: number;
   date: string;
-  weatherSummary?: string; 
-  forecast?: ForecastItem[];
-  paceAnalysis?: string; 
-  logicWarning?: string; 
+  weatherSummary?: string;
+  forecast?: WeatherForecast[];
+  paceAnalysis?: string;
+  logicWarning?: string;
   items: ItineraryItem[];
   backupItems?: ItineraryItem[];
 }
@@ -82,8 +76,6 @@ export interface FlightInfo {
   arrivalAirport: string;
   gate?: string;
   terminal?: string;
-  attachment?: string; // Base64 Data URI
-  attachmentType?: 'image' | 'pdf';
 }
 
 export interface HotelInfo {
@@ -93,8 +85,6 @@ export interface HotelInfo {
   checkIn: string;
   checkOut: string;
   bookingRef: string;
-  attachment?: string; // Base64 Data URI
-  attachmentType?: 'image' | 'pdf';
 }
 
 export interface EmergencyContact {
@@ -104,12 +94,6 @@ export interface EmergencyContact {
   note: string;
 }
 
-export type SOSContact = {
-    name: string;
-    number: string;
-    note: string;
-};
-
 export interface ChecklistItem {
   id: string;
   text: string;
@@ -118,8 +102,14 @@ export interface ChecklistItem {
 
 export interface AfterPartyRec {
     name: string;
-    type?: string;
+    type: string;
     reason: string;
+}
+
+export interface SOSContact {
+    name: string;
+    number: string;
+    note: string;
 }
 
 export interface Trip {
@@ -134,5 +124,5 @@ export interface Trip {
   totalBudget?: number;
   checklist?: ChecklistItem[];
   notes?: string;
-  coverImage?: string; 
+  coverImage?: string;
 }
