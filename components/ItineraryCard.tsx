@@ -7,10 +7,10 @@ interface Props {
   isLast: boolean;
   onSave: (item: ItineraryItem) => void;
   onDelete: (id: string) => void;
-  isSelectMode?: boolean;
-  isSelected?: boolean;
-  onSelect?: (id: string) => void;
-  isActive?: boolean;
+  isSelectMode: boolean;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+  isActive: boolean;
   lang: Language;
 }
 
@@ -42,7 +42,8 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
 
   useEffect(() => { setFormData(item); }, [item]);
 
-  const handleNavClick = () => {
+  const handleNavClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     vibrate();
     if (item.mapsUrl && item.mapsUrl.trim().length > 0) {
         window.open(item.mapsUrl, '_blank');
@@ -132,25 +133,32 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                         </div>
                         <div className="flex gap-1 items-center bg-neutral-800/50 p-1.5 rounded border border-neutral-700/50">
                             <input type="text" value={newTagLabel} onChange={(e) => setNewTagLabel(e.target.value)} placeholder="Add tag" className="flex-1 bg-transparent text-white text-[10px] placeholder-neutral-600 focus:outline-none" onKeyDown={(e) => e.key === 'Enter' && handleAddTag()} />
+                            <div className="flex gap-1 border-l border-neutral-700 pl-1">
+                                {(['gray', 'gold', 'red'] as const).map(c => (
+                                    <button key={c} onClick={() => setNewTagColor(c)} className={`w-3 h-3 rounded-full border transition-all ${newTagColor === c ? 'border-white scale-110 shadow-glow' : 'border-transparent opacity-40 hover:opacity-100'} ${c === 'gold' ? 'bg-amber-400' : c === 'red' ? 'bg-red-400' : 'bg-gray-400'}`} />
+                                ))}
+                            </div>
                             <button onClick={handleAddTag} className="text-[10px] bg-neutral-700 hover:bg-neutral-600 px-2 py-0.5 rounded text-white font-bold ml-1">+</button>
                         </div>
                     </div>
                     <div><label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Description</label><textarea value={formData.description || ''} onChange={(e) => handleChange('description', e.target.value)} rows={2} className="w-full bg-transparent border-b border-neutral-700 text-neutral-400 text-[10px] py-0.5 focus:outline-none focus:border-neutral-400 resize-none leading-relaxed normal-case" placeholder="Desc..." /></div>
-                    {/* Guide Notes Editor */}
+                    
+                    {/* Guide Notes Editor with Delete */}
                     {formData.tips && formData.tips.length > 0 && (
-                        <div>
+                        <div className="mt-2">
                             <label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Guide Notes</label>
                             <ul className="space-y-1">
                                 {formData.tips.map((tip, idx) => (
                                     <li key={idx} className="flex items-start gap-2 text-[10px] text-neutral-300">
                                         <span className="flex-1 bg-transparent border-b border-neutral-800 py-0.5">{tip}</span>
-                                        <button onClick={() => handleRemoveTip(idx)} className="text-red-500 hover:text-white px-1">×</button>
+                                        <button onClick={() => handleRemoveTip(idx)} className="text-neutral-600 hover:text-red-500 px-1 font-bold">×</button>
                                     </li>
                                 ))}
                             </ul>
                         </div>
                     )}
-                    <div className="flex gap-2 pt-1">
+                    
+                    <div className="flex gap-2 pt-1 mt-2">
                         <button onClick={handleSave} className="flex-1 bg-neutral-100 text-black py-1.5 rounded text-[10px] font-bold hover:bg-white uppercase">{T.SAVE[lang]}</button>
                         <button onClick={() => setIsEditing(false)} className="flex-1 bg-neutral-800 text-neutral-300 py-1.5 rounded text-[10px] font-bold hover:bg-neutral-700 uppercase">{T.CANCEL[lang]}</button>
                         <button onClick={() => { vibrate(); onDelete(item.id); }} className="w-8 bg-red-950/30 text-red-400 border border-red-900/50 rounded flex items-center justify-center hover:bg-red-900/50 text-[10px]">🗑️</button>
@@ -162,7 +170,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
   }
 
   return (
-    <div className="flex gap-3 mb-2 relative group">
+    <div className={`flex gap-3 mb-2 relative group ${isActive ? 'opacity-100' : 'opacity-90'}`} onClick={() => isSelectMode && onSelect(item.id)}>
       {!isLast && !isSelectMode && <div className="absolute left-[15px] top-8 bottom-[-16px] w-[2px] bg-neutral-800 z-0"></div>}
       
       {isSelectMode && (
@@ -176,11 +184,13 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
       <div className="flex flex-col items-center min-w-[32px] z-10">
         {isActive && <div className="absolute -left-[3px] top-[14px] w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-glow-red z-30"></div>}
         <div className={`text-xs mb-0.5 tracking-tight ${isActive ? 'text-white font-bold' : 'text-neutral-500'}`}>{item.time}</div>
-        <div className={`w-8 h-8 rounded-full border flex items-center justify-center shadow-sm relative transition-all ${isActive ? 'bg-neutral-800 border-red-500 shadow-glow-red' : 'bg-neutral-900 border-neutral-800'}`}><TypeIcon type={item.type} /></div>
+        <div className={`w-8 h-8 rounded-full bg-neutral-900 border flex items-center justify-center shadow-sm relative transition-all ${isActive ? 'border-white shadow-glow' : 'border-neutral-800'} ${isSelectMode && isSelected ? 'bg-white' : ''}`}>
+          {isSelectMode && isSelected ? <span className="text-black font-bold">✓</span> : <TypeIcon type={item.type} />}
+        </div>
       </div>
 
       <div 
-        className={`flex-1 min-w-0 bg-neutral-900 border rounded-lg p-3 shadow-sm mb-3 relative transition-all ${!isSelectMode ? 'hover:border-neutral-700' : ''} ${isActive ? 'border-red-900/50 shadow-glow-red-sm' : 'border-neutral-800'}`}
+        className={`flex-1 min-w-0 bg-neutral-900 border rounded-lg p-3 shadow-sm mb-3 relative transition-all ${!isSelectMode ? 'hover:border-neutral-700' : ''} ${isActive ? 'border-red-900/50 shadow-glow-red-sm' : 'border-neutral-800'} ${isSelectMode && isSelected ? 'border-white' : ''}`}
         onClick={() => { if(isSelectMode && onSelect) onSelect(item.id); }}
       >
         {!isSelectMode && (
@@ -197,6 +207,11 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                     {isActive && <span className="text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold animate-pulse">LIVE</span>}
                 </h3>
                 {item.weather && <div className="text-[10px] text-blue-300 mt-0.5 flex items-center gap-1">☁️ {item.weather}</div>}
+            </div>
+            <div className="flex flex-col items-end gap-1">
+                {item.tags?.map((tag, idx) => (
+                    <span key={idx} className={`text-[8px] px-1.5 py-0.5 rounded border tracking-wider ${tag.color === 'gold' ? 'text-amber-200 border-amber-900 bg-amber-950/30' : tag.color === 'red' ? 'text-red-300 border-red-900 bg-red-950/30' : 'text-neutral-400 border-neutral-700 bg-neutral-800'}`}>{tag.label}</span>
+                ))}
             </div>
         </div>
         <p className="text-[10px] text-neutral-400 leading-relaxed mb-2 whitespace-pre-wrap">{item.description}</p>
