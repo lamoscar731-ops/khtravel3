@@ -9,6 +9,31 @@ export const EXCHANGE_RATES: Record<string, number> = {
   [Currency.HKD]: 1
 };
 
+export const AIRPORT_CODES: Record<string, string> = {
+    "TOKYO": "HND / NRT",
+    "OSAKA": "KIX",
+    "FUKUOKA": "FUK",
+    "SAPPORO": "CTS",
+    "NAGOYA": "NGO",
+    "OKINAWA": "OKA",
+    "SEOUL": "ICN / GMP",
+    "BUSAN": "PUS",
+    "TAIPEI": "TPE / TSA",
+    "KAOHSIUNG": "KHH",
+    "HONG KONG": "HKG",
+    "BANGKOK": "BKK / DMK",
+    "SINGAPORE": "SIN",
+    "LONDON": "LHR / LGW",
+    "PARIS": "CDG / ORY",
+    "NEW YORK": "JFK / EWR",
+    "LOS ANGELES": "LAX",
+    "SAN FRANCISCO": "SFO",
+    "TORONTO": "YYZ",
+    "VANCOUVER": "YVR",
+    "SYDNEY": "SYD",
+    "MELBOURNE": "MEL"
+};
+
 export const COUNTRY_CITIES: Record<string, string[]> = {
     "JAPAN": ["TOKYO", "OSAKA", "KYOTO", "FUKUOKA", "SAPPORO", "OKINAWA", "NAGOYA"],
     "TAIWAN": ["TAIPEI", "KAOHSIUNG", "TAICHUNG", "TAINAN"],
