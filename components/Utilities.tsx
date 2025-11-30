@@ -7,27 +7,32 @@ interface UtilitiesProps {
     flights?: FlightInfo[];
     hotels?: HotelInfo[];
     contacts?: EmergencyContact[];
+    checklist?: ChecklistItem[];
+    totalBudget?: number;
     rates: Record<string, number>; 
+    
     onAddFlight: () => void;
     onUpdateFlight: (data: FlightInfo) => void;
     onDeleteFlight: (id: string) => void;
+
     onAddHotel: () => void;
     onUpdateHotel: (data: HotelInfo) => void;
     onDeleteHotel: (id: string) => void;
+
     onAddBudget: () => void;
     onUpdateBudget: (item: BudgetProps) => void;
     onDeleteBudget: (id: string) => void;
+
     onAddContact: () => void;
     onUpdateContact: (item: EmergencyContact) => void;
     onDeleteContact: (id: string) => void;
+
     onUpdateTotalBudget: (amount: number) => void;
     onAddChecklist: (text: string) => void;
     onToggleChecklist: (id: string) => void;
     onDeleteChecklist: (id: string) => void;
     onAiChecklist: () => void;
     isLoadingAi: boolean;
-    checklist?: ChecklistItem[];
-    totalBudget?: number;
     lang: Language;
 }
 
@@ -65,7 +70,11 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
         const reader = new FileReader();
         reader.onload = (event) => {
             if (event.target?.result) {
-                setFormData(prev => ({ ...prev, attachment: event.target!.result as string, attachmentType: file.type.includes('pdf') ? 'pdf' : 'image' }));
+                setFormData(prev => ({
+                    ...prev,
+                    attachment: event.target!.result as string,
+                    attachmentType: file.type.includes('pdf') ? 'pdf' : 'image'
+                }));
             }
         };
         reader.readAsDataURL(file);
@@ -80,12 +89,15 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
             }
         }
     };
+
     const airportListId = `airports-${flight.id}`;
 
     if (isEditing) {
         return (
             <div className="bg-neutral-900 border border-neutral-700 rounded-lg p-3 shadow-xl ring-1 ring-neutral-700 mb-3">
-                <datalist id={airportListId}>{Object.entries(AIRPORT_CODES).map(([city, code]) => <option key={city} value={code}>{city}</option>)}</datalist>
+                <datalist id={airportListId}>
+                    {Object.entries(AIRPORT_CODES).map(([city, code]) => <option key={city} value={code}>{city}</option>)}
+                </datalist>
                 <h3 className="text-white text-xs font-bold mb-3 flex justify-between items-center">Edit Flight
                     <div className="flex gap-2">
                          <button onClick={() => { vibrate(); onDelete(flight.id); }} className="text-red-400 text-[10px] border border-red-900/50 px-1.5 rounded">{T.DELETE[lang]}</button>
@@ -105,7 +117,9 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
                     <InputField label="Arr Airport" value={formData.arrivalAirport} onChange={v => setFormData({...formData, arrivalAirport: v})} list={airportListId} />
                     <InputField label="Terminal" value={formData.terminal || ''} onChange={v => setFormData({...formData, terminal: v})} />
                 </div>
-                <FileUploadButton onUpload={handleFileUpload} hasFile={!!formData.attachment} />
+                <div className="mt-2 pt-2 border-t border-neutral-800">
+                    <FileUploadButton onUpload={handleFileUpload} hasFile={!!formData.attachment} />
+                </div>
             </div>
         );
     }
@@ -119,7 +133,9 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
             </div>
             <div className="flex justify-between text-xs text-neutral-400 items-end">
                 <div><div className="text-[9px] text-neutral-600 uppercase">Date</div><div className="text-white text-[10px]">{flight.departureDate}</div></div>
-                {formData.attachment && (<button onClick={viewAttachment} className="text-[9px] bg-neutral-800 text-blue-400 px-2 py-0.5 rounded border border-neutral-700 ml-2">VIEW TICKET</button>)}
+                {formData.attachment && (
+                    <button onClick={viewAttachment} className="text-[9px] bg-neutral-800 text-blue-400 px-2 py-0.5 rounded border border-neutral-700 ml-2">VIEW TICKET</button>
+                )}
                 <div className="text-right flex-1"><div className="text-[9px] text-neutral-600 uppercase">Gate / Terminal</div><div className="text-white text-[10px]">{flight.gate || '-'} / {flight.terminal || '-'}</div></div>
             </div>
         </div>
@@ -139,16 +155,26 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (event) => {
-            if (event.target?.result) setFormData(prev => ({ ...prev, attachment: event.target!.result as string, attachmentType: file.type.includes('pdf') ? 'pdf' : 'image' }));
+            if (event.target?.result) {
+                setFormData(prev => ({
+                    ...prev,
+                    attachment: event.target!.result as string,
+                    attachmentType: file.type.includes('pdf') ? 'pdf' : 'image'
+                }));
+            }
         };
         reader.readAsDataURL(file);
     };
+
     const viewAttachment = () => {
         if (formData.attachment) {
             const win = window.open();
             if (win) {
-                if (formData.attachmentType === 'pdf') win.document.write(`<iframe src="${formData.attachment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-                else win.document.write(`<img src="${formData.attachment}" style="width:100%">`);
+                if (formData.attachmentType === 'pdf') {
+                     win.document.write(`<iframe src="${formData.attachment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                } else {
+                     win.document.write(`<img src="${formData.attachment}" style="width:100%">`);
+                }
             }
         }
     };
@@ -157,6 +183,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     const start = new Date(hotel.checkIn);
     const end = new Date(hotel.checkOut);
     const nights = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+    
     const now = new Date();
     const isTonight = now >= start && now < end;
     const isCheckoutTmr = new Date(now.getTime() + 86400000) >= end && now < end;
@@ -193,7 +220,9 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
                     </div>
                      <InputField label="Booking Ref" value={formData.bookingRef} onChange={v => setFormData({...formData, bookingRef: v})} />
                 </div>
-                <FileUploadButton onUpload={handleFileUpload} hasFile={!!formData.attachment} />
+                <div className="mt-2 pt-2 border-t border-neutral-800">
+                    <FileUploadButton onUpload={handleFileUpload} hasFile={!!formData.attachment} />
+                </div>
             </div>
         );
     }
@@ -207,7 +236,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
                 <div>
                     <h3 className="text-sm text-white font-medium">{formData.name}</h3>
                     <div className="flex gap-2 mt-1 items-center">
-                         {nights > 0 && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} {T.NIGHTS[lang]}</span>}
+                         {(nights > 0) && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} {T.NIGHTS[lang]}</span>}
                          {isTonight && <span className="bg-indigo-900/50 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap animate-pulse">TONIGHT</span>}
                          {isCheckoutTmr && <span className="bg-amber-900/50 text-amber-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">CHECK-OUT TMRW</span>}
                     </div>
@@ -226,7 +255,6 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     );
 };
 
-// ContactItem and BudgetItem (No changes but included for completeness)
 const ContactItem: React.FC<{ item: EmergencyContact, onUpdate: (c: EmergencyContact) => void, onDelete: (id: string) => void, lang: Language }> = ({ item, onUpdate, onDelete, lang }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [data, setData] = useState(item);
