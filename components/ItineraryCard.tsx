@@ -85,11 +85,6 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
   const handleChange = (field: keyof ItineraryItem, value: any) => setFormData(prev => ({ ...prev, [field]: value }));
   const handleAddTag = () => { if (!newTagLabel.trim()) return; vibrate(); const newTag: Tag = { label: newTagLabel, color: newTagColor }; setFormData(prev => ({ ...prev, tags: [...(prev.tags || []), newTag] })); setNewTagLabel(''); };
   const handleRemoveTag = (indexToRemove: number) => { vibrate(); setFormData(prev => ({ ...prev, tags: prev.tags?.filter((_, index) => index !== indexToRemove) })); };
-  
-  const handleRemoveTip = (indexToRemove: number) => {
-      vibrate();
-      setFormData(prev => ({ ...prev, tips: prev.tips?.filter((_, index) => index !== indexToRemove) }));
-  };
 
   if (showCard) {
       return (
@@ -133,30 +128,10 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                         </div>
                         <div className="flex gap-1 items-center bg-neutral-800/50 p-1.5 rounded border border-neutral-700/50">
                             <input type="text" value={newTagLabel} onChange={(e) => setNewTagLabel(e.target.value)} placeholder="Add tag" className="flex-1 bg-transparent text-white text-[10px] placeholder-neutral-600 focus:outline-none" onKeyDown={(e) => e.key === 'Enter' && handleAddTag()} />
-                            <div className="flex gap-1 border-l border-neutral-700 pl-1">
-                                {(['gray', 'gold', 'red'] as const).map(c => (
-                                    <button key={c} onClick={() => setNewTagColor(c)} className={`w-3 h-3 rounded-full border transition-all ${newTagColor === c ? 'border-white scale-110 shadow-glow' : 'border-transparent opacity-40 hover:opacity-100'} ${c === 'gold' ? 'bg-amber-400' : c === 'red' ? 'bg-red-400' : 'bg-gray-400'}`} />
-                                ))}
-                            </div>
                             <button onClick={handleAddTag} className="text-[10px] bg-neutral-700 hover:bg-neutral-600 px-2 py-0.5 rounded text-white font-bold ml-1">+</button>
                         </div>
                     </div>
                     <div><label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Description</label><textarea value={formData.description || ''} onChange={(e) => handleChange('description', e.target.value)} rows={2} className="w-full bg-transparent border-b border-neutral-700 text-neutral-400 text-[10px] py-0.5 focus:outline-none focus:border-neutral-400 resize-none leading-relaxed normal-case" placeholder="Desc..." /></div>
-                    
-                    {/* Guide Notes Editor */}
-                    {formData.tips && formData.tips.length > 0 && (
-                        <div className="mt-2">
-                            <label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Guide Notes</label>
-                            <ul className="space-y-1">
-                                {formData.tips.map((tip, idx) => (
-                                    <li key={idx} className="flex items-start gap-2 text-[10px] text-neutral-300">
-                                        <span className="flex-1 bg-transparent border-b border-neutral-800 py-0.5">{tip}</span>
-                                        <button onClick={() => handleRemoveTip(idx)} className="text-neutral-600 hover:text-red-500 px-1 font-bold">×</button>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
                     
                     <div className="flex gap-2 pt-1 mt-2">
                         <button onClick={handleSave} className="flex-1 bg-neutral-100 text-black py-1.5 rounded text-[10px] font-bold hover:bg-white uppercase">{T.SAVE[lang]}</button>
@@ -219,8 +194,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
             <div className="mb-2 bg-neutral-950/50 p-2 rounded border border-neutral-800/50">
                 <p className="text-[8px] text-neutral-500 uppercase tracking-widest mb-1 font-bold">Guide Notes</p>
                 <ul className="list-none space-y-0.5">
-                    {/* Limit to 3 items */}
-                    {item.tips.slice(0, 3).map((tip, idx) => <li key={idx} className="text-[9px] text-neutral-300 flex items-start gap-1.5"><span className="text-amber-500 mt-[1px]">✦</span> <span dangerouslySetInnerHTML={{__html: tip.replace(/(Must Eat|Important|Reservation)/gi, '<b>$1</b>')}} /></li>)}
+                    {item.tips.map((tip, idx) => <li key={idx} className="text-[9px] text-neutral-300 flex items-start gap-1.5"><span className="text-amber-500 mt-[1px]">✦</span> <span dangerouslySetInnerHTML={{__html: tip.replace(/(Must Eat|Important|Reservation)/gi, '<b>$1</b>')}} /></li>)}
                 </ul>
             </div>
         )}
