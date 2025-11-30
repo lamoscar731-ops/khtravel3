@@ -3,36 +3,31 @@ import { BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Checkli
 import { TRANSLATIONS, AIRPORT_CODES } from '../constants';
 
 interface UtilitiesProps {
-    budget?: BudgetProps[]; // Optional to allow fallback
+    budget?: BudgetProps[];
     flights?: FlightInfo[];
     hotels?: HotelInfo[];
     contacts?: EmergencyContact[];
-    checklist?: ChecklistItem[];
-    totalBudget?: number;
     rates: Record<string, number>; 
-    
     onAddFlight: () => void;
     onUpdateFlight: (data: FlightInfo) => void;
     onDeleteFlight: (id: string) => void;
-
     onAddHotel: () => void;
     onUpdateHotel: (data: HotelInfo) => void;
     onDeleteHotel: (id: string) => void;
-
     onAddBudget: () => void;
     onUpdateBudget: (item: BudgetProps) => void;
     onDeleteBudget: (id: string) => void;
-
     onAddContact: () => void;
     onUpdateContact: (item: EmergencyContact) => void;
     onDeleteContact: (id: string) => void;
-
     onUpdateTotalBudget: (amount: number) => void;
     onAddChecklist: (text: string) => void;
     onToggleChecklist: (id: string) => void;
     onDeleteChecklist: (id: string) => void;
     onAiChecklist: () => void;
     isLoadingAi: boolean;
+    checklist?: ChecklistItem[];
+    totalBudget?: number;
     lang: Language;
 }
 
@@ -48,9 +43,9 @@ const InputField = ({ label, value, onChange, placeholder, list }: { label: stri
 const FileUploadButton = ({ onUpload, hasFile }: { onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void, hasFile: boolean }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     return (
-        <div className="flex items-center">
-            <button onClick={() => inputRef.current?.click()} className={`text-[10px] font-bold px-2 py-0.5 rounded border ${hasFile ? 'bg-green-900/30 text-green-400 border-green-800' : 'text-neutral-400 border-neutral-700 hover:text-white'}`}>
-                {hasFile ? 'FILE ATTACHED' : 'UPLOAD PDF/IMG'}
+        <div className="flex items-center mt-2">
+            <button onClick={() => inputRef.current?.click()} className={`text-[10px] font-bold px-2 py-1 rounded border w-full ${hasFile ? 'bg-green-900/30 text-green-400 border-green-800' : 'text-neutral-400 border-neutral-700 hover:text-white hover:bg-neutral-800'}`}>
+                {hasFile ? '📎 FILE ATTACHED (CHANGE)' : '📎 UPLOAD PDF / IMAGE'}
             </button>
             <input type="file" ref={inputRef} className="hidden" accept="image/*,application/pdf" onChange={onUpload} />
         </div>
@@ -70,11 +65,7 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
         const reader = new FileReader();
         reader.onload = (event) => {
             if (event.target?.result) {
-                setFormData(prev => ({
-                    ...prev,
-                    attachment: event.target!.result as string,
-                    attachmentType: file.type.includes('pdf') ? 'pdf' : 'image'
-                }));
+                setFormData(prev => ({ ...prev, attachment: event.target!.result as string, attachmentType: file.type.includes('pdf') ? 'pdf' : 'image' }));
             }
         };
         reader.readAsDataURL(file);
@@ -84,23 +75,17 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
         if (formData.attachment) {
             const win = window.open();
             if (win) {
-                if (formData.attachmentType === 'pdf') {
-                     win.document.write(`<iframe src="${formData.attachment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-                } else {
-                     win.document.write(`<img src="${formData.attachment}" style="width:100%">`);
-                }
+                if (formData.attachmentType === 'pdf') win.document.write(`<iframe src="${formData.attachment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                else win.document.write(`<img src="${formData.attachment}" style="width:100%">`);
             }
         }
     };
-
     const airportListId = `airports-${flight.id}`;
 
     if (isEditing) {
         return (
             <div className="bg-neutral-900 border border-neutral-700 rounded-lg p-3 shadow-xl ring-1 ring-neutral-700 mb-3">
-                <datalist id={airportListId}>
-                    {Object.entries(AIRPORT_CODES).map(([city, code]) => <option key={city} value={code}>{city}</option>)}
-                </datalist>
+                <datalist id={airportListId}>{Object.entries(AIRPORT_CODES).map(([city, code]) => <option key={city} value={code}>{city}</option>)}</datalist>
                 <h3 className="text-white text-xs font-bold mb-3 flex justify-between items-center">Edit Flight
                     <div className="flex gap-2">
                          <button onClick={() => { vibrate(); onDelete(flight.id); }} className="text-red-400 text-[10px] border border-red-900/50 px-1.5 rounded">{T.DELETE[lang]}</button>
@@ -120,9 +105,7 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
                     <InputField label="Arr Airport" value={formData.arrivalAirport} onChange={v => setFormData({...formData, arrivalAirport: v})} list={airportListId} />
                     <InputField label="Terminal" value={formData.terminal || ''} onChange={v => setFormData({...formData, terminal: v})} />
                 </div>
-                <div className="mt-2 pt-2 border-t border-neutral-800">
-                    <FileUploadButton onUpload={handleFileUpload} hasFile={!!formData.attachment} />
-                </div>
+                <FileUploadButton onUpload={handleFileUpload} hasFile={!!formData.attachment} />
             </div>
         );
     }
@@ -136,10 +119,8 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
             </div>
             <div className="flex justify-between text-xs text-neutral-400 items-end">
                 <div><div className="text-[9px] text-neutral-600 uppercase">Date</div><div className="text-white text-[10px]">{flight.departureDate}</div></div>
-                {formData.attachment && (
-                    <button onClick={viewAttachment} className="text-[9px] bg-neutral-800 text-blue-400 px-2 py-0.5 rounded border border-neutral-700">VIEW TICKET</button>
-                )}
-                <div className="text-right"><div className="text-[9px] text-neutral-600 uppercase">Gate / Terminal</div><div className="text-white text-[10px]">{flight.gate || '-'} / {flight.terminal || '-'}</div></div>
+                {formData.attachment && (<button onClick={viewAttachment} className="text-[9px] bg-neutral-800 text-blue-400 px-2 py-0.5 rounded border border-neutral-700 ml-2">VIEW TICKET</button>)}
+                <div className="text-right flex-1"><div className="text-[9px] text-neutral-600 uppercase">Gate / Terminal</div><div className="text-white text-[10px]">{flight.gate || '-'} / {flight.terminal || '-'}</div></div>
             </div>
         </div>
     );
@@ -158,26 +139,16 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (event) => {
-            if (event.target?.result) {
-                setFormData(prev => ({
-                    ...prev,
-                    attachment: event.target!.result as string,
-                    attachmentType: file.type.includes('pdf') ? 'pdf' : 'image'
-                }));
-            }
+            if (event.target?.result) setFormData(prev => ({ ...prev, attachment: event.target!.result as string, attachmentType: file.type.includes('pdf') ? 'pdf' : 'image' }));
         };
         reader.readAsDataURL(file);
     };
-
     const viewAttachment = () => {
         if (formData.attachment) {
             const win = window.open();
             if (win) {
-                if (formData.attachmentType === 'pdf') {
-                     win.document.write(`<iframe src="${formData.attachment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-                } else {
-                     win.document.write(`<img src="${formData.attachment}" style="width:100%">`);
-                }
+                if (formData.attachmentType === 'pdf') win.document.write(`<iframe src="${formData.attachment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                else win.document.write(`<img src="${formData.attachment}" style="width:100%">`);
             }
         }
     };
@@ -185,8 +156,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     // Duration Logic
     const start = new Date(hotel.checkIn);
     const end = new Date(hotel.checkOut);
-    const nights = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    
+    const nights = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
     const now = new Date();
     const isTonight = now >= start && now < end;
     const isCheckoutTmr = new Date(now.getTime() + 86400000) >= end && now < end;
@@ -223,9 +193,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
                     </div>
                      <InputField label="Booking Ref" value={formData.bookingRef} onChange={v => setFormData({...formData, bookingRef: v})} />
                 </div>
-                <div className="mt-2 pt-2 border-t border-neutral-800">
-                    <FileUploadButton onUpload={handleFileUpload} hasFile={!!formData.attachment} />
-                </div>
+                <FileUploadButton onUpload={handleFileUpload} hasFile={!!formData.attachment} />
             </div>
         );
     }
@@ -238,8 +206,8 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
             <div className="flex justify-between items-start mb-1 pr-16">
                 <div>
                     <h3 className="text-sm text-white font-medium">{formData.name}</h3>
-                    <div className="flex gap-2 mt-1">
-                         {(nights > 0) && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} NIGHTS</span>}
+                    <div className="flex gap-2 mt-1 items-center">
+                         {nights > 0 && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} {T.NIGHTS[lang]}</span>}
                          {isTonight && <span className="bg-indigo-900/50 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap animate-pulse">TONIGHT</span>}
                          {isCheckoutTmr && <span className="bg-amber-900/50 text-amber-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">CHECK-OUT TMRW</span>}
                     </div>
@@ -258,6 +226,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     );
 };
 
+// ContactItem and BudgetItem (No changes but included for completeness)
 const ContactItem: React.FC<{ item: EmergencyContact, onUpdate: (c: EmergencyContact) => void, onDelete: (id: string) => void, lang: Language }> = ({ item, onUpdate, onDelete, lang }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [data, setData] = useState(item);
@@ -335,7 +304,7 @@ export const Utilities: React.FC<UtilitiesProps> = ({
       </section>
       <section>
           <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">{T.PACKING_LIST[lang]}</h2><button onClick={onAiChecklist} disabled={isLoadingAi} className="text-amber-200 hover:text-amber-100 text-[10px] flex items-center gap-1 uppercase">{isLoadingAi ? <span className="animate-pulse">Thinking...</span> : <><span>✨ {T.AI_SUGGEST[lang]}</span></>}</button></div>
-          <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden"><div className="p-2 border-b border-neutral-800 flex gap-2"><input className="bg-transparent text-white text-xs w-full focus:outline-none placeholder-neutral-600" placeholder="Add item..." value={newChecklistText} onChange={(e) => setNewChecklistText(e.target.value)} onKeyDown={handleAddChecklistKey} /><button onClick={() => { if(newChecklistText) { vibrate(); onAddChecklist(newChecklistText); setNewChecklistText(''); }}} className="text-neutral-500 text-[10px] font-bold">+</button></div><div>{checklist?.map(item => (<div key={item.id} className="flex items-center gap-3 p-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/30 group"><button onClick={() => onToggleChecklist(item.id)} className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${item.checked ? 'bg-white border-white' : 'border-neutral-600 hover:border-neutral-400'}`}>{item.checked && <span className="text-black text-[10px] font-bold">✓</span>}</button><span className={`text-xs flex-1 ${item.checked ? 'text-neutral-600 line-through' : 'text-neutral-200'}`}>{item.text}</span><button onClick={() => { vibrate(); onDeleteChecklist(item.id); }} className="text-neutral-700 hover:text-red-500 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button></div>))}{checklist.length === 0 && <div className="text-center py-4 text-neutral-600 text-[10px]">List is empty</div>}</div></div>
+          <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden"><div className="p-2 border-b border-neutral-800 flex gap-2"><input className="bg-transparent text-white text-xs w-full focus:outline-none placeholder-neutral-600" placeholder="Add item..." value={newChecklistText} onChange={(e) => setNewChecklistText(e.target.value)} onKeyDown={handleAddChecklistKey} /><button onClick={handleAddItem} className="text-neutral-500 text-[10px] font-bold">+</button></div><div>{checklist?.map(item => (<div key={item.id} className="flex items-center gap-3 p-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/30 group"><button onClick={() => onToggleChecklist(item.id)} className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${item.checked ? 'bg-white border-white' : 'border-neutral-600 hover:border-neutral-400'}`}>{item.checked && <span className="text-black text-[10px] font-bold">✓</span>}</button><span className={`text-xs flex-1 ${item.checked ? 'text-neutral-600 line-through' : 'text-neutral-200'}`}>{item.text}</span><button onClick={() => { vibrate(); onDeleteChecklist(item.id); }} className="text-neutral-700 hover:text-red-500 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button></div>))}{checklist.length === 0 && <div className="text-center py-4 text-neutral-600 text-[10px]">List is empty</div>}</div></div>
       </section>
     </div>
   );
