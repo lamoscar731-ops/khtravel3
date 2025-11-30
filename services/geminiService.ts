@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { DayPlan, ItemType, AfterPartyRec, SOSContact, Language } from "../types";
+import { DayPlan, ItemType, AfterPartyRec, Language } from "../types";
 
 const getAiClient = (apiKey: string) => new GoogleGenAI({ apiKey });
 
@@ -72,7 +72,28 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Lang
     });
     const resultText = response.text;
     if (!resultText) throw new Error("No response");
-    return JSON.parse(resultText) as DayPlan;
+    
+    const parsedResult = JSON.parse(resultText) as DayPlan;
+
+    // --- FIX: MERGE LOGIC TO PRESERVE MAPS URL ---
+    const mergedItems = parsedResult.items.map((newItem, index) => {
+        let originalItem = currentPlan.items.find(i => i.id === newItem.id);
+        if (!originalItem && index < currentPlan.items.length) {
+            originalItem = currentPlan.items[index];
+        }
+        if (!originalItem) return newItem;
+
+        return {
+            ...newItem,
+            id: originalItem.id, 
+            time: originalItem.time, 
+            mapsUrl: originalItem.mapsUrl, // Preserved
+            tags: originalItem.tags 
+        };
+    });
+
+    return { ...parsedResult, items: mergedItems };
+
   } catch (error) {
     return { ...currentPlan, weatherSummary: "Offline" };
   }
@@ -87,7 +108,7 @@ export const generatePackingList = async (destination: string, lang: Language): 
   try {
     const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
     return JSON.parse(response.text || '[]') as string[];
-  } catch (error) { return ["Passport", "Wallet"]; }
+  } catch (error) { return ["Passport", "Wallet", "Phone"]; }
 };
 
 export const generateAfterPartySuggestions = async (location: string, time: string, lang: Language): Promise<AfterPartyRec[]> => {
@@ -96,6 +117,7 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
     const ai = getAiClient(apiKey);
     const prompt = `
       I am at ${location} at ${time}. Suggest 3 late-night spots (Ramen, Bar, Donki).
+      MUST BE OPEN LATE or 24 HOURS.
       ${getLangInstruction(lang)}
       Return JSON array of objects: { name, type, reason }.
     `;
@@ -117,27 +139,5 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
 };
 
 export const generateLocalSOS = async (city: string, lang: Language): Promise<SOSContact[]> => {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error("Missing API Key");
-    const ai = getAiClient(apiKey);
-    const prompt = `
-      3 emergency contacts for ${city} (Police, Ambulance, Consulate).
-      ${getLangInstruction(lang)}
-      Return JSON array of objects: { name, number, note }.
-    `;
-    const schema = {
-      type: Type.ARRAY,
-      items: {
-          type: Type.OBJECT,
-          properties: {
-              name: { type: Type.STRING },
-              number: { type: Type.STRING },
-              note: { type: Type.STRING }
-          }
-      }
-    };
-    try {
-      const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
-      return JSON.parse(response.text || '[]') as SOSContact[];
-    } catch (error) { return []; }
+    return []; // Deprecated
 };
