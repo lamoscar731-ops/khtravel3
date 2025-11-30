@@ -9,6 +9,31 @@ export const EXCHANGE_RATES: Record<string, number> = {
   [Currency.HKD]: 1
 };
 
+export const AIRPORT_CODES: Record<string, string> = {
+    "TOKYO": "HND / NRT",
+    "OSAKA": "KIX",
+    "FUKUOKA": "FUK",
+    "SAPPORO": "CTS",
+    "NAGOYA": "NGO",
+    "OKINAWA": "OKA",
+    "SEOUL": "ICN / GMP",
+    "BUSAN": "PUS",
+    "TAIPEI": "TPE / TSA",
+    "KAOHSIUNG": "KHH",
+    "HONG KONG": "HKG",
+    "BANGKOK": "BKK / DMK",
+    "SINGAPORE": "SIN",
+    "LONDON": "LHR / LGW",
+    "PARIS": "CDG / ORY",
+    "NEW YORK": "JFK / EWR",
+    "LOS ANGELES": "LAX",
+    "SAN FRANCISCO": "SFO",
+    "TORONTO": "YYZ",
+    "VANCOUVER": "YVR",
+    "SYDNEY": "SYD",
+    "MELBOURNE": "MEL"
+};
+
 export const COUNTRY_CITIES: Record<string, string[]> = {
     "JAPAN": ["TOKYO", "OSAKA", "KYOTO", "FUKUOKA", "SAPPORO", "OKINAWA", "NAGOYA"],
     "TAIWAN": ["TAIPEI", "KAOHSIUNG", "TAICHUNG", "TAINAN"],
@@ -25,12 +50,41 @@ export const COUNTRY_CITIES: Record<string, string[]> = {
     "OTHERS": []
 };
 
+export const EMERGENCY_DATA: Record<string, {name: string, number: string, note: string}[]> = {
+    "JAPAN": [
+        { name: 'POLICE', number: '110', note: 'EMERGENCY' },
+        { name: 'FIRE/AMBULANCE', number: '119', note: 'EMERGENCY' },
+        { name: 'CONSULATE', number: '', note: 'CHECK LOCALLY' }
+    ],
+    "TAIWAN": [
+        { name: 'POLICE', number: '110', note: 'EMERGENCY' },
+        { name: 'FIRE/AMBULANCE', number: '119', note: 'EMERGENCY' }
+    ],
+    "SOUTH KOREA": [
+        { name: 'POLICE', number: '112', note: 'EMERGENCY' },
+        { name: 'FIRE/AMBULANCE', number: '119', note: 'EMERGENCY' }
+    ],
+    "THAILAND": [
+        { name: 'TOURIST POLICE', number: '1155', note: 'ENGLISH SPOKEN' },
+        { name: 'AMBULANCE', number: '1669', note: 'EMERGENCY' }
+    ],
+    "USA": [
+        { name: 'EMERGENCY', number: '911', note: 'ALL SERVICES' }
+    ],
+    "UK": [
+        { name: 'EMERGENCY', number: '999', note: 'ALL SERVICES' }
+    ],
+    "EUROPE": [
+        { name: 'EMERGENCY', number: '112', note: 'EU WIDE' }
+    ]
+};
+
 export const TRANSLATIONS = {
     SCHEDULE: { EN: 'SCHEDULE', TC: '行程' },
     MY_TRIPS: { EN: 'MY TRIPS', TC: '我的旅程' },
     WALLET: { EN: 'WALLET', TC: '錢包' },
     TRIP_TO: { EN: 'TRIP TO', TC: '前往' },
-    DAY: { EN: 'DAY', TC: '第' }, // Day 1 vs 第 1 天 handled in code
+    DAY: { EN: 'DAY', TC: '第' }, 
     ITINERARY: { EN: 'ITINERARY', TC: '行程表' },
     MAP_ROUTE: { EN: 'MAP ROUTE', TC: '路線導航' },
     AI_CHECK: { EN: 'AI GUIDE CHECK', TC: 'AI 智能檢查' },
@@ -64,12 +118,13 @@ export const TRANSLATIONS = {
     ACTIVE: { EN: 'ACTIVE', TC: '進行中' },
     SAVE: { EN: 'SAVE', TC: '儲存' },
     CANCEL: { EN: 'CANCEL', TC: '取消' },
-    DELETE: { EN: 'DEL', TC: '刪除' }, // Short DEL for EN
+    DELETE: { EN: 'DEL', TC: '刪除' },
     DONE: { EN: 'DONE', TC: '完成' },
     NAVIGATE: { EN: 'NAVIGATE', TC: '導航' },
     SHOW: { EN: 'SHOW', TC: '展示' },
     COPYRIGHT: { EN: 'COPYRIGHT KH 2025', TC: 'COPYRIGHT KH 2025' },
-    LANGUAGE: { EN: 'LANGUAGE', TC: '語言' }
+    LANGUAGE: { EN: 'LANGUAGE', TC: '語言' },
+    NIGHTS: { EN: 'NIGHTS', TC: '晚' }
 };
 
 export const INITIAL_ITINERARY: DayPlan[] = [
