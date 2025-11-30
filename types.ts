@@ -49,10 +49,10 @@ export interface ItineraryItem {
 export interface DayPlan {
   dayId: number;
   date: string;
-  weatherSummary?: string;
+  weatherSummary?: string; 
   forecast?: WeatherForecast[];
-  paceAnalysis?: string;
-  logicWarning?: string;
+  paceAnalysis?: string; 
+  logicWarning?: string; 
   items: ItineraryItem[];
   backupItems?: ItineraryItem[];
 }
@@ -76,6 +76,8 @@ export interface FlightInfo {
   arrivalAirport: string;
   gate?: string;
   terminal?: string;
+  attachment?: string; // Base64 string
+  attachmentType?: 'image' | 'pdf';
 }
 
 export interface HotelInfo {
@@ -85,6 +87,8 @@ export interface HotelInfo {
   checkIn: string;
   checkOut: string;
   bookingRef: string;
+  attachment?: string; // Base64 string
+  attachmentType?: 'image' | 'pdf';
 }
 
 export interface EmergencyContact {
@@ -124,5 +128,5 @@ export interface Trip {
   totalBudget?: number;
   checklist?: ChecklistItem[];
   notes?: string;
-  coverImage?: string;
+  coverImage?: string; 
 }
