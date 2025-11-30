@@ -1,5 +1,3 @@
-export type Language = 'EN' | 'TC';
-
 export enum ItemType {
   SIGHTSEEING = 'SIGHTSEEING',
   FOOD = 'FOOD',
@@ -21,15 +19,11 @@ export enum Currency {
   HKD = 'HKD'
 }
 
+export type Language = 'EN' | 'TC';
+
 export interface Tag {
   label: string;
   color: 'red' | 'gold' | 'gray';
-}
-
-export interface WeatherForecast {
-    date: string;
-    icon: string;
-    temp: string;
 }
 
 export interface ItineraryItem {
@@ -55,12 +49,12 @@ export interface ForecastItem {
 export interface DayPlan {
   dayId: number;
   date: string;
-  weatherSummary?: string; 
-  forecast?: ForecastItem[];
-  paceAnalysis?: string; 
-  logicWarning?: string; 
+  weatherSummary?: string;
   items: ItineraryItem[];
   backupItems?: ItineraryItem[];
+  forecast?: ForecastItem[];
+  paceAnalysis?: string;
+  logicWarning?: string;
 }
 
 export interface BudgetProps {
@@ -100,22 +94,12 @@ export interface EmergencyContact {
   note: string;
 }
 
-export type SOSContact = {
-    name: string;
-    number: string;
-    note: string;
-};
+export type SOSContact = EmergencyContact;
 
 export interface ChecklistItem {
   id: string;
   text: string;
   checked: boolean;
-}
-
-export interface AfterPartyRec {
-    name: string;
-    type?: string;
-    reason: string;
 }
 
 export interface Trip {
@@ -130,5 +114,10 @@ export interface Trip {
   totalBudget?: number;
   checklist?: ChecklistItem[];
   notes?: string;
-  coverImage?: string; 
+  coverImage?: string;
+}
+
+export interface AfterPartyRec {
+  name: string;
+  reason: string;
 }
