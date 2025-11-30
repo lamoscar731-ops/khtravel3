@@ -185,11 +185,14 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     // Duration Logic
     const start = new Date(hotel.checkIn);
     const end = new Date(hotel.checkOut);
-    const nights = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+    const isValidDate = !isNaN(start.getTime()) && !isNaN(end.getTime());
+    const nights = isValidDate ? Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))) : 0;
     
     const now = new Date();
-    const isTonight = now >= start && now < end;
-    const isCheckoutTmr = new Date(now.getTime() + 86400000) >= end && now < end;
+    const todayStr = now.toISOString().split('T')[0];
+    const isTonight = hotel.checkIn <= todayStr && hotel.checkOut > todayStr;
+    const checkoutDate = new Date(now.getTime() + 86400000);
+    const isCheckoutTmr = isValidDate && checkoutDate.toISOString().split('T')[0] === hotel.checkOut;
 
     if (showCard) {
         return (
@@ -239,7 +242,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
                 <div>
                     <h3 className="text-sm text-white font-medium">{formData.name}</h3>
                     <div className="flex gap-2 mt-1 items-center">
-                         {(nights > 0) && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} {T.NIGHTS[lang]}</span>}
+                         {nights > 0 && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} {T.NIGHTS[lang]}</span>}
                          {isTonight && <span className="bg-indigo-900/50 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap animate-pulse">TONIGHT</span>}
                          {isCheckoutTmr && <span className="bg-amber-900/50 text-amber-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">CHECK-OUT TMRW</span>}
                     </div>
@@ -298,7 +301,7 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
 }
 
 export const Utilities: React.FC<UtilitiesProps> = ({ 
-    budget = [], flights = [], hotels = [], contacts = [], checklist = [], totalBudget = 20000, rates,
+    budget, flights, hotels, contacts, checklist, totalBudget, rates,
     onAddFlight, onUpdateFlight, onDeleteFlight, 
     onAddHotel, onUpdateHotel, onDeleteHotel, 
     onAddBudget, onUpdateBudget, onDeleteBudget, 
@@ -306,16 +309,19 @@ export const Utilities: React.FC<UtilitiesProps> = ({
     onUpdateTotalBudget, onAddChecklist, onToggleChecklist, onDeleteChecklist, onAiChecklist, isLoadingAi, lang
 }) => {
   const T = TRANSLATIONS;
-  // Forced Initialization: Even if props are undefined/null (from old localStorage data), these will be valid empty arrays.
+
+  // --- NULL SAFETY ---
+  // These lines prevent black screens by converting potential nulls from old data into empty arrays.
   const safeBudget = Array.isArray(budget) ? budget : [];
   const safeFlights = Array.isArray(flights) ? flights : [];
   const safeHotels = Array.isArray(hotels) ? hotels : [];
   const safeContacts = Array.isArray(contacts) ? contacts : [];
   const safeChecklist = Array.isArray(checklist) ? checklist : [];
+  const safeTotalBudget = typeof totalBudget === 'number' ? totalBudget : 20000;
 
   const [newChecklistText, setNewChecklistText] = useState('');
   const totalBudgetHkd = safeBudget.reduce((acc, curr) => { const rate = rates[curr.currency] || 1; return acc + (curr.cost * rate); }, 0);
-  const budgetProgress = totalBudget ? Math.min((totalBudgetHkd / totalBudget) * 100, 100) : 0;
+  const budgetProgress = safeTotalBudget ? Math.min((totalBudgetHkd / safeTotalBudget) * 100, 100) : 0;
   let progressColor = 'bg-white'; if (budgetProgress >= 100) progressColor = 'bg-red-500'; else if (budgetProgress >= 80) progressColor = 'bg-amber-400';
   const handleAddChecklistKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && newChecklistText.trim()) { vibrate(); onAddChecklist(newChecklistText); setNewChecklistText(''); } };
 
@@ -337,7 +343,7 @@ export const Utilities: React.FC<UtilitiesProps> = ({
       </section>
       <section>
         <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">{T.BUDGET_TRACKER[lang]}</h2></div>
-        <div className="mb-3 bg-neutral-900 border border-neutral-800 rounded-lg p-3"><div className="flex justify-between text-[9px] text-neutral-500 mb-1 font-bold tracking-wider"><span>SPENT: HK${Math.round(totalBudgetHkd).toLocaleString()}</span><span>GOAL: <input type="number" className="bg-transparent border-b border-neutral-700 w-[60px] text-right text-white focus:outline-none" value={totalBudget || ''} onChange={(e) => onUpdateTotalBudget(Number(e.target.value))} placeholder="Set" /></span></div><div className="h-2 w-full bg-neutral-800 rounded-full overflow-hidden"><div className={`h-full transition-all duration-500 ${progressColor}`} style={{ width: `${budgetProgress}%` }}></div></div>{budgetProgress >= 100 && <div className="text-[9px] text-red-500 text-right mt-1 font-bold">OVER BUDGET!</div>}</div>
+        <div className="mb-3 bg-neutral-900 border border-neutral-800 rounded-lg p-3"><div className="flex justify-between text-[9px] text-neutral-500 mb-1 font-bold tracking-wider"><span>SPENT: HK${Math.round(totalBudgetHkd).toLocaleString()}</span><span>GOAL: <input type="number" className="bg-transparent border-b border-neutral-700 w-[60px] text-right text-white focus:outline-none" value={safeTotalBudget || ''} onChange={(e) => onUpdateTotalBudget(Number(e.target.value))} placeholder="Set" /></span></div><div className="h-2 w-full bg-neutral-800 rounded-full overflow-hidden"><div className={`h-full transition-all duration-500 ${progressColor}`} style={{ width: `${budgetProgress}%` }}></div></div>{budgetProgress >= 100 && <div className="text-[9px] text-red-500 text-right mt-1 font-bold">OVER BUDGET!</div>}</div>
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">{safeBudget.map((item) => <BudgetItem key={item.id} item={item} onUpdate={onUpdateBudget} onDelete={onDeleteBudget} rates={rates} lang={lang} />)}<button onClick={onAddBudget} className="w-full py-2 text-[10px] text-neutral-500 hover:text-white hover:bg-neutral-800 transition border-b border-neutral-800">+ {T.ADD_EXPENSE[lang]}</button></div>
       </section>
       <section>
