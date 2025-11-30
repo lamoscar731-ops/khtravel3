@@ -72,34 +72,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Lang
     });
     const resultText = response.text;
     if (!resultText) throw new Error("No response");
-    
-    const parsedResult = JSON.parse(resultText) as DayPlan;
-
-    // --- ROBUST MERGE LOGIC ---
-    // We must preserve the original mapsUrl, id, and tags.
-    // AI might not return items in exact order, or might mess up IDs.
-    // Strategy: Try to match by ID, fallback to index.
-    const mergedItems = parsedResult.items.map((newItem, index) => {
-        let originalItem = currentPlan.items.find(i => i.id === newItem.id);
-        
-        // If ID match failed (AI changed ID), fallback to index
-        if (!originalItem && index < currentPlan.items.length) {
-            originalItem = currentPlan.items[index];
-        }
-
-        if (!originalItem) return newItem; // Completely new item from AI?
-
-        return {
-            ...newItem,
-            id: originalItem.id,         // Enforce original ID
-            time: originalItem.time,     // Enforce original Time (user knows best)
-            mapsUrl: originalItem.mapsUrl, // CRITICAL: Preserve Map URL
-            tags: originalItem.tags      // Preserve Tags
-        };
-    });
-
-    return { ...parsedResult, items: mergedItems };
-
+    return JSON.parse(resultText) as DayPlan;
   } catch (error) {
     return { ...currentPlan, weatherSummary: "Offline" };
   }
@@ -123,7 +96,6 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
     const ai = getAiClient(apiKey);
     const prompt = `
       I am at ${location} at ${time}. Suggest 3 late-night spots (Ramen, Bar, Donki).
-      MUST BE OPEN LATE or 24 HOURS.
       ${getLangInstruction(lang)}
       Return JSON array of objects: { name, type, reason }.
     `;
@@ -145,5 +117,27 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
 };
 
 export const generateLocalSOS = async (city: string, lang: Language): Promise<SOSContact[]> => {
-    return []; // Deprecated
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) throw new Error("Missing API Key");
+    const ai = getAiClient(apiKey);
+    const prompt = `
+      3 emergency contacts for ${city} (Police, Ambulance, Consulate).
+      ${getLangInstruction(lang)}
+      Return JSON array of objects: { name, number, note }.
+    `;
+    const schema = {
+      type: Type.ARRAY,
+      items: {
+          type: Type.OBJECT,
+          properties: {
+              name: { type: Type.STRING },
+              number: { type: Type.STRING },
+              note: { type: Type.STRING }
+          }
+      }
+    };
+    try {
+      const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
+      return JSON.parse(response.text || '[]') as SOSContact[];
+    } catch (error) { return []; }
 };
