@@ -25,41 +25,12 @@ export const COUNTRY_CITIES: Record<string, string[]> = {
     "OTHERS": []
 };
 
-export const EMERGENCY_DATA: Record<string, EmergencyContact[]> = {
-    "JAPAN": [
-        { id: 'e1', name: 'POLICE', number: '110', note: 'EMERGENCY' },
-        { id: 'e2', name: 'FIRE/AMBULANCE', number: '119', note: 'EMERGENCY' },
-        { id: 'e3', name: 'CONSULATE', number: '', note: 'CHECK LOCALLY' }
-    ],
-    "TAIWAN": [
-        { id: 'e1', name: 'POLICE', number: '110', note: 'EMERGENCY' },
-        { id: 'e2', name: 'FIRE/AMBULANCE', number: '119', note: 'EMERGENCY' }
-    ],
-    "SOUTH KOREA": [
-        { id: 'e1', name: 'POLICE', number: '112', note: 'EMERGENCY' },
-        { id: 'e2', name: 'FIRE/AMBULANCE', number: '119', note: 'EMERGENCY' }
-    ],
-    "THAILAND": [
-        { id: 'e1', name: 'TOURIST POLICE', number: '1155', note: 'ENGLISH SPOKEN' },
-        { id: 'e2', name: 'AMBULANCE', number: '1669', note: 'EMERGENCY' }
-    ],
-    "USA": [
-        { id: 'e1', name: 'EMERGENCY', number: '911', note: 'ALL SERVICES' }
-    ],
-    "UK": [
-        { id: 'e1', name: 'EMERGENCY', number: '999', note: 'ALL SERVICES' }
-    ],
-    "EUROPE": [
-        { id: 'e1', name: 'EMERGENCY', number: '112', note: 'EU WIDE' }
-    ]
-};
-
 export const TRANSLATIONS = {
     SCHEDULE: { EN: 'SCHEDULE', TC: '行程' },
     MY_TRIPS: { EN: 'MY TRIPS', TC: '我的旅程' },
     WALLET: { EN: 'WALLET', TC: '錢包' },
     TRIP_TO: { EN: 'TRIP TO', TC: '前往' },
-    DAY: { EN: 'DAY', TC: '第' }, 
+    DAY: { EN: 'DAY', TC: '第' }, // Day 1 vs 第 1 天 handled in code
     ITINERARY: { EN: 'ITINERARY', TC: '行程表' },
     MAP_ROUTE: { EN: 'MAP ROUTE', TC: '路線導航' },
     AI_CHECK: { EN: 'AI GUIDE CHECK', TC: 'AI 智能檢查' },
@@ -93,7 +64,7 @@ export const TRANSLATIONS = {
     ACTIVE: { EN: 'ACTIVE', TC: '進行中' },
     SAVE: { EN: 'SAVE', TC: '儲存' },
     CANCEL: { EN: 'CANCEL', TC: '取消' },
-    DELETE: { EN: 'DEL', TC: '刪除' },
+    DELETE: { EN: 'DEL', TC: '刪除' }, // Short DEL for EN
     DONE: { EN: 'DONE', TC: '完成' },
     NAVIGATE: { EN: 'NAVIGATE', TC: '導航' },
     SHOW: { EN: 'SHOW', TC: '展示' },
