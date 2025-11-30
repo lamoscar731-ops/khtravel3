@@ -9,31 +9,6 @@ export const EXCHANGE_RATES: Record<string, number> = {
   [Currency.HKD]: 1
 };
 
-export const AIRPORT_CODES: Record<string, string> = {
-    "TOKYO": "HND / NRT",
-    "OSAKA": "KIX",
-    "FUKUOKA": "FUK",
-    "SAPPORO": "CTS",
-    "NAGOYA": "NGO",
-    "OKINAWA": "OKA",
-    "SEOUL": "ICN / GMP",
-    "BUSAN": "PUS",
-    "TAIPEI": "TPE / TSA",
-    "KAOHSIUNG": "KHH",
-    "HONG KONG": "HKG",
-    "BANGKOK": "BKK / DMK",
-    "SINGAPORE": "SIN",
-    "LONDON": "LHR / LGW",
-    "PARIS": "CDG / ORY",
-    "NEW YORK": "JFK / EWR",
-    "LOS ANGELES": "LAX",
-    "SAN FRANCISCO": "SFO",
-    "TORONTO": "YYZ",
-    "VANCOUVER": "YVR",
-    "SYDNEY": "SYD",
-    "MELBOURNE": "MEL"
-};
-
 export const COUNTRY_CITIES: Record<string, string[]> = {
     "JAPAN": ["TOKYO", "OSAKA", "KYOTO", "FUKUOKA", "SAPPORO", "OKINAWA", "NAGOYA"],
     "TAIWAN": ["TAIPEI", "KAOHSIUNG", "TAICHUNG", "TAINAN"],
@@ -123,8 +98,7 @@ export const TRANSLATIONS = {
     NAVIGATE: { EN: 'NAVIGATE', TC: '導航' },
     SHOW: { EN: 'SHOW', TC: '展示' },
     COPYRIGHT: { EN: 'COPYRIGHT KH 2025', TC: 'COPYRIGHT KH 2025' },
-    LANGUAGE: { EN: 'LANGUAGE', TC: '語言' },
-    NIGHTS: { EN: 'NIGHTS', TC: '晚' }
+    LANGUAGE: { EN: 'LANGUAGE', TC: '語言' }
 };
 
 export const INITIAL_ITINERARY: DayPlan[] = [
