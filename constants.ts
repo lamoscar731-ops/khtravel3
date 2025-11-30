@@ -10,106 +10,159 @@ export const EXCHANGE_RATES: Record<string, number> = {
 };
 
 export const COUNTRY_CITIES: Record<string, string[]> = {
-    "JAPAN": ["TOKYO", "OSAKA", "KYOTO", "FUKUOKA", "SAPPORO", "OKINAWA", "NAGOYA"],
-    "TAIWAN": ["TAIPEI", "KAOHSIUNG", "TAICHUNG", "TAINAN"],
-    "SOUTH KOREA": ["SEOUL", "BUSAN", "JEJU"],
-    "THAILAND": ["BANGKOK", "CHIANG MAI", "PHUKET"],
-    "VIETNAM": ["HO CHI MINH CITY", "HANOI", "DA NANG"],
-    "SINGAPORE": ["SINGAPORE"],
-    "CHINA": ["HONG KONG", "SHANGHAI", "BEIJING", "SHENZHEN"],
-    "UK": ["LONDON", "EDINBURGH", "MANCHESTER"],
-    "EUROPE": ["PARIS", "ROME", "BARCELONA", "AMSTERDAM", "BERLIN", "PRAGUE", "VIENNA"],
-    "USA": ["NEW YORK", "LOS ANGELES", "SAN FRANCISCO", "LAS VEGAS"],
-    "AUSTRALIA": ["SYDNEY", "MELBOURNE", "BRISBANE"],
-    "CANADA": ["TORONTO", "VANCOUVER"],
-    "OTHERS": []
-};
-
-export const EMERGENCY_DATA: Record<string, {name: string, number: string, note: string}[]> = {
-    "JAPAN": [
-        { name: 'POLICE', number: '110', note: 'EMERGENCY' },
-        { name: 'FIRE/AMBULANCE', number: '119', note: 'EMERGENCY' },
-        { name: 'CONSULATE', number: '', note: 'CHECK LOCALLY' }
-    ],
-    "TAIWAN": [
-        { name: 'POLICE', number: '110', note: 'EMERGENCY' },
-        { name: 'FIRE/AMBULANCE', number: '119', note: 'EMERGENCY' }
-    ],
-    "SOUTH KOREA": [
-        { name: 'POLICE', number: '112', note: 'EMERGENCY' },
-        { name: 'FIRE/AMBULANCE', number: '119', note: 'EMERGENCY' }
-    ],
-    "THAILAND": [
-        { name: 'TOURIST POLICE', number: '1155', note: 'ENGLISH SPOKEN' },
-        { name: 'AMBULANCE', number: '1669', note: 'EMERGENCY' }
-    ],
-    "USA": [
-        { name: 'EMERGENCY', number: '911', note: 'ALL SERVICES' }
-    ],
-    "UK": [
-        { name: 'EMERGENCY', number: '999', note: 'ALL SERVICES' }
-    ],
-    "EUROPE": [
-        { name: 'EMERGENCY', number: '112', note: 'EU WIDE' }
-    ]
+  "Japan": ["Tokyo", "Osaka", "Kyoto", "Hokkaido", "Fukuoka"],
+  "South Korea": ["Seoul", "Busan", "Jeju"],
+  "Taiwan": ["Taipei", "Kaohsiung", "Tainan"],
+  "Thailand": ["Bangkok", "Chiang Mai", "Phuket"],
+  "Vietnam": ["Ho Chi Minh", "Hanoi", "Da Nang"],
+  "OTHERS": []
 };
 
 export const TRANSLATIONS = {
-    SCHEDULE: { EN: 'SCHEDULE', TC: '行程' },
-    MY_TRIPS: { EN: 'MY TRIPS', TC: '我的旅程' },
-    WALLET: { EN: 'WALLET', TC: '錢包' },
-    TRIP_TO: { EN: 'TRIP TO', TC: '前往' },
-    DAY: { EN: 'DAY', TC: '第' }, 
-    ITINERARY: { EN: 'ITINERARY', TC: '行程表' },
-    MAP_ROUTE: { EN: 'MAP ROUTE', TC: '路線導航' },
-    AI_CHECK: { EN: 'AI GUIDE CHECK', TC: 'AI 智能檢查' },
-    RESET: { EN: 'RESET', TC: '還原' },
-    ADD_ACTIVITY: { EN: 'ADD ACTIVITY', TC: '新增行程' },
-    NEXT_STOP: { EN: 'NEXT STOP?', TC: '下一站去哪？' },
-    FLIGHTS: { EN: 'FLIGHTS', TC: '航班' },
-    ACCOMMODATION: { EN: 'ACCOMMODATION', TC: '住宿' },
-    EMERGENCY: { EN: 'EMERGENCY', TC: '緊急聯絡' },
-    PACKING_LIST: { EN: 'PACKING LIST', TC: '行李清單' },
-    BUDGET_TRACKER: { EN: 'BUDGET TRACKER', TC: '預算追蹤' },
-    AI_SUGGEST: { EN: 'AI SUGGEST', TC: 'AI 建議' },
-    ADD: { EN: 'ADD', TC: '新增' },
-    ADD_EXPENSE: { EN: 'ADD EXPENSE', TC: '新增支出' },
-    SETTINGS: { EN: 'SETTINGS', TC: '設定' },
-    SYNC_SHARE: { EN: 'SYNC / SHARE TRIP', TC: '同步 / 分享' },
-    COPY_CODE: { EN: 'COPY TRIP DATA', TC: '複製行程代碼' },
-    LOAD: { EN: 'LOAD', TC: '匯入' },
-    EXPORT_ICS: { EN: 'EXPORT .ICS', TC: '匯出行事曆' },
-    COPY_TEXT: { EN: 'COPY TEXT', TC: '複製純文字' },
-    DANGER_ZONE: { EN: 'DANGER ZONE', TC: '危險區域' },
-    DELETE_TRIP: { EN: 'DELETE TRIP', TC: '刪除此旅程' },
-    TRIP_COVER: { EN: 'TRIP COVER IMAGE', TC: '封面照片' },
-    UPLOAD: { EN: 'UPLOAD', TC: '上傳' },
-    SELECT_DEST: { EN: 'SELECT DESTINATION', TC: '選擇目的地' },
-    SELECT_COUNTRY: { EN: 'SELECT COUNTRY', TC: '選擇國家' },
-    QUICK_NOTES: { EN: 'QUICK NOTES', TC: '隨手筆記' },
-    NEARBY_GEMS: { EN: 'NEARBY GEMS', TC: '附近好去處' },
-    SEARCH_MAPS: { EN: 'OPEN GOOGLE MAPS', TC: '開啟 GOOGLE MAPS' },
-    NEW_TRIP: { EN: 'NEW TRIP', TC: '新旅程' },
-    ACTIVE: { EN: 'ACTIVE', TC: '進行中' },
-    SAVE: { EN: 'SAVE', TC: '儲存' },
-    CANCEL: { EN: 'CANCEL', TC: '取消' },
-    DELETE: { EN: 'DEL', TC: '刪除' },
-    DONE: { EN: 'DONE', TC: '完成' },
-    NAVIGATE: { EN: 'NAVIGATE', TC: '導航' },
-    SHOW: { EN: 'SHOW', TC: '展示' },
-    COPYRIGHT: { EN: 'COPYRIGHT KH 2025', TC: 'COPYRIGHT KH 2025' },
-    LANGUAGE: { EN: 'LANGUAGE', TC: '語言' }
+  SETTINGS: { EN: 'Settings', TC: '設定' },
+  TRIP_COVER: { EN: 'Trip Cover', TC: '封面' },
+  UPLOAD: { EN: 'Upload', TC: '上傳' },
+  SYNC_SHARE: { EN: 'Sync & Share', TC: '同步與分享' },
+  COPY_CODE: { EN: 'Copy Trip Code', TC: '複製行程碼' },
+  LOAD: { EN: 'Load', TC: '讀取' },
+  EXPORT_ICS: { EN: 'Export to Calendar', TC: '匯出日曆' },
+  COPY_TEXT: { EN: 'Copy as Text', TC: '複製文字' },
+  DANGER_ZONE: { EN: 'Danger Zone', TC: '危險區域' },
+  DELETE_TRIP: { EN: 'Delete Trip', TC: '刪除行程' },
+  NEARBY_GEMS: { EN: 'Nearby Gems', TC: '附近好去處' },
+  SEARCH_MAPS: { EN: 'Open in Maps', TC: '在地圖開啟' },
+  SELECT_DEST: { EN: 'Select Destination', TC: '選擇目的地' },
+  SELECT_COUNTRY: { EN: 'Select Country', TC: '選擇國家' },
+  QUICK_NOTES: { EN: 'Quick Notes', TC: '速記' },
+  TRIP_TO: { EN: 'Trip To', TC: '前往' },
+  DAY: { EN: 'Day', TC: '第' }, 
+  ITINERARY: { EN: 'Itinerary', TC: '行程' },
+  DELETE: { EN: 'Delete', TC: '刪除' },
+  MAP_ROUTE: { EN: 'Map Route', TC: '地圖路線' },
+  AI_CHECK: { EN: 'AI Check', TC: 'AI 檢查' },
+  RESET: { EN: 'Reset', TC: '重置' },
+  ADD_ACTIVITY: { EN: 'Add Activity', TC: '新增活動' },
+  NEXT_STOP: { EN: 'Where Next?', TC: '下一站去哪?' },
+  WALLET: { EN: 'Wallet', TC: '錢包' },
+  MY_TRIPS: { EN: 'My Trips', TC: '我的行程' },
+  NEW_TRIP: { EN: 'New Trip', TC: '新行程' },
+  ACTIVE: { EN: 'Active', TC: '進行中' },
+  FLIGHTS: { EN: 'Flights', TC: '航班' },
+  COPYRIGHT: { EN: '© 2024 KURO TRAVEL', TC: '© 2024 KURO TRAVEL' },
+  SCHEDULE: { EN: 'Schedule', TC: '日程' }
+};
+
+export const EMERGENCY_DATA: Record<string, {name: string, number: string, note: string}[]> = {
+  "Japan": [{ name: 'Police', number: '110', note: 'Police' }, { name: 'Fire/Ambulance', number: '119', note: 'Emergency' }],
+  "South Korea": [{ name: 'Police', number: '112', note: 'Police' }, { name: 'Fire/Ambulance', number: '119', note: 'Emergency' }],
+  "Taiwan": [{ name: 'Police', number: '110', note: 'Police' }, { name: 'Fire/Ambulance', number: '119', note: 'Emergency' }],
+  "Thailand": [{ name: 'Tourist Police', number: '1155', note: 'English Spoken' }, { name: 'Ambulance', number: '1669', note: 'Medical' }]
 };
 
 export const INITIAL_ITINERARY: DayPlan[] = [
   {
     dayId: 1,
     date: '2023-11-15 (Wed)',
-    items: []
+    weatherSummary: '', 
+    items: [
+      {
+        id: '1-1',
+        time: '09:00',
+        title: 'Senso-ji Temple',
+        location: '2 Chome-3-1 Asakusa, Taito City, Tokyo',
+        type: ItemType.SIGHTSEEING,
+        navQuery: 'Senso-ji Temple Asakusa',
+        description: 'Tokyo\'s oldest temple. Enter through the Kaminarimon (Thunder Gate).',
+        tips: ['Get a fortune (Omikuji).', 'Try the melon pan nearby.'],
+        tags: [{ label: 'Cultural Heritage', color: 'red' }]
+      },
+      {
+        id: '1-2',
+        time: '12:00',
+        title: 'Unagi Irokawa',
+        location: '1 Chome-4-4 Kaminarimon, Taito City',
+        type: ItemType.FOOD,
+        navQuery: 'Unagi Irokawa Asakusa',
+        description: 'Famous grilled eel rice restaurant.',
+        tips: ['Queue starts early.'],
+        tags: [{ label: 'Must Eat', color: 'gold' }, { label: 'Michelin Bib', color: 'gray' }]
+      },
+      {
+        id: '1-3',
+        time: '14:00',
+        title: 'Tokyo Skytree',
+        location: '1 Chome-1-2 Oshiage, Sumida City',
+        type: ItemType.TRANSPORT,
+        navQuery: 'Tokyo Skytree',
+        description: 'Observation deck for panoramic views.',
+        tags: []
+      }
+    ]
+  },
+  {
+    dayId: 2,
+    date: '2023-11-16 (Thu)',
+    weatherSummary: '',
+    items: [
+      {
+        id: '2-1',
+        time: '10:00',
+        title: 'Tsukiji Outer Market',
+        location: '4 Chome-13 Tsukiji, Chuo City',
+        type: ItemType.FOOD,
+        navQuery: 'Tsukiji Outer Market',
+        description: 'Fresh seafood breakfast.',
+        tips: ['Try the Tamagoyaki (egg omelet).', 'Cash is preferred.'],
+        tags: [{ label: 'Breakfast', color: 'gold' }]
+      },
+      {
+        id: '2-2',
+        time: '13:00',
+        title: 'Ginza Shopping District',
+        location: 'Ginza, Chuo City',
+        type: ItemType.SHOPPING,
+        navQuery: 'Ginza Six',
+        description: 'Luxury shopping and architecture.',
+        tags: [{ label: 'Tax Free', color: 'gray' }]
+      }
+    ]
   }
 ];
 
-export const INITIAL_BUDGET: BudgetProps[] = [];
-export const INITIAL_FLIGHTS: FlightInfo[] = [];
-export const INITIAL_HOTELS: HotelInfo[] = [];
-export const INITIAL_CONTACTS: EmergencyContact[] = [];
+export const INITIAL_BUDGET: BudgetProps[] = [
+  { id: '1', item: 'Flight Ticket', cost: 120000, category: 'Transport', currency: Currency.JPY },
+  { id: '2', item: 'Hotel Deposit', cost: 50000, category: 'Stay', currency: Currency.JPY },
+  { id: '3', item: 'Disney Ticket', cost: 9400, category: 'Activity', currency: Currency.JPY },
+];
+
+export const INITIAL_FLIGHTS: FlightInfo[] = [
+  {
+    id: 'f1',
+    flightNumber: 'JL 098',
+    departureDate: '2023-11-15',
+    departureTime: '08:30',
+    departureAirport: 'HND',
+    arrivalDate: '2023-11-15',
+    arrivalTime: '11:15',
+    arrivalAirport: 'TSA',
+    terminal: '3',
+    gate: '142'
+  }
+];
+
+export const INITIAL_HOTELS: HotelInfo[] = [
+  {
+    id: 'h1',
+    name: 'Hotel Aman Tokyo',
+    address: 'The Otemachi Tower, 1-5-6 Otemachi, Chiyoda-ku, Tokyo',
+    checkIn: '2023-11-15',
+    checkOut: '2023-11-20',
+    bookingRef: 'RES-882910'
+  }
+];
+
+export const INITIAL_CONTACTS: EmergencyContact[] = [
+    { id: '1', name: 'Ambulance / Fire', number: '119', note: 'Medical Emergency' },
+    { id: '2', name: 'Police', number: '110', note: 'Police' },
+    { id: '3', name: 'Embassy', number: '03-3224-5000', note: 'US Embassy' }
+];
