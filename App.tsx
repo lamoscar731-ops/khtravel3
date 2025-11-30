@@ -69,12 +69,7 @@ const App: React.FC = () => {
               checklist: t.checklist || [],
               notes: t.notes || '',
               coverImage: t.coverImage || '',
-              totalBudget: t.totalBudget || 20000,
-              // Ensure these are arrays
-              flights: t.flights || [],
-              hotels: t.hotels || [],
-              budget: t.budget || [],
-              contacts: t.contacts || []
+              totalBudget: t.totalBudget || 20000
           }));
       }
 
@@ -137,16 +132,16 @@ const App: React.FC = () => {
       const currentTrip = trips.find(t => t.id === activeTripId);
       if (currentTrip) {
           setDestination(currentTrip.destination);
-          setItinerary(currentTrip.itinerary || []);
-          setFlights(currentTrip.flights || []);
-          setHotels(currentTrip.hotels || []);
-          setBudget(currentTrip.budget || []);
-          setContacts(currentTrip.contacts || []);
+          setItinerary(currentTrip.itinerary);
+          setFlights(currentTrip.flights);
+          setHotels(currentTrip.hotels);
+          setBudget(currentTrip.budget);
+          setContacts(currentTrip.contacts);
           setTotalBudget(currentTrip.totalBudget || 20000);
           setChecklist(currentTrip.checklist || []);
           setTripNotes(currentTrip.notes || '');
           setCoverImage(currentTrip.coverImage || '');
-          if (currentTrip.itinerary && selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
+          if (selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
           setIsSelectMode(false);
           setSelectedItemIds(new Set());
       }
@@ -277,6 +272,7 @@ const App: React.FC = () => {
       if (foundCountry && EMERGENCY_DATA[foundCountry]) {
           const staticContacts = EMERGENCY_DATA[foundCountry];
           setContacts(prev => {
+              // Avoid duplicates based on number
               const existingNums = new Set(prev.map(c => c.number));
               const newContacts = staticContacts.filter(c => !existingNums.has(c.number)).map(c => ({
                   id: `sos-${Date.now()}-${Math.random()}`,
@@ -876,7 +872,6 @@ const App: React.FC = () => {
                             className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden h-32 flex flex-col justify-between ${activeTripId === trip.id ? 'border-white' : 'border-neutral-800 hover:border-neutral-600'}`}
                             style={trip.coverImage ? { backgroundImage: `url(${trip.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                         >
-                             {/* Overlay for image readablity */}
                              <div className={`absolute inset-0 ${trip.coverImage ? 'bg-black/60' : 'bg-neutral-900'} z-0`}></div>
                              
                              {!trip.coverImage && (
@@ -924,3 +919,5 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+export default App;
