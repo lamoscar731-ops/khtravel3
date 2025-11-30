@@ -3,10 +3,12 @@ import { BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Checkli
 import { TRANSLATIONS, AIRPORT_CODES } from '../constants';
 
 interface UtilitiesProps {
-    budget: BudgetProps[];
-    flights: FlightInfo[];
-    hotels: HotelInfo[];
-    contacts: EmergencyContact[];
+    budget?: BudgetProps[];
+    flights?: FlightInfo[];
+    hotels?: HotelInfo[];
+    contacts?: EmergencyContact[];
+    checklist?: ChecklistItem[];
+    totalBudget?: number;
     rates: Record<string, number>; 
     
     onAddFlight: () => void;
@@ -31,8 +33,6 @@ interface UtilitiesProps {
     onDeleteChecklist: (id: string) => void;
     onAiChecklist: () => void;
     isLoadingAi: boolean;
-    checklist: ChecklistItem[];
-    totalBudget: number;
     lang: Language;
 }
 
@@ -48,9 +48,9 @@ const InputField = ({ label, value, onChange, placeholder, list }: { label: stri
 const FileUploadButton = ({ onUpload, hasFile }: { onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void, hasFile: boolean }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     return (
-        <div className="flex items-center">
-            <button onClick={() => inputRef.current?.click()} className={`text-[10px] font-bold px-2 py-0.5 rounded border ${hasFile ? 'bg-green-900/30 text-green-400 border-green-800' : 'text-neutral-400 border-neutral-700 hover:text-white'}`}>
-                {hasFile ? 'FILE ATTACHED' : 'UPLOAD PDF/IMG'}
+        <div className="flex items-center mt-2">
+            <button onClick={() => inputRef.current?.click()} className={`text-[10px] font-bold px-2 py-1 rounded border w-full ${hasFile ? 'bg-green-900/30 text-green-400 border-green-800' : 'text-neutral-400 border-neutral-700 hover:text-white hover:bg-neutral-800'}`}>
+                {hasFile ? '📎 FILE ATTACHED (CHANGE)' : '📎 UPLOAD PDF / IMAGE'}
             </button>
             <input type="file" ref={inputRef} className="hidden" accept="image/*,application/pdf" onChange={onUpload} />
         </div>
@@ -93,7 +93,6 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
         }
     };
 
-    // Airport code lookup logic (Simplified inline)
     const airportListId = `airports-${flight.id}`;
 
     if (isEditing) {
@@ -138,9 +137,9 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
             <div className="flex justify-between text-xs text-neutral-400 items-end">
                 <div><div className="text-[9px] text-neutral-600 uppercase">Date</div><div className="text-white text-[10px]">{flight.departureDate}</div></div>
                 {formData.attachment && (
-                    <button onClick={viewAttachment} className="text-[9px] bg-neutral-800 text-blue-400 px-2 py-0.5 rounded border border-neutral-700">VIEW TICKET</button>
+                    <button onClick={viewAttachment} className="text-[9px] bg-neutral-800 text-blue-400 px-2 py-0.5 rounded border border-neutral-700 ml-2">VIEW TICKET</button>
                 )}
-                <div className="text-right"><div className="text-[9px] text-neutral-600 uppercase">Gate / Terminal</div><div className="text-white text-[10px]">{flight.gate || '-'} / {flight.terminal || '-'}</div></div>
+                <div className="text-right flex-1"><div className="text-[9px] text-neutral-600 uppercase">Gate / Terminal</div><div className="text-white text-[10px]">{flight.gate || '-'} / {flight.terminal || '-'}</div></div>
             </div>
         </div>
     );
@@ -186,7 +185,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     // Duration Logic
     const start = new Date(hotel.checkIn);
     const end = new Date(hotel.checkOut);
-    const nights = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const nights = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
     
     const now = new Date();
     const isTonight = now >= start && now < end;
@@ -239,8 +238,8 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
             <div className="flex justify-between items-start mb-1 pr-16">
                 <div>
                     <h3 className="text-sm text-white font-medium">{formData.name}</h3>
-                    <div className="flex gap-2 mt-1">
-                         <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} NIGHTS</span>
+                    <div className="flex gap-2 mt-1 items-center">
+                         {(nights > 0) && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} {T.NIGHTS[lang]}</span>}
                          {isTonight && <span className="bg-indigo-900/50 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap animate-pulse">TONIGHT</span>}
                          {isCheckoutTmr && <span className="bg-amber-900/50 text-amber-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">CHECK-OUT TMRW</span>}
                     </div>
@@ -259,7 +258,6 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     );
 };
 
-// ContactItem and BudgetItem remain same but must be included for full file
 const ContactItem: React.FC<{ item: EmergencyContact, onUpdate: (c: EmergencyContact) => void, onDelete: (id: string) => void, lang: Language }> = ({ item, onUpdate, onDelete, lang }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [data, setData] = useState(item);
@@ -300,7 +298,7 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
 }
 
 export const Utilities: React.FC<UtilitiesProps> = ({ 
-    budget, flights, hotels, contacts, checklist, totalBudget, rates,
+    budget = [], flights = [], hotels = [], contacts = [], checklist = [], totalBudget = 20000, rates,
     onAddFlight, onUpdateFlight, onDeleteFlight, 
     onAddHotel, onUpdateHotel, onDeleteHotel, 
     onAddBudget, onUpdateBudget, onDeleteBudget, 
@@ -308,8 +306,15 @@ export const Utilities: React.FC<UtilitiesProps> = ({
     onUpdateTotalBudget, onAddChecklist, onToggleChecklist, onDeleteChecklist, onAiChecklist, isLoadingAi, lang
 }) => {
   const T = TRANSLATIONS;
+  // Forced Initialization: Even if props are undefined/null (from old localStorage data), these will be valid empty arrays.
+  const safeBudget = Array.isArray(budget) ? budget : [];
+  const safeFlights = Array.isArray(flights) ? flights : [];
+  const safeHotels = Array.isArray(hotels) ? hotels : [];
+  const safeContacts = Array.isArray(contacts) ? contacts : [];
+  const safeChecklist = Array.isArray(checklist) ? checklist : [];
+
   const [newChecklistText, setNewChecklistText] = useState('');
-  const totalBudgetHkd = budget.reduce((acc, curr) => { const rate = rates[curr.currency] || 1; return acc + (curr.cost * rate); }, 0);
+  const totalBudgetHkd = safeBudget.reduce((acc, curr) => { const rate = rates[curr.currency] || 1; return acc + (curr.cost * rate); }, 0);
   const budgetProgress = totalBudget ? Math.min((totalBudgetHkd / totalBudget) * 100, 100) : 0;
   let progressColor = 'bg-white'; if (budgetProgress >= 100) progressColor = 'bg-red-500'; else if (budgetProgress >= 80) progressColor = 'bg-amber-400';
   const handleAddChecklistKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && newChecklistText.trim()) { vibrate(); onAddChecklist(newChecklistText); setNewChecklistText(''); } };
@@ -318,26 +323,26 @@ export const Utilities: React.FC<UtilitiesProps> = ({
     <div className="space-y-4 pb-24">
       <section>
           <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">{T.FLIGHTS[lang]}</h2><button onClick={onAddFlight} className="text-neutral-400 hover:text-white text-[10px]">+ {T.ADD[lang]}</button></div>
-          {flights.map(f => <FlightItem key={f.id} flight={f} onUpdate={onUpdateFlight} onDelete={onDeleteFlight} lang={lang} />)}
-          {flights.length === 0 && <div className="text-center py-4 border border-dashed border-neutral-800 rounded-lg text-neutral-600 text-[10px]">No flights added</div>}
+          {safeFlights.map(f => <FlightItem key={f.id} flight={f} onUpdate={onUpdateFlight} onDelete={onDeleteFlight} lang={lang} />)}
+          {safeFlights.length === 0 && <div className="text-center py-4 border border-dashed border-neutral-800 rounded-lg text-neutral-600 text-[10px]">No flights added</div>}
       </section>
       <section>
           <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">{T.ACCOMMODATION[lang]}</h2><button onClick={onAddHotel} className="text-neutral-400 hover:text-white text-[10px]">+ {T.ADD[lang]}</button></div>
-          {hotels.map(h => <HotelItem key={h.id} hotel={h} onUpdate={onUpdateHotel} onDelete={onDeleteHotel} lang={lang} />)}
-          {hotels.length === 0 && <div className="text-center py-4 border border-dashed border-neutral-800 rounded-lg text-neutral-600 text-[10px]">No hotels added</div>}
+          {safeHotels.map(h => <HotelItem key={h.id} hotel={h} onUpdate={onUpdateHotel} onDelete={onDeleteHotel} lang={lang} />)}
+          {safeHotels.length === 0 && <div className="text-center py-4 border border-dashed border-neutral-800 rounded-lg text-neutral-600 text-[10px]">No hotels added</div>}
       </section>
       <section>
         <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">{T.EMERGENCY[lang]}</h2><button onClick={onAddContact} className="text-neutral-400 hover:text-white text-[10px]">+ {T.ADD[lang]}</button></div>
-        <div className="grid grid-cols-2 gap-2">{contacts.map(contact => <ContactItem key={contact.id} item={contact} onUpdate={onUpdateContact} onDelete={onDeleteContact} lang={lang} />)}</div>
+        <div className="grid grid-cols-2 gap-2">{safeContacts.map(contact => <ContactItem key={contact.id} item={contact} onUpdate={onUpdateContact} onDelete={onDeleteContact} lang={lang} />)}</div>
       </section>
       <section>
         <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">{T.BUDGET_TRACKER[lang]}</h2></div>
         <div className="mb-3 bg-neutral-900 border border-neutral-800 rounded-lg p-3"><div className="flex justify-between text-[9px] text-neutral-500 mb-1 font-bold tracking-wider"><span>SPENT: HK${Math.round(totalBudgetHkd).toLocaleString()}</span><span>GOAL: <input type="number" className="bg-transparent border-b border-neutral-700 w-[60px] text-right text-white focus:outline-none" value={totalBudget || ''} onChange={(e) => onUpdateTotalBudget(Number(e.target.value))} placeholder="Set" /></span></div><div className="h-2 w-full bg-neutral-800 rounded-full overflow-hidden"><div className={`h-full transition-all duration-500 ${progressColor}`} style={{ width: `${budgetProgress}%` }}></div></div>{budgetProgress >= 100 && <div className="text-[9px] text-red-500 text-right mt-1 font-bold">OVER BUDGET!</div>}</div>
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">{budget.map((item) => <BudgetItem key={item.id} item={item} onUpdate={onUpdateBudget} onDelete={onDeleteBudget} rates={rates} lang={lang} />)}<button onClick={onAddBudget} className="w-full py-2 text-[10px] text-neutral-500 hover:text-white hover:bg-neutral-800 transition border-b border-neutral-800">+ {T.ADD_EXPENSE[lang]}</button></div>
+        <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">{safeBudget.map((item) => <BudgetItem key={item.id} item={item} onUpdate={onUpdateBudget} onDelete={onDeleteBudget} rates={rates} lang={lang} />)}<button onClick={onAddBudget} className="w-full py-2 text-[10px] text-neutral-500 hover:text-white hover:bg-neutral-800 transition border-b border-neutral-800">+ {T.ADD_EXPENSE[lang]}</button></div>
       </section>
       <section>
           <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">{T.PACKING_LIST[lang]}</h2><button onClick={onAiChecklist} disabled={isLoadingAi} className="text-amber-200 hover:text-amber-100 text-[10px] flex items-center gap-1 uppercase">{isLoadingAi ? <span className="animate-pulse">Thinking...</span> : <><span>✨ {T.AI_SUGGEST[lang]}</span></>}</button></div>
-          <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden"><div className="p-2 border-b border-neutral-800 flex gap-2"><input className="bg-transparent text-white text-xs w-full focus:outline-none placeholder-neutral-600" placeholder="Add item..." value={newChecklistText} onChange={(e) => setNewChecklistText(e.target.value)} onKeyDown={handleAddChecklistKey} /><button onClick={handleAddItem} className="text-neutral-500 text-[10px] font-bold">+</button></div><div>{checklist?.map(item => (<div key={item.id} className="flex items-center gap-3 p-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/30 group"><button onClick={() => onToggleChecklist(item.id)} className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${item.checked ? 'bg-white border-white' : 'border-neutral-600 hover:border-neutral-400'}`}>{item.checked && <span className="text-black text-[10px] font-bold">✓</span>}</button><span className={`text-xs flex-1 ${item.checked ? 'text-neutral-600 line-through' : 'text-neutral-200'}`}>{item.text}</span><button onClick={() => { vibrate(); onDeleteChecklist(item.id); }} className="text-neutral-700 hover:text-red-500 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button></div>))}{(!checklist || checklist.length === 0) && <div className="text-center py-4 text-neutral-600 text-[10px]">List is empty</div>}</div></div>
+          <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden"><div className="p-2 border-b border-neutral-800 flex gap-2"><input className="bg-transparent text-white text-xs w-full focus:outline-none placeholder-neutral-600" placeholder="Add item..." value={newChecklistText} onChange={(e) => setNewChecklistText(e.target.value)} onKeyDown={handleAddChecklistKey} /><button onClick={handleAddItem} className="text-neutral-500 text-[10px] font-bold">+</button></div><div>{safeChecklist.map(item => (<div key={item.id} className="flex items-center gap-3 p-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/30 group"><button onClick={() => onToggleChecklist(item.id)} className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${item.checked ? 'bg-white border-white' : 'border-neutral-600 hover:border-neutral-400'}`}>{item.checked && <span className="text-black text-[10px] font-bold">✓</span>}</button><span className={`text-xs flex-1 ${item.checked ? 'text-neutral-600 line-through' : 'text-neutral-200'}`}>{item.text}</span><button onClick={() => { vibrate(); onDeleteChecklist(item.id); }} className="text-neutral-700 hover:text-red-500 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button></div>))}{safeChecklist.length === 0 && <div className="text-center py-4 text-neutral-600 text-[10px]">List is empty</div>}</div></div>
       </section>
     </div>
   );
