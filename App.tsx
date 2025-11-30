@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
@@ -59,10 +58,21 @@ const App: React.FC = () => {
         .catch(() => console.log("Using default rates"));
   }, []);
 
-  // --- Multi-Trip State Management ---
+  // --- Multi-Trip State Management (With Robust Migration) ---
   const [trips, setTrips] = useState<Trip[]>(() => {
       const savedTrips = localStorage.getItem('kuro_trips');
-      if (savedTrips) return JSON.parse(savedTrips);
+      if (savedTrips) {
+          const parsed = JSON.parse(savedTrips);
+          // Migration: Ensure all trips have new fields
+          return parsed.map((t: any) => ({
+              ...t,
+              checklist: t.checklist || [],
+              notes: t.notes || '',
+              coverImage: t.coverImage || '',
+              totalBudget: t.totalBudget || 20000
+          }));
+      }
+
       const oldItinerary = localStorage.getItem('kuro_itinerary');
       if (oldItinerary) {
           const migratedTrip: Trip = {
@@ -259,7 +269,6 @@ const App: React.FC = () => {
           }
       }
       
-      // Static SOS update (Simple and reliable)
       if (foundCountry && EMERGENCY_DATA[foundCountry]) {
           const staticContacts = EMERGENCY_DATA[foundCountry];
           setContacts(prev => {
@@ -404,7 +413,7 @@ const App: React.FC = () => {
       setItinerary(prev => prev.map(day => {
           if (day.dayId === selectedDay) {
               const { backupItems, ...rest } = day;
-              // Clear analysis fields and forecast, but keep other fields
+              // Clear analysis fields and forecast
               return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined, forecast: undefined };
           }
           return day;
@@ -603,7 +612,6 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="mt-6 text-center">
-                      {/* Fixed: Open Google Maps Home directly */}
                       <button onClick={() => { vibrate(); window.open('https://www.google.com/maps', '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">{T.SEARCH_MAPS[lang]}</button>
                   </div>
               </div>
@@ -864,7 +872,6 @@ const App: React.FC = () => {
                             className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden h-32 flex flex-col justify-between ${activeTripId === trip.id ? 'border-white' : 'border-neutral-800 hover:border-neutral-600'}`}
                             style={trip.coverImage ? { backgroundImage: `url(${trip.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                         >
-                             {/* Overlay for image readablity */}
                              <div className={`absolute inset-0 ${trip.coverImage ? 'bg-black/60' : 'bg-neutral-900'} z-0`}></div>
                              
                              {!trip.coverImage && (
