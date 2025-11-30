@@ -182,7 +182,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
         }
     };
 
-    // Duration Logic
+    // Duration Logic (Safe Date Parsing)
     const start = new Date(hotel.checkIn);
     const end = new Date(hotel.checkOut);
     const isValidDate = !isNaN(start.getTime()) && !isNaN(end.getTime());
@@ -190,7 +190,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
-    const isTonight = hotel.checkIn <= todayStr && hotel.checkOut > todayStr;
+    const isTonight = isValidDate && hotel.checkIn <= todayStr && hotel.checkOut > todayStr;
     const checkoutDate = new Date(now.getTime() + 86400000);
     const isCheckoutTmr = isValidDate && checkoutDate.toISOString().split('T')[0] === hotel.checkOut;
 
@@ -242,7 +242,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
                 <div>
                     <h3 className="text-sm text-white font-medium">{formData.name}</h3>
                     <div className="flex gap-2 mt-1 items-center">
-                         {nights > 0 && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} {T.NIGHTS[lang]}</span>}
+                         {(nights > 0) && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} {T.NIGHTS[lang]}</span>}
                          {isTonight && <span className="bg-indigo-900/50 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap animate-pulse">TONIGHT</span>}
                          {isCheckoutTmr && <span className="bg-amber-900/50 text-amber-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">CHECK-OUT TMRW</span>}
                     </div>
@@ -288,11 +288,14 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
     useEffect(() => { setData(item); }, [item]);
     const handleSave = () => { vibrate(); onUpdate({...data, cost: Number(data.cost)}); setIsEditing(false); };
     const T = TRANSLATIONS;
-    const rate = rates[item.currency] || 1;
+    
+    // Safe Rate Lookup
+    const rate = (rates && rates[item.currency]) ? rates[item.currency] : 1;
     const hkdAmount = Math.round(item.cost * rate);
+
     if(isEditing) {
         return (
-             <div className="p-3 border-b border-neutral-800 bg-neutral-800/50"><div className="grid grid-cols-6 gap-2 mb-1"><div className="col-span-4"><input className="w-full bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none uppercase" value={data.item} onChange={e => setData({...data, item: e.target.value})} placeholder="Item" /></div><div className="col-span-2"><select className="w-full bg-neutral-900 text-white text-[10px] border border-neutral-600 rounded p-0.5" value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})}>{Object.keys(rates).map(c => <option key={c} value={c}>{c}</option>)}</select></div></div><div className="flex gap-2 mb-1"><input className="bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none flex-1 text-right" type="number" value={data.cost} onChange={e => setData({...data, cost: Number(e.target.value)})} placeholder="Cost" /></div><div className="flex justify-between items-center"><select value={data.category} onChange={(e) => setData({...data, category: e.target.value})} className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none w-1/2 appearance-none uppercase">{Object.values(ItemType).map(t => <option key={t} value={t} className="bg-neutral-900 text-white">{t}</option>)}</select><div className="flex gap-2"><button onClick={() => { vibrate(); onDelete(item.id); }} className="text-red-400 text-[10px] px-2 border border-red-900/50 rounded">{T.DELETE[lang]}</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">OK</button></div></div></div>
+             <div className="p-3 border-b border-neutral-800 bg-neutral-800/50"><div className="grid grid-cols-6 gap-2 mb-1"><div className="col-span-4"><input className="w-full bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none uppercase" value={data.item} onChange={e => setData({...data, item: e.target.value})} placeholder="Item" /></div><div className="col-span-2"><select className="w-full bg-neutral-900 text-white text-[10px] border border-neutral-600 rounded p-0.5" value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})}>{Object.keys(rates || {}).map(c => <option key={c} value={c}>{c}</option>)}</select></div></div><div className="flex gap-2 mb-1"><input className="bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none flex-1 text-right" type="number" value={data.cost} onChange={e => setData({...data, cost: Number(e.target.value)})} placeholder="Cost" /></div><div className="flex justify-between items-center"><select value={data.category} onChange={(e) => setData({...data, category: e.target.value})} className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none w-1/2 appearance-none uppercase">{Object.values(ItemType).map(t => <option key={t} value={t} className="bg-neutral-900 text-white">{t}</option>)}</select><div className="flex gap-2"><button onClick={() => { vibrate(); onDelete(item.id); }} className="text-red-400 text-[10px] px-2 border border-red-900/50 rounded">{T.DELETE[lang]}</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">OK</button></div></div></div>
         )
     }
     return (
@@ -310,20 +313,35 @@ export const Utilities: React.FC<UtilitiesProps> = ({
 }) => {
   const T = TRANSLATIONS;
 
-  // --- NULL SAFETY ---
-  // These lines prevent black screens by converting potential nulls from old data into empty arrays.
+  // --- SUPER ROBUST NULL SAFETY ---
   const safeBudget = Array.isArray(budget) ? budget : [];
   const safeFlights = Array.isArray(flights) ? flights : [];
   const safeHotels = Array.isArray(hotels) ? hotels : [];
   const safeContacts = Array.isArray(contacts) ? contacts : [];
   const safeChecklist = Array.isArray(checklist) ? checklist : [];
-  const safeTotalBudget = typeof totalBudget === 'number' ? totalBudget : 20000;
+  const safeTotalBudget = (typeof totalBudget === 'number' && !isNaN(totalBudget)) ? totalBudget : 20000;
+  const safeRates = rates || {}; // Ensure rates is object
 
   const [newChecklistText, setNewChecklistText] = useState('');
-  const totalBudgetHkd = safeBudget.reduce((acc, curr) => { const rate = rates[curr.currency] || 1; return acc + (curr.cost * rate); }, 0);
-  const budgetProgress = safeTotalBudget ? Math.min((totalBudgetHkd / safeTotalBudget) * 100, 100) : 0;
-  let progressColor = 'bg-white'; if (budgetProgress >= 100) progressColor = 'bg-red-500'; else if (budgetProgress >= 80) progressColor = 'bg-amber-400';
-  const handleAddChecklistKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && newChecklistText.trim()) { vibrate(); onAddChecklist(newChecklistText); setNewChecklistText(''); } };
+
+  // Safe Reduce for Total Budget
+  const totalBudgetHkd = safeBudget.reduce((acc, curr) => { 
+      const rate = safeRates[curr.currency] || 1; 
+      return acc + (curr.cost * rate); 
+  }, 0);
+
+  const budgetProgress = safeTotalBudget > 0 ? Math.min((totalBudgetHkd / safeTotalBudget) * 100, 100) : 0;
+  let progressColor = 'bg-white'; 
+  if (budgetProgress >= 100) progressColor = 'bg-red-500'; 
+  else if (budgetProgress >= 80) progressColor = 'bg-amber-400';
+
+  const handleAddChecklistKey = (e: React.KeyboardEvent) => { 
+      if (e.key === 'Enter' && newChecklistText.trim()) { 
+          vibrate(); 
+          onAddChecklist(newChecklistText); 
+          setNewChecklistText(''); 
+      } 
+  };
 
   return (
     <div className="space-y-4 pb-24">
@@ -344,7 +362,7 @@ export const Utilities: React.FC<UtilitiesProps> = ({
       <section>
         <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">{T.BUDGET_TRACKER[lang]}</h2></div>
         <div className="mb-3 bg-neutral-900 border border-neutral-800 rounded-lg p-3"><div className="flex justify-between text-[9px] text-neutral-500 mb-1 font-bold tracking-wider"><span>SPENT: HK${Math.round(totalBudgetHkd).toLocaleString()}</span><span>GOAL: <input type="number" className="bg-transparent border-b border-neutral-700 w-[60px] text-right text-white focus:outline-none" value={safeTotalBudget || ''} onChange={(e) => onUpdateTotalBudget(Number(e.target.value))} placeholder="Set" /></span></div><div className="h-2 w-full bg-neutral-800 rounded-full overflow-hidden"><div className={`h-full transition-all duration-500 ${progressColor}`} style={{ width: `${budgetProgress}%` }}></div></div>{budgetProgress >= 100 && <div className="text-[9px] text-red-500 text-right mt-1 font-bold">OVER BUDGET!</div>}</div>
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">{safeBudget.map((item) => <BudgetItem key={item.id} item={item} onUpdate={onUpdateBudget} onDelete={onDeleteBudget} rates={rates} lang={lang} />)}<button onClick={onAddBudget} className="w-full py-2 text-[10px] text-neutral-500 hover:text-white hover:bg-neutral-800 transition border-b border-neutral-800">+ {T.ADD_EXPENSE[lang]}</button></div>
+        <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">{safeBudget.map((item) => <BudgetItem key={item.id} item={item} onUpdate={onUpdateBudget} onDelete={onDeleteBudget} rates={safeRates} lang={lang} />)}<button onClick={onAddBudget} className="w-full py-2 text-[10px] text-neutral-500 hover:text-white hover:bg-neutral-800 transition border-b border-neutral-800">+ {T.ADD_EXPENSE[lang]}</button></div>
       </section>
       <section>
           <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">{T.PACKING_LIST[lang]}</h2><button onClick={onAiChecklist} disabled={isLoadingAi} className="text-amber-200 hover:text-amber-100 text-[10px] flex items-center gap-1 uppercase">{isLoadingAi ? <span className="animate-pulse">Thinking...</span> : <><span>✨ {T.AI_SUGGEST[lang]}</span></>}</button></div>
