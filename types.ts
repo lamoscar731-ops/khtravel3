@@ -55,12 +55,12 @@ export interface ForecastItem {
 export interface DayPlan {
   dayId: number;
   date: string;
-  weatherSummary?: string;
+  weatherSummary?: string; 
+  forecast?: ForecastItem[];
+  paceAnalysis?: string; 
+  logicWarning?: string; 
   items: ItineraryItem[];
   backupItems?: ItineraryItem[];
-  forecast?: ForecastItem[];
-  paceAnalysis?: string;
-  logicWarning?: string;
 }
 
 export interface BudgetProps {
@@ -104,12 +104,22 @@ export interface EmergencyContact {
   note: string;
 }
 
-export type SOSContact = EmergencyContact;
+export type SOSContact = {
+    name: string;
+    number: string;
+    note: string;
+};
 
 export interface ChecklistItem {
   id: string;
   text: string;
   checked: boolean;
+}
+
+export interface AfterPartyRec {
+    name: string;
+    type?: string;
+    reason: string;
 }
 
 export interface Trip {
@@ -124,11 +134,5 @@ export interface Trip {
   totalBudget?: number;
   checklist?: ChecklistItem[];
   notes?: string;
-  coverImage?: string;
-}
-
-export interface AfterPartyRec {
-  name: string;
-  type?: string;
-  reason: string;
+  coverImage?: string; 
 }
