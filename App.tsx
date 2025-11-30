@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
@@ -23,8 +24,7 @@ const App: React.FC = () => {
   
   // --- Language State ---
   const [lang, setLang] = useState<Language>(() => {
-      const savedLang = localStorage.getItem('kuro_lang');
-      return (savedLang === 'EN' || savedLang === 'TC') ? savedLang : 'EN';
+      return (localStorage.getItem('kuro_lang') as Language) || 'EN';
   });
   const T = TRANSLATIONS;
 
@@ -59,128 +59,103 @@ const App: React.FC = () => {
         .catch(() => console.log("Using default rates"));
   }, []);
 
-  // --- Multi-Trip State Management (With Robust Migration) ---
+  // --- Multi-Trip State Management ---
   const [trips, setTrips] = useState<Trip[]>(() => {
-      let initialTrips: any[] = [];
-      try {
-          const savedTrips = localStorage.getItem('kuro_trips');
-          if (savedTrips) {
-              initialTrips = JSON.parse(savedTrips);
-          }
-      } catch (e) {
-          console.error("Failed to load trips", e);
-      }
-
-      // If no multi-trip data, try legacy single-trip data
-      if (!Array.isArray(initialTrips) || initialTrips.length === 0) {
-          const oldItinerary = localStorage.getItem('kuro_itinerary');
-          if (oldItinerary) {
-              try {
-                  initialTrips = [{
-                      id: `trip-${Date.now()}`,
-                      destination: localStorage.getItem('kuro_destination') || 'TOKYO',
-                      startDate: '2023-11-15',
-                      itinerary: JSON.parse(oldItinerary),
-                      // Initialize empty arrays first
-                      flights: [], hotels: [], budget: [], contacts: []
-                  }];
-                  
-                  // Try safe parsing for each field
-                  try { const f = localStorage.getItem('kuro_flights'); if(f) initialTrips[0].flights = JSON.parse(f); } catch(e){}
-                  try { const h = localStorage.getItem('kuro_hotels'); if(h) initialTrips[0].hotels = JSON.parse(h); } catch(e){}
-                  try { const b = localStorage.getItem('kuro_budget'); if(b) initialTrips[0].budget = JSON.parse(b); } catch(e){}
-                  try { const c = localStorage.getItem('kuro_contacts'); if(c) initialTrips[0].contacts = JSON.parse(c); } catch(e){}
-
-              } catch(e) {
-                  initialTrips = [];
-              }
-          }
-      }
-
-      // Fallback
-      if (!Array.isArray(initialTrips) || initialTrips.length === 0) {
-          initialTrips = [{
+      const savedTrips = localStorage.getItem('kuro_trips');
+      if (savedTrips) return JSON.parse(savedTrips);
+      const oldItinerary = localStorage.getItem('kuro_itinerary');
+      if (oldItinerary) {
+          const migratedTrip: Trip = {
               id: `trip-${Date.now()}`,
-              destination: 'TOKYO',
-              startDate: '2024-01-01',
-              itinerary: INITIAL_ITINERARY,
-              flights: INITIAL_FLIGHTS,
-              hotels: INITIAL_HOTELS,
-              budget: INITIAL_BUDGET,
-              contacts: INITIAL_CONTACTS
-          }];
+              destination: localStorage.getItem('kuro_destination') || 'TOKYO',
+              startDate: '2023-11-15',
+              itinerary: JSON.parse(oldItinerary),
+              flights: JSON.parse(localStorage.getItem('kuro_flights') || JSON.stringify(INITIAL_FLIGHTS)),
+              hotels: JSON.parse(localStorage.getItem('kuro_hotels') || JSON.stringify(INITIAL_HOTELS)),
+              budget: JSON.parse(localStorage.getItem('kuro_budget') || JSON.stringify(INITIAL_BUDGET)),
+              contacts: JSON.parse(localStorage.getItem('kuro_contacts') || JSON.stringify(INITIAL_CONTACTS)),
+              totalBudget: 20000,
+              checklist: [],
+              notes: '',
+              coverImage: ''
+          };
+          return [migratedTrip];
       }
-
-      // SANITIZATION: Force every field to be correct type
-      return initialTrips.map(t => ({
-          id: t.id || `trip-${Math.random()}`,
-          destination: t.destination || 'Unknown',
-          startDate: t.startDate || '2024-01-01',
-          itinerary: Array.isArray(t.itinerary) ? t.itinerary : [],
-          flights: Array.isArray(t.flights) ? t.flights : [],
-          hotels: Array.isArray(t.hotels) ? t.hotels : [],
-          budget: Array.isArray(t.budget) ? t.budget : [],
-          contacts: Array.isArray(t.contacts) ? t.contacts : [],
-          checklist: Array.isArray(t.checklist) ? t.checklist : [],
-          totalBudget: (typeof t.totalBudget === 'number' && !isNaN(t.totalBudget)) ? t.totalBudget : 20000,
-          notes: t.notes || '',
-          coverImage: t.coverImage || ''
-      }));
+      return [{
+          id: `trip-${Date.now()}`,
+          destination: 'TOKYO',
+          startDate: '2024-01-01',
+          itinerary: INITIAL_ITINERARY,
+          flights: INITIAL_FLIGHTS,
+          hotels: INITIAL_HOTELS,
+          budget: INITIAL_BUDGET,
+          contacts: INITIAL_CONTACTS,
+          totalBudget: 20000,
+          checklist: [],
+          notes: '',
+          coverImage: ''
+      }];
   });
 
   const [activeTripId, setActiveTripId] = useState<string>(() => {
-      const savedId = localStorage.getItem('kuro_active_trip_id');
-      if (savedId && trips.some(t => t.id === savedId)) return savedId;
-      return trips.length > 0 ? trips[0].id : '';
+      return localStorage.getItem('kuro_active_trip_id') || (trips.length > 0 ? trips[0].id : '');
   });
 
-  // Derived State with Safe Fallbacks
-  const activeTrip = trips.find(t => t.id === activeTripId) || trips[0];
-  
   const [selectedDay, setSelectedDay] = useState<number>(1);
-  const [destination, setDestination] = useState<string>(activeTrip.destination);
-  const [itinerary, setItinerary] = useState<DayPlan[]>(activeTrip.itinerary || []);
-  const [flights, setFlights] = useState<FlightInfo[]>(activeTrip.flights || []);
-  const [hotels, setHotels] = useState<HotelInfo[]>(activeTrip.hotels || []);
-  const [budget, setBudget] = useState<BudgetProps[]>(activeTrip.budget || []);
-  const [contacts, setContacts] = useState<EmergencyContact[]>(activeTrip.contacts || []);
-  const [totalBudget, setTotalBudget] = useState<number>(activeTrip.totalBudget || 20000);
-  const [checklist, setChecklist] = useState<ChecklistItem[]>(activeTrip.checklist || []);
-  const [tripNotes, setTripNotes] = useState<string>(activeTrip.notes || '');
-  const [coverImage, setCoverImage] = useState<string>(activeTrip.coverImage || '');
+  const [destination, setDestination] = useState<string>('TOKYO');
+  const [itinerary, setItinerary] = useState<DayPlan[]>([]);
+  const [flights, setFlights] = useState<FlightInfo[]>([]);
+  const [hotels, setHotels] = useState<HotelInfo[]>([]);
+  const [budget, setBudget] = useState<BudgetProps[]>([]);
+  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
+  const [totalBudget, setTotalBudget] = useState<number>(20000);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [tripNotes, setTripNotes] = useState<string>('');
+  const [coverImage, setCoverImage] = useState<string>('');
 
   const [userFlag, setUserFlag] = useState<string>(() => {
     return localStorage.getItem('kuro_flag') || "🇯🇵";
   });
 
-  // --- Load Active Trip Data when ID changes ---
+  // --- Load Active Trip Data ---
   useEffect(() => {
       const currentTrip = trips.find(t => t.id === activeTripId);
       if (currentTrip) {
-          setDestination(currentTrip.destination || '');
-          setItinerary(currentTrip.itinerary || []);
-          setFlights(Array.isArray(currentTrip.flights) ? currentTrip.flights : []);
-          setHotels(Array.isArray(currentTrip.hotels) ? currentTrip.hotels : []);
-          setBudget(Array.isArray(currentTrip.budget) ? currentTrip.budget : []);
-          setContacts(Array.isArray(currentTrip.contacts) ? currentTrip.contacts : []);
-          setTotalBudget(currentTrip.totalBudget ?? 20000);
-          setChecklist(Array.isArray(currentTrip.checklist) ? currentTrip.checklist : []);
+          setDestination(currentTrip.destination);
+          setItinerary(currentTrip.itinerary);
+          setFlights(currentTrip.flights);
+          setHotels(currentTrip.hotels);
+          setBudget(currentTrip.budget);
+          setContacts(currentTrip.contacts);
+          setTotalBudget(currentTrip.totalBudget || 20000);
+          setChecklist(currentTrip.checklist || []);
           setTripNotes(currentTrip.notes || '');
           setCoverImage(currentTrip.coverImage || '');
-          
-          if (currentTrip.itinerary && selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
+          if (selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
           setIsSelectMode(false);
           setSelectedItemIds(new Set());
       }
       localStorage.setItem('kuro_active_trip_id', activeTripId);
   }, [activeTripId]);
 
-  // --- Sync Changes Back to Global State ---
+  // --- Sync Changes Back ---
   useEffect(() => {
       setTrips(prevTrips => {
           const newTrips = prevTrips.map(t => {
               if (t.id === activeTripId) {
-                  return { ...t, destination, itinerary, flights, hotels, budget, contacts, totalBudget, checklist, notes: tripNotes, coverImage };
+                  return { 
+                      ...t, 
+                      destination, 
+                      itinerary, 
+                      flights, 
+                      hotels, 
+                      budget, 
+                      contacts, 
+                      totalBudget, 
+                      checklist,
+                      notes: tripNotes,
+                      coverImage
+                  };
               }
               return t;
           });
@@ -191,20 +166,31 @@ const App: React.FC = () => {
 
   useEffect(() => { localStorage.setItem('kuro_flag', userFlag); }, [userFlag]);
 
+  const [isEditingDest, setIsEditingDest] = useState<boolean>(false);
   const currentDayPlan = itinerary.find(d => d.dayId === selectedDay) || (itinerary[0] || { dayId: 1, date: 'N/A', items: [] });
+
+  // --- Live Mode Helper ---
   const isLiveItem = (item: ItineraryItem, index: number, items: ItineraryItem[]) => {
       const dateStr = currentDayPlan.date.split(' ')[0]; 
       const planDate = new Date(dateStr);
-      if (planDate.getFullYear() !== now.getFullYear() || planDate.getMonth() !== now.getMonth() || planDate.getDate() !== now.getDate()) return false;
+      const isSameDate = planDate.getFullYear() === now.getFullYear() &&
+                         planDate.getMonth() === now.getMonth() &&
+                         planDate.getDate() === now.getDate();
+      
+      if (!isSameDate) return false;
+
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
       const itemTimeParts = item.time.split(':');
-      if(itemTimeParts.length < 2) return false;
       const itemMinutes = parseInt(itemTimeParts[0]) * 60 + parseInt(itemTimeParts[1]);
+
       let nextItemMinutes = 24 * 60; 
       if (index < items.length - 1) {
-         const nextParts = items[index + 1].time.split(':');
-         if(nextParts.length >= 2) nextItemMinutes = parseInt(nextParts[0]) * 60 + parseInt(nextParts[1]);
-      } else { nextItemMinutes = itemMinutes + 120; }
+          const nextParts = items[index + 1].time.split(':');
+          nextItemMinutes = parseInt(nextParts[0]) * 60 + parseInt(nextParts[1]);
+      } else {
+          nextItemMinutes = itemMinutes + 120; 
+      }
+
       return currentMinutes >= itemMinutes && currentMinutes < nextItemMinutes;
   };
 
@@ -233,12 +219,11 @@ const App: React.FC = () => {
   const handleDeleteTrip = () => {
       vibrate();
       if (trips.length <= 1) { alert("You must have at least one trip."); return; }
-      if (confirm("Delete this trip?")) {
+      if (confirm("Delete this trip? This cannot be undone.")) {
           const newTrips = trips.filter(t => t.id !== activeTripId);
           setTrips(newTrips);
           localStorage.setItem('kuro_trips', JSON.stringify(newTrips));
-          const next = newTrips[0];
-          setActiveTripId(next.id);
+          setActiveTripId(newTrips[0].id);
           setShowSettings(false);
       }
   };
@@ -248,50 +233,267 @@ const App: React.FC = () => {
   const [showNotes, setShowNotes] = useState(false);
   const [showAfterParty, setShowAfterParty] = useState(false);
   const [afterPartyRecs, setAfterPartyRecs] = useState<AfterPartyRec[]>([]);
+  
+  // Destination Selector
   const [showDestSelector, setShowDestSelector] = useState(false);
   const [destSearch, setDestSearch] = useState('');
+
   const [importData, setImportData] = useState('');
   const coverInputRef = useRef<HTMLInputElement>(null);
   
   const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
   const handleSelectFlag = (flag: string) => { vibrate(); setUserFlag(flag); setShowFlagSelector(false); };
-  const handleSelectDestination = (city: string) => { vibrate(); setDestination(city); setShowDestSelector(false); let foundCountry = ''; for (const [country, cities] of Object.entries(COUNTRY_CITIES)) { if (cities.includes(city)) { foundCountry = country; break; } } if (foundCountry && EMERGENCY_DATA[foundCountry]) { const staticContacts = EMERGENCY_DATA[foundCountry]; setContacts(prev => { const existingNums = new Set(prev.map(c => c.number)); const newContacts = staticContacts.filter(c => !existingNums.has(c.number)).map(c => ({ id: `sos-${Date.now()}-${Math.random()}`, ...c })); return [...prev, ...newContacts]; }); } };
-  const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { const img = new Image(); img.onload = () => { const canvas = document.createElement('canvas'); const MAX_WIDTH = 600; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); if (ctx) { ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.5); setCoverImage(dataUrl); } }; if(event.target?.result) img.src = event.target.result as string; }; reader.readAsDataURL(file); };
-  const handleExport = () => { vibrate(); const currentTrip = trips.find(t => t.id === activeTripId); if (!currentTrip) return; const jsonStr = JSON.stringify(currentTrip); const encoded = btoa(unescape(encodeURIComponent(jsonStr))); navigator.clipboard.writeText(encoded).then(() => alert("Copied!")); };
-  const handleImport = () => { vibrate(); if (!importData) return; try { const jsonStr = decodeURIComponent(escape(atob(importData))); const data = JSON.parse(jsonStr); if (!data.itinerary) throw new Error("Invalid"); const newTrip: Trip = { ...data, id: `trip-imp-${Date.now()}`, destination: data.destination + ' (Imp)' }; setTrips(prev => [...prev, newTrip]); setActiveTripId(newTrip.id); setShowSettings(false); alert("Imported!"); } catch (e) { alert("Invalid code."); } };
-  const handleExportCalendar = () => { vibrate(); let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//kh.travel//EN\n"; itinerary.forEach(d => d.items.forEach(i => { if(i.title&&i.time){ const dateStr = d.date.split(' ')[0].replace(/-/g, ''); const startT = `${dateStr}T${i.time.replace(':','')}00`; ics += `BEGIN:VEVENT\nSUMMARY:${i.title}\nDTSTART:${startT}\nLOCATION:${i.location||''}\nEND:VEVENT\n`; }})); ics += "END:VCALENDAR"; const url = URL.createObjectURL(new Blob([ics], {type:'text/calendar'})); const link = document.createElement('a'); link.href = url; link.download = 'trip.ics'; link.click(); };
-  const handleCopyText = () => { vibrate(); let txt = `✈️ ${destination}\n\n`; itinerary.forEach(d => { txt += `📅 ${d.date}\n`; d.items.forEach(i => txt += `${i.time} ${i.title}\n`); txt += `\n`; }); navigator.clipboard.writeText(txt).then(() => alert("Copied!")); };
 
-  const handleEnrichItinerary = async () => { vibrate(); setIsLoading(true); try { const bk = JSON.parse(JSON.stringify(currentDayPlan.items)); const enriched = await enrichItineraryWithGemini(currentDayPlan, lang); enriched.backupItems = bk; setItinerary(prev => prev.map(d => d.dayId === selectedDay ? enriched : d)); } catch(e) { alert("Offline"); } finally { setIsLoading(false); } };
-  const handleResetDay = () => { vibrate(); if(!currentDayPlan.backupItems) return; setItinerary(prev => prev.map(d => d.dayId === selectedDay ? { ...d, items: d.backupItems!, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined, forecast: undefined } : d)); };
-  const handleAiChecklist = async () => { vibrate(); setIsLoading(true); try { const list = await generatePackingList(destination, lang); setChecklist(prev => [...prev, ...list.map(t => ({ id: `cl-${Date.now()}-${Math.random()}`, text: t, checked: false }))]); } catch(e) { alert("Offline"); } finally { setIsLoading(false); } };
-  const handleAfterParty = async () => { vibrate(); if(currentDayPlan.items.length===0) return; setIsLoading(true); try { const last = currentDayPlan.items[currentDayPlan.items.length-1]; const recs = await generateAfterPartySuggestions(last.location || destination, last.time, lang); setAfterPartyRecs(recs); setShowAfterParty(true); } catch(e) { alert("Offline"); } finally { setIsLoading(false); } };
-  const handleMapRoute = () => { vibrate(); let valid = currentDayPlan.items.filter(i => i.location && !i.location.includes('TBD')); if(isSelectMode && selectedItemIds.size > 0) valid = valid.filter(i => selectedItemIds.has(i.id)); if(valid.length===0) return alert("Select locations"); if(valid.length===1) return window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(valid[0].location)}`); const origin = encodeURIComponent(valid[0].location); const dest = encodeURIComponent(valid[valid.length-1].location); const wp = valid.slice(1,-1).map(i => encodeURIComponent(i.location)).join('|'); window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=walking${wp ? `&waypoints=${wp}` : ''}`); };
+  // --- Select Destination Logic (Static SOS Lookup) ---
+  const handleSelectDestination = (city: string) => {
+      vibrate();
+      setDestination(city);
+      setShowDestSelector(false);
 
+      // Look up country key from city value in COUNTRY_CITIES
+      let foundCountry = '';
+      for (const [country, cities] of Object.entries(COUNTRY_CITIES)) {
+          if (cities.includes(city)) {
+              foundCountry = country;
+              break;
+          }
+      }
+      
+      // Static SOS update (Simple and reliable)
+      if (foundCountry && EMERGENCY_DATA[foundCountry]) {
+          const staticContacts = EMERGENCY_DATA[foundCountry];
+          setContacts(prev => {
+              // Avoid duplicates based on number
+              const existingNums = new Set(prev.map(c => c.number));
+              const newContacts = staticContacts.filter(c => !existingNums.has(c.number)).map(c => ({
+                  id: `sos-${Date.now()}-${Math.random()}`,
+                  ...c
+              }));
+              return [...prev, ...newContacts];
+          });
+      }
+  };
+
+  // --- Cover Image Upload Logic ---
+  const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // Basic compression logic using Canvas
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 600; // Limit width to save space
+              const scaleSize = MAX_WIDTH / img.width;
+              canvas.width = MAX_WIDTH;
+              canvas.height = img.height * scaleSize;
+
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  // Compress to JPEG with 0.5 quality
+                  const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                  setCoverImage(dataUrl);
+              }
+          };
+          if(event.target?.result) {
+              img.src = event.target.result as string;
+          }
+      };
+      reader.readAsDataURL(file);
+  };
+
+  const handleExport = () => {
+      vibrate();
+      const currentTrip = trips.find(t => t.id === activeTripId);
+      if (!currentTrip) return;
+      const jsonStr = JSON.stringify(currentTrip);
+      const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
+      navigator.clipboard.writeText(encoded).then(() => alert("Trip code copied!"));
+  };
+
+  const handleImport = () => {
+      vibrate();
+      if (!importData) return;
+      try {
+          const jsonStr = decodeURIComponent(escape(atob(importData)));
+          const data = JSON.parse(jsonStr);
+          if (!data.itinerary || !data.destination) throw new Error("Invalid");
+          const newTrip: Trip = { ...data, id: `trip-imported-${Date.now()}`, destination: data.destination + ' (Imp)' };
+          setTrips(prev => [...prev, newTrip]);
+          setActiveTripId(newTrip.id);
+          setShowSettings(false);
+          setImportData('');
+          alert("Imported!");
+      } catch (e) { alert("Invalid code."); }
+  };
+
+  const handleExportCalendar = () => {
+      vibrate();
+      let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//kh.travel//Trip Planner//EN\n";
+      itinerary.forEach(day => {
+          day.items.forEach(item => {
+              if (item.title && item.time) {
+                  const dateStr = day.date.split(' ')[0].replace(/-/g, ''); 
+                  const timeStr = item.time.replace(':', '') + '00'; 
+                  const startDateTime = `${dateStr}T${timeStr}`;
+                  let endHour = parseInt(item.time.split(':')[0]) + 1;
+                  const endTimeStr = (endHour < 10 ? '0' + endHour : endHour) + item.time.split(':')[1] + '00';
+                  const endDateTime = `${dateStr}T${endTimeStr}`;
+                  icsContent += "BEGIN:VEVENT\n";
+                  icsContent += `SUMMARY:${item.title}\n`;
+                  icsContent += `DTSTART:${startDateTime}\n`;
+                  icsContent += `DTEND:${endDateTime}\n`;
+                  if (item.location) icsContent += `LOCATION:${item.location}\n`;
+                  if (item.description) icsContent += `DESCRIPTION:${item.description}\n`;
+                  icsContent += "END:VEVENT\n";
+              }
+          });
+      });
+      icsContent += "END:VCALENDAR";
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `trip_${destination}.ics`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
+  const handleCopyText = () => {
+      vibrate();
+      let text = `✈️ TRIP TO ${destination}\n\n`;
+      itinerary.forEach(day => {
+          text += `📅 DAY ${day.dayId} (${day.date})\n`;
+          day.items.forEach(item => {
+              text += `${item.time} ${item.title}\n`;
+              if(item.location) text += `📍 ${item.location}\n`;
+              text += `\n`;
+          });
+          text += `----------------\n`;
+      });
+      navigator.clipboard.writeText(text).then(() => alert("Itinerary copied to clipboard!"));
+  };
+
+  const handleEnrichItinerary = async () => {
+    vibrate();
+    setIsLoading(true);
+    try {
+        const itemsBackup = JSON.parse(JSON.stringify(currentDayPlan.items));
+        const planToEnrich = { ...currentDayPlan };
+        const enrichedPlan = await enrichItineraryWithGemini(planToEnrich, lang);
+        
+        // Note: No automatic SOS update here anymore, strictly manual/static
+        enrichedPlan.backupItems = itemsBackup;
+        setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
+    } catch (e) {
+        console.error("Failed to enrich", e);
+        alert("Offline.");
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  const handleResetDay = () => {
+      vibrate();
+      if (!currentDayPlan.backupItems) return;
+      const restoredItems = currentDayPlan.backupItems;
+      setItinerary(prev => prev.map(day => {
+          if (day.dayId === selectedDay) {
+              const { backupItems, ...rest } = day;
+              // Clear analysis fields and forecast, but keep other fields
+              return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined, forecast: undefined };
+          }
+          return day;
+      }));
+  };
+
+  const handleAiChecklist = async () => {
+      vibrate();
+      setIsLoading(true);
+      try {
+          const suggestions = await generatePackingList(destination, lang);
+          const newItems: ChecklistItem[] = suggestions.map(text => ({ id: `cl-${Date.now()}-${Math.random()}`, text, checked: false }));
+          setChecklist(prev => {
+              const existingTexts = new Set(prev.map(i => i.text.toLowerCase()));
+              const uniqueNew = newItems.filter(i => !existingTexts.has(i.text.toLowerCase()));
+              return [...prev, ...uniqueNew];
+          });
+      } catch (e) { alert("AI Offline"); } finally { setIsLoading(false); }
+  };
+
+  const handleAfterParty = async () => {
+      vibrate();
+      if (currentDayPlan.items.length === 0) { alert("No items to base recommendations on."); return; }
+      setIsLoading(true);
+      try {
+          const lastItem = currentDayPlan.items[currentDayPlan.items.length - 1];
+          const recs = await generateAfterPartySuggestions(lastItem.location || destination, lastItem.time, lang);
+          setAfterPartyRecs(recs);
+          setShowAfterParty(true);
+      } catch (e) { alert("AI Offline"); } finally { setIsLoading(false); }
+  };
+
+  // --- Map Route ---
+  const handleMapRoute = () => {
+      vibrate();
+      let validItems = currentDayPlan.items.filter(i => 
+          i.location && i.location.trim() !== '' && !i.location.includes('TBD') && !i.location.includes('Location TBD')
+      );
+      if (isSelectMode && selectedItemIds.size > 0) validItems = validItems.filter(item => selectedItemIds.has(item.id));
+      if (validItems.length === 0) { alert("Select items with locations."); return; }
+      if (validItems.length === 1) { const query = encodeURIComponent(validItems[0].location); window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank'); return; }
+      const origin = encodeURIComponent(validItems[0].location);
+      const destination = encodeURIComponent(validItems[validItems.length - 1].location);
+      const waypoints = validItems.slice(1, -1).slice(0, 9).map(i => encodeURIComponent(i.location)).join('|');
+      let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`; 
+      if (waypoints) url += `&waypoints=${waypoints}`;
+      window.open(url, '_blank');
+  };
+
+  // --- Auto-Sort & CRUD ---
   const sortItems = (items: ItineraryItem[]) => [...items].sort((a, b) => a.time.localeCompare(b.time));
-  const handleUpdateItem = (u: ItineraryItem) => setItinerary(prev => prev.map(d => d.dayId === selectedDay ? { ...d, items: sortItems(d.items.map(i => i.id === u.id ? u : i)) } : d));
-  const handleDeleteItem = (id: string) => setItinerary(prev => prev.map(d => d.dayId === selectedDay ? { ...d, items: d.items.filter(i => i.id !== id) } : d));
-  const handleAddItem = () => { vibrate(); const n: ItineraryItem = { id: `${selectedDay}-${Date.now()}`, time: '12:00', title: lang === 'TC' ? '新活動' : 'New Activity', location: 'TBD', type: ItemType.SIGHTSEEING, navQuery: destination, tags: [] }; setItinerary(prev => prev.map(d => d.dayId === selectedDay ? { ...d, items: sortItems([...d.items, n]) } : d)); };
-  
-  const handleAddDay = () => { vibrate(); const newId = itinerary.length+1; let d = new Date(); if(itinerary.length>0) { const last = new Date(itinerary[itinerary.length-1].date.split(' ')[0]); if(!isNaN(last.getTime())) { last.setDate(last.getDate()+1); d = last; } } setItinerary(p => [...p, { dayId: newId, date: d.toISOString().split('T')[0], items: [] }]); setSelectedDay(newId); };
-  const handleDeleteDay = () => { vibrate(); if(itinerary.length<=1) return; setItinerary(itinerary.filter(d => d.dayId !== selectedDay).map((d,i) => ({...d, dayId: i+1}))); setSelectedDay(1); };
-  const handleUpdateDayDate = (date: string) => setItinerary(prev => prev.map(d => d.dayId === selectedDay ? { ...d, date } : d));
+  const handleUpdateItem = (updatedItem: ItineraryItem) => {
+    setItinerary(prev => prev.map(day => {
+      if (day.dayId !== selectedDay) return day;
+      const newItems = day.items.map(item => item.id === updatedItem.id ? updatedItem : item);
+      return { ...day, items: sortItems(newItems) };
+    }));
+  };
+  const handleDeleteItem = (itemId: string) => {
+    setItinerary(prev => prev.map(day => {
+        if (day.dayId !== selectedDay) return day;
+        return { ...day, items: day.items.filter(item => item.id !== itemId) };
+    }));
+  };
+  const handleAddItem = () => {
+    vibrate();
+    const newItem: ItineraryItem = { id: `${selectedDay}-${Date.now()}`, time: '12:00', title: lang === 'TC' ? '新活動' : 'New Activity', location: 'TBD', type: ItemType.SIGHTSEEING, description: '...', navQuery: destination, tags: [] };
+    setItinerary(prev => prev.map(day => { if (day.dayId !== selectedDay) return day; const newItems = [...day.items, newItem]; return { ...day, items: sortItems(newItems) }; }));
+  };
 
-  const handleAddFlight = () => { vibrate(); setFlights(p => [...p, { id: `f-${Date.now()}`, flightNumber: 'FL 000', departureDate: '2024-01-01', departureTime: '00:00', departureAirport: 'DEP', arrivalDate: '2024-01-01', arrivalTime: '00:00', arrivalAirport: 'ARR' }]); };
-  const handleUpdateFlight = (u: FlightInfo) => setFlights(p => p.map(f => f.id === u.id ? u : f));
-  const handleDeleteFlight = (id: string) => setFlights(p => p.filter(f => f.id !== id));
-  const handleAddHotel = () => { vibrate(); setHotels(p => [...p, { id: `h-${Date.now()}`, name: 'New Hotel', address: 'Address', checkIn: '2024-01-01', checkOut: '2024-01-05', bookingRef: '' }]); };
-  const handleUpdateHotel = (u: HotelInfo) => setHotels(p => p.map(h => h.id === u.id ? u : h));
-  const handleDeleteHotel = (id: string) => setHotels(p => p.filter(h => h.id !== id));
-  const handleAddBudget = () => { vibrate(); setBudget(p => [...p, { id: `b-${Date.now()}`, item: 'Expense', cost: 0, category: ItemType.MISC, currency: Currency.JPY }]); };
-  const handleUpdateBudget = (u: BudgetProps) => setBudget(p => p.map(b => b.id === u.id ? u : b));
-  const handleDeleteBudget = (id: string) => setBudget(p => p.filter(b => b.id !== id));
-  const handleAddContact = () => { vibrate(); setContacts(p => [...p, { id: `c-${Date.now()}`, name: lang === 'TC' ? '緊急聯絡' : 'CONTACT', number: '', note: '' }]); };
-  const handleUpdateContact = (u: EmergencyContact) => setContacts(p => p.map(c => c.id === u.id ? u : c));
-  const handleDeleteContact = (id: string) => setContacts(p => p.filter(c => c.id !== id));
-  const handleAddChecklist = (t: string) => { vibrate(); setChecklist(p => [...p, { id: `cl-${Date.now()}`, text: t, checked: false }]); };
-  const handleToggleChecklist = (id: string) => { vibrate(); setChecklist(p => p.map(i => i.id === id ? { ...i, checked: !i.checked } : i)); };
-  const handleDeleteChecklist = (id: string) => setChecklist(p => p.filter(i => i.id !== id));
+  const handleAddDay = () => { vibrate(); const newDayId = itinerary.length + 1; let nextDate = new Date(); if (itinerary.length > 0) { const lastDateStr = itinerary[itinerary.length - 1].date.split(' ')[0]; const lastDate = new Date(lastDateStr); if (!isNaN(lastDate.getTime())) { lastDate.setDate(lastDate.getDate() + 1); nextDate = lastDate; } } const newDay: DayPlan = { dayId: newDayId, date: nextDate.toISOString().split('T')[0], items: [] }; setItinerary(prev => [...prev, newDay]); setSelectedDay(newDayId); };
+  const handleDeleteDay = () => { vibrate(); if (itinerary.length <= 1) { alert("Keep one day."); return; } const reindexed = itinerary.filter(d => d.dayId !== selectedDay).map((day, index) => ({ ...day, dayId: index + 1 })); setItinerary(reindexed); setSelectedDay(1); };
+  const handleUpdateDayDate = (newDate: string) => setItinerary(prev => prev.map(d => d.dayId === selectedDay ? { ...d, date: newDate } : d));
+
+  const handleAddFlight = () => { vibrate(); setFlights(prev => [...prev, { id: `f-${Date.now()}`, flightNumber: 'FL 000', departureDate: '2024-01-01', departureTime: '00:00', departureAirport: 'DEP', arrivalDate: '2024-01-01', arrivalTime: '00:00', arrivalAirport: 'ARR' }]); };
+  const handleUpdateFlight = (u: FlightInfo) => setFlights(prev => prev.map(f => f.id === u.id ? u : f));
+  const handleDeleteFlight = (id: string) => setFlights(prev => prev.filter(f => f.id !== id));
+  const handleAddHotel = () => { vibrate(); setHotels(prev => [...prev, { id: `h-${Date.now()}`, name: 'New Hotel', address: 'Address', checkIn: '2024-01-01', checkOut: '2024-01-05', bookingRef: '' }]); };
+  const handleUpdateHotel = (u: HotelInfo) => setHotels(prev => prev.map(h => h.id === u.id ? u : h));
+  const handleDeleteHotel = (id: string) => setHotels(prev => prev.filter(h => h.id !== id));
+  const handleAddBudget = () => { vibrate(); setBudget(prev => [...prev, { id: `b-${Date.now()}`, item: 'Expense', cost: 0, category: ItemType.MISC, currency: Currency.JPY }]); };
+  const handleUpdateBudget = (u: BudgetProps) => setBudget(prev => prev.map(b => b.id === u.id ? u : b));
+  const handleDeleteBudget = (id: string) => setBudget(prev => prev.filter(b => b.id !== id));
+  const handleAddContact = () => { vibrate(); setContacts(prev => [...prev, { id: `c-${Date.now()}`, name: lang === 'TC' ? '緊急聯絡' : 'CONTACT', number: '', note: '' }]); };
+  const handleUpdateContact = (u: EmergencyContact) => setContacts(prev => prev.map(c => c.id === u.id ? u : c));
+  const handleDeleteContact = (id: string) => setContacts(prev => prev.filter(c => c.id !== id));
+  const handleAddChecklist = (text: string) => { vibrate(); setChecklist(prev => [...prev, { id: `cl-${Date.now()}`, text, checked: false }]); };
+  const handleToggleChecklist = (id: string) => { vibrate(); setChecklist(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i)); };
+  const handleDeleteChecklist = (id: string) => setChecklist(prev => prev.filter(i => i.id !== id));
 
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [tempDate, setTempDate] = useState('');
@@ -401,6 +603,7 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="mt-6 text-center">
+                      {/* Fixed: Open Google Maps Home directly */}
                       <button onClick={() => { vibrate(); window.open('https://www.google.com/maps', '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">{T.SEARCH_MAPS[lang]}</button>
                   </div>
               </div>
@@ -678,7 +881,7 @@ const App: React.FC = () => {
                                  {activeTripId === trip.id && <span className="bg-white text-black text-[8px] font-bold px-2 py-0.5 rounded-full">{T.ACTIVE[lang]}</span>}
                              </div>
                              <div className="relative z-10 text-[9px] font-medium text-neutral-400">
-                                 {trip.itinerary.length} {T.DAY[lang]} • {Math.max(0, trip.itinerary.length - 1)} {T.NIGHTS[lang]}
+                                 {trip.itinerary.length} {T.DAY[lang]} • {trip.flights.length} {T.FLIGHTS[lang]}
                              </div>
                         </div>
                     ))}
