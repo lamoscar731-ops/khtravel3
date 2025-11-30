@@ -202,7 +202,7 @@ const App: React.FC = () => {
                       budget, 
                       contacts, 
                       totalBudget, 
-                      checklist,
+                      checklist, 
                       notes: tripNotes, 
                       coverImage
                   };
@@ -231,19 +231,13 @@ const App: React.FC = () => {
 
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
       const itemTimeParts = item.time.split(':');
-      if (itemTimeParts.length < 2) return false;
+      if(itemTimeParts.length < 2) return false;
       const itemMinutes = parseInt(itemTimeParts[0]) * 60 + parseInt(itemTimeParts[1]);
-
       let nextItemMinutes = 24 * 60; 
       if (index < items.length - 1) {
-          const nextParts = items[index + 1].time.split(':');
-          if (nextParts.length >= 2) {
-              nextItemMinutes = parseInt(nextParts[0]) * 60 + parseInt(nextParts[1]);
-          }
-      } else {
-          nextItemMinutes = itemMinutes + 120; 
-      }
-
+         const nextParts = items[index + 1].time.split(':');
+         if(nextParts.length >= 2) nextItemMinutes = parseInt(nextParts[0]) * 60 + parseInt(nextParts[1]);
+      } else { nextItemMinutes = itemMinutes + 120; }
       return currentMinutes >= itemMinutes && currentMinutes < nextItemMinutes;
   };
 
@@ -272,7 +266,7 @@ const App: React.FC = () => {
   const handleDeleteTrip = () => {
       vibrate();
       if (trips.length <= 1) { alert("You must have at least one trip."); return; }
-      if (confirm("Delete this trip? This cannot be undone.")) {
+      if (confirm("Delete this trip?")) {
           const newTrips = trips.filter(t => t.id !== activeTripId);
           setTrips(newTrips);
           localStorage.setItem('kuro_trips', JSON.stringify(newTrips));
@@ -458,7 +452,7 @@ const App: React.FC = () => {
       setItinerary(prev => prev.map(day => {
           if (day.dayId === selectedDay) {
               const { backupItems, ...rest } = day;
-              // Clear analysis fields and forecast
+              // Clear analysis fields and forecast, but keep other fields
               return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined, forecast: undefined };
           }
           return day;
@@ -934,7 +928,7 @@ const App: React.FC = () => {
                                  {activeTripId === trip.id && <span className="bg-white text-black text-[8px] font-bold px-2 py-0.5 rounded-full">{T.ACTIVE[lang]}</span>}
                              </div>
                              <div className="relative z-10 text-[9px] font-medium text-neutral-400">
-                                 {trip.itinerary.length} {T.DAY[lang]} • {trip.flights.length} {T.FLIGHTS[lang]}
+                                 {trip.itinerary.length} {T.DAY[lang]} • {Math.max(0, trip.itinerary.length - 1)} {T.NIGHTS[lang]}
                              </div>
                         </div>
                     ))}
