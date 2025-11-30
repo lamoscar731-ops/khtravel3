@@ -58,8 +58,9 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Lang
     1. Generate 7-day forecast (Date MM/DD, Icon Emoji, Temp).
     2. Analyze pace (One word: RELAXED/MODERATE/RUSHED).
     3. Check logic (Warning if backtracking, else null).
-    4. Enhance descriptions & add tips.
-    5. DO NOT generate tags.
+    4. Enhance descriptions.
+    5. **IMPORTANT: Add "tips". For items of type FOOD, RAMEN, COFFEE, or ALCOHOL, the FIRST tip MUST be the Opening Hours and Closing Days.**
+    6. DO NOT generate tags.
     
     Items: ${JSON.stringify(currentPlan.items)}
   `;
@@ -75,26 +76,19 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: Lang
     
     const parsedResult = JSON.parse(resultText) as DayPlan;
 
-    // --- ROBUST MERGE LOGIC ---
-    // We must preserve the original mapsUrl, id, and tags.
-    // AI might not return items in exact order, or might mess up IDs.
-    // Strategy: Try to match by ID, fallback to index.
     const mergedItems = parsedResult.items.map((newItem, index) => {
         let originalItem = currentPlan.items.find(i => i.id === newItem.id);
-        
-        // If ID match failed (AI changed ID), fallback to index
         if (!originalItem && index < currentPlan.items.length) {
             originalItem = currentPlan.items[index];
         }
-
-        if (!originalItem) return newItem; // Completely new item from AI?
+        if (!originalItem) return newItem;
 
         return {
             ...newItem,
-            id: originalItem.id,         // Enforce original ID
-            time: originalItem.time,     // Enforce original Time (user knows best)
-            mapsUrl: originalItem.mapsUrl, // CRITICAL: Preserve Map URL
-            tags: originalItem.tags      // Preserve Tags
+            id: originalItem.id, 
+            time: originalItem.time, 
+            mapsUrl: originalItem.mapsUrl, 
+            tags: originalItem.tags 
         };
     });
 
@@ -145,5 +139,5 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
 };
 
 export const generateLocalSOS = async (city: string, lang: Language): Promise<SOSContact[]> => {
-    return []; // Deprecated
+    return []; 
 };
