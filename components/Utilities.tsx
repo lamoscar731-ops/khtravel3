@@ -93,7 +93,6 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
         }
     };
 
-    // Airport code lookup logic (Simplified inline)
     const airportListId = `airports-${flight.id}`;
 
     if (isEditing) {
@@ -240,7 +239,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
                 <div>
                     <h3 className="text-sm text-white font-medium">{formData.name}</h3>
                     <div className="flex gap-2 mt-1">
-                         <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} NIGHTS</span>
+                         {nights > 0 && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} NIGHTS</span>}
                          {isTonight && <span className="bg-indigo-900/50 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap animate-pulse">TONIGHT</span>}
                          {isCheckoutTmr && <span className="bg-amber-900/50 text-amber-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">CHECK-OUT TMRW</span>}
                     </div>
@@ -259,7 +258,6 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
     );
 };
 
-// ContactItem and BudgetItem remain same but must be included for full file
 const ContactItem: React.FC<{ item: EmergencyContact, onUpdate: (c: EmergencyContact) => void, onDelete: (id: string) => void, lang: Language }> = ({ item, onUpdate, onDelete, lang }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [data, setData] = useState(item);
