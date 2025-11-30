@@ -3,10 +3,12 @@ import { BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Checkli
 import { TRANSLATIONS, AIRPORT_CODES } from '../constants';
 
 interface UtilitiesProps {
-    budget: BudgetProps[];
-    flights: FlightInfo[];
-    hotels: HotelInfo[];
-    contacts: EmergencyContact[];
+    budget?: BudgetProps[]; // Optional to allow fallback
+    flights?: FlightInfo[];
+    hotels?: HotelInfo[];
+    contacts?: EmergencyContact[];
+    checklist?: ChecklistItem[];
+    totalBudget?: number;
     rates: Record<string, number>; 
     
     onAddFlight: () => void;
@@ -31,8 +33,6 @@ interface UtilitiesProps {
     onDeleteChecklist: (id: string) => void;
     onAiChecklist: () => void;
     isLoadingAi: boolean;
-    checklist: ChecklistItem[];
-    totalBudget: number;
     lang: Language;
 }
 
@@ -239,7 +239,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
                 <div>
                     <h3 className="text-sm text-white font-medium">{formData.name}</h3>
                     <div className="flex gap-2 mt-1">
-                         {nights > 0 && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} NIGHTS</span>}
+                         {(nights > 0) && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} NIGHTS</span>}
                          {isTonight && <span className="bg-indigo-900/50 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap animate-pulse">TONIGHT</span>}
                          {isCheckoutTmr && <span className="bg-amber-900/50 text-amber-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">CHECK-OUT TMRW</span>}
                     </div>
@@ -298,7 +298,7 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
 }
 
 export const Utilities: React.FC<UtilitiesProps> = ({ 
-    budget, flights, hotels, contacts, checklist, totalBudget, rates,
+    budget = [], flights = [], hotels = [], contacts = [], checklist = [], totalBudget = 20000, rates,
     onAddFlight, onUpdateFlight, onDeleteFlight, 
     onAddHotel, onUpdateHotel, onDeleteHotel, 
     onAddBudget, onUpdateBudget, onDeleteBudget, 
@@ -335,7 +335,7 @@ export const Utilities: React.FC<UtilitiesProps> = ({
       </section>
       <section>
           <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">{T.PACKING_LIST[lang]}</h2><button onClick={onAiChecklist} disabled={isLoadingAi} className="text-amber-200 hover:text-amber-100 text-[10px] flex items-center gap-1 uppercase">{isLoadingAi ? <span className="animate-pulse">Thinking...</span> : <><span>✨ {T.AI_SUGGEST[lang]}</span></>}</button></div>
-          <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden"><div className="p-2 border-b border-neutral-800 flex gap-2"><input className="bg-transparent text-white text-xs w-full focus:outline-none placeholder-neutral-600" placeholder="Add item..." value={newChecklistText} onChange={(e) => setNewChecklistText(e.target.value)} onKeyDown={handleAddChecklistKey} /><button onClick={handleAddItem} className="text-neutral-500 text-[10px] font-bold">+</button></div><div>{checklist?.map(item => (<div key={item.id} className="flex items-center gap-3 p-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/30 group"><button onClick={() => onToggleChecklist(item.id)} className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${item.checked ? 'bg-white border-white' : 'border-neutral-600 hover:border-neutral-400'}`}>{item.checked && <span className="text-black text-[10px] font-bold">✓</span>}</button><span className={`text-xs flex-1 ${item.checked ? 'text-neutral-600 line-through' : 'text-neutral-200'}`}>{item.text}</span><button onClick={() => { vibrate(); onDeleteChecklist(item.id); }} className="text-neutral-700 hover:text-red-500 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button></div>))}{(!checklist || checklist.length === 0) && <div className="text-center py-4 text-neutral-600 text-[10px]">List is empty</div>}</div></div>
+          <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden"><div className="p-2 border-b border-neutral-800 flex gap-2"><input className="bg-transparent text-white text-xs w-full focus:outline-none placeholder-neutral-600" placeholder="Add item..." value={newChecklistText} onChange={(e) => setNewChecklistText(e.target.value)} onKeyDown={handleAddChecklistKey} /><button onClick={() => { if(newChecklistText) { vibrate(); onAddChecklist(newChecklistText); setNewChecklistText(''); }}} className="text-neutral-500 text-[10px] font-bold">+</button></div><div>{checklist?.map(item => (<div key={item.id} className="flex items-center gap-3 p-3 border-b border-neutral-800 last:border-0 hover:bg-neutral-800/30 group"><button onClick={() => onToggleChecklist(item.id)} className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${item.checked ? 'bg-white border-white' : 'border-neutral-600 hover:border-neutral-400'}`}>{item.checked && <span className="text-black text-[10px] font-bold">✓</span>}</button><span className={`text-xs flex-1 ${item.checked ? 'text-neutral-600 line-through' : 'text-neutral-200'}`}>{item.text}</span><button onClick={() => { vibrate(); onDeleteChecklist(item.id); }} className="text-neutral-700 hover:text-red-500 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button></div>))}{checklist.length === 0 && <div className="text-center py-4 text-neutral-600 text-[10px]">List is empty</div>}</div></div>
       </section>
     </div>
   );
