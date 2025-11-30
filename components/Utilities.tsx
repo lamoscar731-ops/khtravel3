@@ -84,8 +84,11 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
         if (formData.attachment) {
             const win = window.open();
             if (win) {
-                if (formData.attachmentType === 'pdf') win.document.write(`<iframe src="${formData.attachment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-                else win.document.write(`<img src="${formData.attachment}" style="width:100%">`);
+                if (formData.attachmentType === 'pdf') {
+                     win.document.write(`<iframe src="${formData.attachment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                } else {
+                     win.document.write(`<img src="${formData.attachment}" style="width:100%">`);
+                }
             }
         }
     };
@@ -100,7 +103,7 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
                 </datalist>
                 <h3 className="text-white text-xs font-bold mb-3 flex justify-between items-center">Edit Flight
                     <div className="flex gap-2">
-                         <button onClick={() => { vibrate(); onDelete(flight.id); }} className="text-red-400 text-[10px] border border-red-900/50 px-1.5 rounded">DEL</button>
+                         <button onClick={() => { vibrate(); onDelete(flight.id); }} className="text-red-400 text-[10px] border border-red-900/50 px-1.5 rounded">{T.DELETE[lang]}</button>
                         <button onClick={() => setIsEditing(false)} className="text-neutral-500 text-[10px] hover:text-white">{T.CANCEL[lang]}</button>
                         <button onClick={handleSave} className="text-neutral-950 bg-white px-2 py-0.5 rounded text-[10px] font-bold">{T.SAVE[lang]}</button>
                     </div>
@@ -133,7 +136,9 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
             </div>
             <div className="flex justify-between text-xs text-neutral-400 items-end">
                 <div><div className="text-[9px] text-neutral-600 uppercase">Date</div><div className="text-white text-[10px]">{flight.departureDate}</div></div>
-                {formData.attachment && (<button onClick={viewAttachment} className="text-[9px] bg-neutral-800 text-blue-400 px-2 py-0.5 rounded border border-neutral-700 ml-2">VIEW TICKET</button>)}
+                {formData.attachment && (
+                    <button onClick={viewAttachment} className="text-[9px] bg-neutral-800 text-blue-400 px-2 py-0.5 rounded border border-neutral-700 ml-2">VIEW TICKET</button>
+                )}
                 <div className="text-right flex-1"><div className="text-[9px] text-neutral-600 uppercase">Gate / Terminal</div><div className="text-white text-[10px]">{flight.gate || '-'} / {flight.terminal || '-'}</div></div>
             </div>
         </div>
@@ -168,23 +173,23 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
         if (formData.attachment) {
             const win = window.open();
             if (win) {
-                if (formData.attachmentType === 'pdf') win.document.write(`<iframe src="${formData.attachment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-                else win.document.write(`<img src="${formData.attachment}" style="width:100%">`);
+                if (formData.attachmentType === 'pdf') {
+                     win.document.write(`<iframe src="${formData.attachment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                } else {
+                     win.document.write(`<img src="${formData.attachment}" style="width:100%">`);
+                }
             }
         }
     };
 
-    // Duration & Live Logic
+    // Duration Logic
     const start = new Date(hotel.checkIn);
     const end = new Date(hotel.checkOut);
-    const isValidDate = !isNaN(start.getTime()) && !isNaN(end.getTime());
-    const nights = isValidDate ? Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+    const nights = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
     
     const now = new Date();
-    // Simple date compare by string to avoid time issues
-    const todayStr = now.toISOString().split('T')[0];
-    const isTonight = hotel.checkIn <= todayStr && hotel.checkOut > todayStr;
-    const isCheckoutTmr = new Date(now.getTime() + 86400000).toISOString().split('T')[0] === hotel.checkOut;
+    const isTonight = now >= start && now < end;
+    const isCheckoutTmr = new Date(now.getTime() + 86400000) >= end && now < end;
 
     if (showCard) {
         return (
@@ -204,7 +209,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
              <div className="bg-neutral-900 border border-neutral-700 rounded-lg p-3 shadow-xl ring-1 ring-neutral-700 mb-3">
                  <h3 className="text-white text-xs font-bold mb-3 flex justify-between items-center">Edit Hotel
                     <div className="flex gap-2">
-                        <button onClick={() => { vibrate(); onDelete(hotel.id); }} className="text-red-400 text-[10px] border border-red-900/50 px-1.5 rounded">DEL</button>
+                        <button onClick={() => { vibrate(); onDelete(hotel.id); }} className="text-red-400 text-[10px] border border-red-900/50 px-1.5 rounded">{T.DELETE[lang]}</button>
                         <button onClick={() => setIsEditing(false)} className="text-neutral-500 text-[10px] hover:text-white">{T.CANCEL[lang]}</button>
                         <button onClick={handleSave} className="text-neutral-950 bg-white px-2 py-0.5 rounded text-[10px] font-bold">{T.SAVE[lang]}</button>
                     </div>
@@ -234,7 +239,7 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
                 <div>
                     <h3 className="text-sm text-white font-medium">{formData.name}</h3>
                     <div className="flex gap-2 mt-1 items-center">
-                         {nights > 0 && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} {T.NIGHTS[lang]}</span>}
+                         {(nights > 0) && <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} {T.NIGHTS[lang]}</span>}
                          {isTonight && <span className="bg-indigo-900/50 text-indigo-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap animate-pulse">TONIGHT</span>}
                          {isCheckoutTmr && <span className="bg-amber-900/50 text-amber-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">CHECK-OUT TMRW</span>}
                     </div>
@@ -265,7 +270,7 @@ const ContactItem: React.FC<{ item: EmergencyContact, onUpdate: (c: EmergencyCon
                 <input className="bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none uppercase" value={data.name} onChange={e => setData({...data, name: e.target.value})} placeholder="Name" />
                 <input className="bg-transparent border-b border-neutral-600 text-white font-mono text-sm font-bold focus:outline-none" value={data.number} onChange={e => setData({...data, number: e.target.value})} placeholder="Phone Number" />
                 <input className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none uppercase" value={data.note} onChange={e => setData({...data, note: e.target.value})} placeholder="Note" />
-                <div className="flex justify-end gap-2 mt-1"><button onClick={() => { vibrate(); onDelete(item.id); }} className="text-red-400 text-[10px] px-1">DEL</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">{T.DONE[lang]}</button></div>
+                <div className="flex justify-end gap-2 mt-1"><button onClick={() => { vibrate(); onDelete(item.id); }} className="text-red-400 text-[10px] px-1">{T.DELETE[lang]}</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">{T.DONE[lang]}</button></div>
             </div>
         )
     }
@@ -284,7 +289,7 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
     const hkdAmount = Math.round(item.cost * rate);
     if(isEditing) {
         return (
-             <div className="p-3 border-b border-neutral-800 bg-neutral-800/50"><div className="grid grid-cols-6 gap-2 mb-1"><div className="col-span-4"><input className="w-full bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none uppercase" value={data.item} onChange={e => setData({...data, item: e.target.value})} placeholder="Item" /></div><div className="col-span-2"><select className="w-full bg-neutral-900 text-white text-[10px] border border-neutral-600 rounded p-0.5" value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})}>{Object.keys(rates).map(c => <option key={c} value={c}>{c}</option>)}</select></div></div><div className="flex gap-2 mb-1"><input className="bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none flex-1 text-right" type="number" value={data.cost} onChange={e => setData({...data, cost: Number(e.target.value)})} placeholder="Cost" /></div><div className="flex justify-between items-center"><select value={data.category} onChange={(e) => setData({...data, category: e.target.value})} className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none w-1/2 appearance-none uppercase">{Object.values(ItemType).map(t => <option key={t} value={t} className="bg-neutral-900 text-white">{t}</option>)}</select><div className="flex gap-2"><button onClick={() => { vibrate(); onDelete(item.id); }} className="text-red-400 text-[10px] px-2 border border-red-900/50 rounded">DEL</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">OK</button></div></div></div>
+             <div className="p-3 border-b border-neutral-800 bg-neutral-800/50"><div className="grid grid-cols-6 gap-2 mb-1"><div className="col-span-4"><input className="w-full bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none uppercase" value={data.item} onChange={e => setData({...data, item: e.target.value})} placeholder="Item" /></div><div className="col-span-2"><select className="w-full bg-neutral-900 text-white text-[10px] border border-neutral-600 rounded p-0.5" value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})}>{Object.keys(rates).map(c => <option key={c} value={c}>{c}</option>)}</select></div></div><div className="flex gap-2 mb-1"><input className="bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none flex-1 text-right" type="number" value={data.cost} onChange={e => setData({...data, cost: Number(e.target.value)})} placeholder="Cost" /></div><div className="flex justify-between items-center"><select value={data.category} onChange={(e) => setData({...data, category: e.target.value})} className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none w-1/2 appearance-none uppercase">{Object.values(ItemType).map(t => <option key={t} value={t} className="bg-neutral-900 text-white">{t}</option>)}</select><div className="flex gap-2"><button onClick={() => { vibrate(); onDelete(item.id); }} className="text-red-400 text-[10px] px-2 border border-red-900/50 rounded">{T.DELETE[lang]}</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">OK</button></div></div></div>
         )
     }
     return (
@@ -301,7 +306,7 @@ export const Utilities: React.FC<UtilitiesProps> = ({
     onUpdateTotalBudget, onAddChecklist, onToggleChecklist, onDeleteChecklist, onAiChecklist, isLoadingAi, lang
 }) => {
   const T = TRANSLATIONS;
-  // Safety check: Ensure budget is array
+  // Forced Initialization: Even if props are undefined/null (from old localStorage data), these will be valid empty arrays.
   const safeBudget = Array.isArray(budget) ? budget : [];
   const safeFlights = Array.isArray(flights) ? flights : [];
   const safeHotels = Array.isArray(hotels) ? hotels : [];
@@ -309,12 +314,7 @@ export const Utilities: React.FC<UtilitiesProps> = ({
   const safeChecklist = Array.isArray(checklist) ? checklist : [];
 
   const [newChecklistText, setNewChecklistText] = useState('');
-  
-  const totalBudgetHkd = safeBudget.reduce((acc, curr) => { 
-      const rate = rates[curr.currency] || 1; 
-      return acc + (curr.cost * rate); 
-  }, 0);
-
+  const totalBudgetHkd = safeBudget.reduce((acc, curr) => { const rate = rates[curr.currency] || 1; return acc + (curr.cost * rate); }, 0);
   const budgetProgress = totalBudget ? Math.min((totalBudgetHkd / totalBudget) * 100, 100) : 0;
   let progressColor = 'bg-white'; if (budgetProgress >= 100) progressColor = 'bg-red-500'; else if (budgetProgress >= 80) progressColor = 'bg-amber-400';
   const handleAddChecklistKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && newChecklistText.trim()) { vibrate(); onAddChecklist(newChecklistText); setNewChecklistText(''); } };
