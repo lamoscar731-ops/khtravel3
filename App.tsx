@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
@@ -258,9 +259,11 @@ const App: React.FC = () => {
           }
       }
       
+      // Static SOS update (Simple and reliable)
       if (foundCountry && EMERGENCY_DATA[foundCountry]) {
           const staticContacts = EMERGENCY_DATA[foundCountry];
           setContacts(prev => {
+              // Avoid duplicates based on number
               const existingNums = new Set(prev.map(c => c.number));
               const newContacts = staticContacts.filter(c => !existingNums.has(c.number)).map(c => ({
                   id: `sos-${Date.now()}-${Math.random()}`,
@@ -383,6 +386,7 @@ const App: React.FC = () => {
         const planToEnrich = { ...currentDayPlan };
         const enrichedPlan = await enrichItineraryWithGemini(planToEnrich, lang);
         
+        // Note: No automatic SOS update here anymore, strictly manual/static
         enrichedPlan.backupItems = itemsBackup;
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
@@ -400,7 +404,7 @@ const App: React.FC = () => {
       setItinerary(prev => prev.map(day => {
           if (day.dayId === selectedDay) {
               const { backupItems, ...rest } = day;
-              // Clear analysis fields and forecast
+              // Clear analysis fields and forecast, but keep other fields
               return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined, forecast: undefined };
           }
           return day;
@@ -511,7 +515,7 @@ const App: React.FC = () => {
                   <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
                   <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider text-center">{T.SETTINGS[lang]}</h3>
                   
-                  {/* Language Toggle */}
+                  {/* Language Toggle (Short) */}
                   <div className="absolute top-4 left-6 flex gap-2">
                       <button onClick={() => { vibrate(); setLang('EN'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'EN' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>EN</button>
                       <button onClick={() => { vibrate(); setLang('TC'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'TC' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>繁</button>
@@ -599,6 +603,7 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="mt-6 text-center">
+                      {/* Fixed: Open Google Maps Home directly */}
                       <button onClick={() => { vibrate(); window.open('https://www.google.com/maps', '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">{T.SEARCH_MAPS[lang]}</button>
                   </div>
               </div>
