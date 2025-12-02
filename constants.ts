@@ -36,6 +36,8 @@ export const TRANSLATIONS = {
   QUICK_NOTES: { EN: 'Quick Notes', TC: '速記' },
   TRIP_TO: { EN: 'Trip To', TC: '前往' },
   DAY: { EN: 'Day', TC: '第' }, 
+  DAYS: { EN: 'Days', TC: '天' },
+  NIGHTS: { EN: 'Nights', TC: '晚' },
   ITINERARY: { EN: 'Itinerary', TC: '行程' },
   DELETE: { EN: 'Delete', TC: '刪除' },
   MAP_ROUTE: { EN: 'Map Route', TC: '地圖路線' },
@@ -49,7 +51,10 @@ export const TRANSLATIONS = {
   ACTIVE: { EN: 'Active', TC: '進行中' },
   FLIGHTS: { EN: 'Flights', TC: '航班' },
   COPYRIGHT: { EN: '© 2024 KURO TRAVEL', TC: '© 2024 KURO TRAVEL' },
-  SCHEDULE: { EN: 'Schedule', TC: '日程' }
+  SCHEDULE: { EN: 'Schedule', TC: '日程' },
+  CHECKIN_IN: { EN: 'In', TC: '還有' },
+  DAYS_LEFT: { EN: 'Days', TC: '天' },
+  TODAY: { EN: 'Today', TC: '今天' }
 };
 
 export const EMERGENCY_DATA: Record<string, {name: string, number: string, note: string}[]> = {
