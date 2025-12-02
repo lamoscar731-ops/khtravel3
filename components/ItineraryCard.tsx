@@ -149,6 +149,18 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                         <label className="text-[9px] text-neutral-500 font-bold block mb-0.5">Description</label>
                         <textarea value={formData.description || ''} onChange={(e) => handleChange('description', e.target.value)} rows={2} className="w-full bg-transparent border-b border-neutral-700 text-neutral-400 text-[10px] py-0.5 focus:outline-none focus:border-neutral-400 resize-none leading-relaxed normal-case" placeholder="Desc..." />
                     </div>
+                    
+                    {/* Guide Notes Management in Edit Mode */}
+                    {formData.tips && formData.tips.length > 0 && (
+                        <div className="relative mt-2 bg-neutral-950/30 p-2 rounded border border-neutral-800">
+                            <button onClick={() => handleChange('tips', [])} className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-neutral-800 hover:bg-red-900/50 text-neutral-400 hover:text-red-400 rounded-full text-[10px] transition-colors">✕</button>
+                            <label className="text-[9px] text-neutral-500 font-bold block mb-1">Guide Notes (AI)</label>
+                            <ul className="list-disc pl-4 text-[9px] text-neutral-400 space-y-0.5">
+                                {formData.tips.map((t, i) => <li key={i}>{t}</li>)}
+                            </ul>
+                        </div>
+                    )}
+
                     <div className="flex gap-2 pt-1">
                         <button onClick={handleSave} className="flex-1 bg-neutral-100 text-black py-1.5 rounded text-[10px] font-bold hover:bg-white uppercase">SAVE</button>
                         <button onClick={() => setIsEditing(false)} className="flex-1 bg-neutral-800 text-neutral-300 py-1.5 rounded text-[10px] font-bold hover:bg-neutral-700 uppercase">CANCEL</button>
@@ -190,7 +202,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
         {item.tips && item.tips.length > 0 && (
             <div className="mb-2 bg-neutral-950/50 p-2 rounded border border-neutral-800/50">
                 <p className="text-[8px] text-neutral-500 uppercase tracking-widest mb-1 font-bold">Guide Notes</p>
-                <ul className="list-none space-y-0.5">
+                <ul className="list-none space-y-0.5 max-h-[4.5em] overflow-hidden">
                     {item.tips.map((tip, idx) => (
                         <li key={idx} className="text-[9px] text-neutral-300 flex items-start gap-1.5">
                              <span className="text-amber-500 mt-[1px]">✦</span> 
