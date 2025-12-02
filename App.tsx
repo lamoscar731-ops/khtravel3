@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
@@ -881,7 +880,7 @@ const App: React.FC = () => {
                                  {activeTripId === trip.id && <span className="bg-white text-black text-[8px] font-bold px-2 py-0.5 rounded-full">{T.ACTIVE[lang]}</span>}
                              </div>
                              <div className="relative z-10 text-[9px] font-medium text-neutral-400">
-                                 {trip.itinerary.length} {T.DAY[lang]} • {trip.flights.length} {T.FLIGHTS[lang]}
+                                 {trip.itinerary.length} {T.DAYS[lang]} • {Math.max(0, trip.itinerary.length - 1)} {T.NIGHTS[lang]}
                              </div>
                         </div>
                     ))}
