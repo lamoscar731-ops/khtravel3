@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, ChecklistItem, Language } from '../types';
+import { TRANSLATIONS } from '../constants';
 
 interface UtilitiesProps {
     budget: BudgetProps[];
@@ -89,11 +90,39 @@ const FlightItem: React.FC<{ flight: FlightInfo, onUpdate: (f: FlightInfo) => vo
     );
 };
 
-const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, onDelete: (id: string) => void }> = ({ hotel, onUpdate, onDelete }) => {
+const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, onDelete: (id: string) => void, lang: Language }> = ({ hotel, onUpdate, onDelete, lang }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState(hotel);
     useEffect(() => { setFormData(hotel); }, [hotel]);
     const handleSave = () => { onUpdate(formData); setIsEditing(false); };
+
+    // Calculate nights
+    const getNights = () => {
+        const start = new Date(formData.checkIn);
+        const end = new Date(formData.checkOut);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+        const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24));
+        return diff > 0 ? diff : 0;
+    };
+    const nights = getNights();
+
+    // Calculate countdown
+    const getCountdown = () => {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const checkIn = new Date(formData.checkIn);
+        checkIn.setHours(0,0,0,0);
+        
+        if (isNaN(checkIn.getTime())) return null;
+        
+        const diffTime = checkIn.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 0) return `${TRANSLATIONS.CHECKIN_IN[lang]} ${diffDays} ${TRANSLATIONS.DAYS_LEFT[lang]}`;
+        if (diffDays === 0) return TRANSLATIONS.TODAY[lang];
+        return null;
+    };
+    const countdown = getCountdown();
 
     if (isEditing) {
         return (
@@ -122,7 +151,11 @@ const HotelItem: React.FC<{ hotel: HotelInfo, onUpdate: (h: HotelInfo) => void, 
              <button onClick={() => setIsEditing(true)} className="absolute top-2 right-2 text-neutral-600 hover:text-white text-[10px] opacity-50 hover:opacity-100 p-1">✎</button>
             <div className="flex justify-between items-start mb-1 pr-6">
                 <h3 className="text-sm text-white font-medium pr-4">{formData.name}</h3>
-                <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">Confirmed</span>
+                <div className="flex flex-col items-end gap-1">
+                     <span className="bg-neutral-800 text-neutral-300 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">Confirmed</span>
+                     {countdown && <span className="bg-blue-950/30 text-blue-300 border border-blue-900/30 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{countdown}</span>}
+                     {nights > 0 && <span className="bg-neutral-800 text-amber-200 border border-amber-900/30 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap">{nights} {TRANSLATIONS.NIGHTS[lang]}</span>}
+                </div>
             </div>
             <p className="text-[10px] text-neutral-400 mb-3 leading-relaxed">{formData.address}</p>
             <div className="grid grid-cols-2 gap-4 border-t border-neutral-800 pt-2">
@@ -226,7 +259,7 @@ export const Utilities: React.FC<UtilitiesProps> = ({
       </section>
       <section>
           <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Accommodation</h2><button onClick={onAddHotel} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
-          {hotels.map(h => <HotelItem key={h.id} hotel={h} onUpdate={onUpdateHotel} onDelete={onDeleteHotel} />)}
+          {hotels.map(h => <HotelItem key={h.id} hotel={h} onUpdate={onUpdateHotel} onDelete={onDeleteHotel} lang={lang} />)}
           {hotels.length === 0 && <div className="text-center py-4 border border-dashed border-neutral-800 rounded-lg text-neutral-600 text-[10px]">No hotels added</div>}
       </section>
       <section>
