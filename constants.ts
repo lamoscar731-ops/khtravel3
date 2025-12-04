@@ -50,7 +50,7 @@ export const TRANSLATIONS = {
   NEW_TRIP: { EN: 'New Trip', TC: '新行程' },
   ACTIVE: { EN: 'Active', TC: '進行中' },
   FLIGHTS: { EN: 'Flights', TC: '航班' },
-  COPYRIGHT: { EN: '© 2024 KURO TRAVEL', TC: '© 2024 KURO TRAVEL' },
+  COPYRIGHT: { EN: 'COPYRIGHT KH 2025', TC: 'COPYRIGHT KH 2025' },
   SCHEDULE: { EN: 'Schedule', TC: '日程' },
   CHECKIN_IN: { EN: 'In', TC: '還有' },
   DAYS_LEFT: { EN: 'Days', TC: '天' },
