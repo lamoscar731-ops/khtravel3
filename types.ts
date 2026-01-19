@@ -104,6 +104,8 @@ export interface ToBuyItem {
   checked?: boolean;
 }
 
+export type SOSContact = EmergencyContact;
+
 export interface ChecklistItem {
   id: string;
   text: string;
@@ -129,4 +131,4 @@ export interface Trip {
 export interface AfterPartyRec {
   name: string;
   reason: string;
-} 
+}
