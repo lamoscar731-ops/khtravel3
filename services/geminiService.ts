@@ -63,13 +63,15 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
   const prompt = `
     Analyze this itinerary for Day ${currentPlan.dayId} (${currentPlan.date}).
     Language: ${lang === 'TC' ? 'Traditional Chinese (Hong Kong Cantonese style)' : 'English'}.
-    1. Update 'weatherSummary' with just Temperature and Humidity (e.g., "24°C, 65% Humidity"). Do not add descriptive text.
+    
+    RULES:
+    1. Update 'weatherSummary' with just Temperature and Humidity (e.g., "24°C, 65% Humidity").
     2. Enhance descriptions briefly.
     3. Add "tips" (Max 3 concise items).
-    4. CRITICAL: If item type is FOOD, RAMEN, COFFEE, or ALCOHOL, the FIRST tip MUST be the opening hours and closing days (e.g., "Open 11:00-22:00, Closed Mon").
-    5. Tag items.
-    6. Provide 'paceAnalysis' and 'logicWarning' if applicable.
-    7. Provide a dummy 'forecast' for the next 3 days including today.
+    4. CRITICAL: If item type is FOOD, RAMEN, COFFEE, or ALCOHOL, the FIRST tip MUST be the business opening hours and rest days (e.g., "Open 11:00-22:00, Closed Mon").
+    5. Tag items appropriately.
+    6. Provide 'paceAnalysis' and 'logicWarning' if locations are poorly optimized.
+    7. Provide dummy 'forecast' for next 3 days.
     
     Current Items:
     ${JSON.stringify(currentPlan.items)}
@@ -108,7 +110,7 @@ export const generatePackingList = async (destination: string, lang: string = 'E
 
   const prompt = `Generate a concise packing checklist for a trip to ${destination}. 
   Language: ${lang === 'TC' ? 'Traditional Chinese (Hong Kong)' : 'English'}.
-  Return a JSON array of strings only. Focus on essentials and destination-specific items.`;
+  Return a JSON array of strings only.`;
   
   const schema = {
     type: Type.ARRAY,
@@ -132,7 +134,7 @@ export const generatePackingList = async (destination: string, lang: string = 'E
 
   } catch (error) {
     console.error("Gemini Packing List Error:", error);
-    return ["Passport", "Phone Charger", "Wallet", "Underwear", "Toiletry Bag"];
+    return ["Passport", "Phone Charger", "Wallet"];
   }
 };
 
@@ -143,7 +145,7 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
     const ai = getAiClient(apiKey);
     const modelId = "gemini-2.5-flash";
   
-    const prompt = `I am at ${location} and it is ${time}. Suggest 3 places to go next (e.g. bars, late night food, scenic spots). 
+    const prompt = `Suggest 3 places near ${location} to go after ${time}. 
     Language: ${lang === 'TC' ? 'Traditional Chinese (Hong Kong)' : 'English'}.
     Return JSON array of objects with 'name' and 'reason'.`;
   
