@@ -83,6 +83,10 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
       setFormData(prev => ({ ...prev, tags: prev.tags?.filter((_, index) => index !== indexToRemove) }));
   };
 
+  const handleClearTips = () => {
+      setFormData(prev => ({ ...prev, tips: [] }));
+  };
+
   if (isEditing) {
     return (
         <div className="flex gap-3 mb-2 relative">
@@ -150,13 +154,18 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                         <textarea value={formData.description || ''} onChange={(e) => handleChange('description', e.target.value)} rows={2} className="w-full bg-transparent border-b border-neutral-700 text-neutral-400 text-[10px] py-0.5 focus:outline-none focus:border-neutral-400 resize-none leading-relaxed normal-case" placeholder="Desc..." />
                     </div>
                     
-                    {/* Guide Notes Management in Edit Mode */}
+                    {/* Guide Notes Section in Edit mode with X button */}
                     {formData.tips && formData.tips.length > 0 && (
-                        <div className="relative mt-2 bg-neutral-950/30 p-2 rounded border border-neutral-800">
-                            <button onClick={() => handleChange('tips', [])} className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-neutral-800 hover:bg-red-900/50 text-neutral-400 hover:text-red-400 rounded-full text-[10px] transition-colors">✕</button>
-                            <label className="text-[9px] text-neutral-500 font-bold block mb-1">Guide Notes (AI)</label>
-                            <ul className="list-disc pl-4 text-[9px] text-neutral-400 space-y-0.5">
-                                {formData.tips.map((t, i) => <li key={i}>{t}</li>)}
+                        <div className="relative mt-2 p-2 bg-neutral-950/40 rounded border border-neutral-800 group/tips">
+                            <button 
+                                onClick={handleClearTips}
+                                className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center bg-neutral-800 text-neutral-500 hover:bg-red-900/50 hover:text-red-400 rounded-full text-[10px] transition-all"
+                            >✕</button>
+                            <label className="text-[9px] text-neutral-500 font-bold block mb-1 uppercase tracking-widest">Guide Notes (AI)</label>
+                            <ul className="list-disc pl-3 text-[9px] text-neutral-400 space-y-0.5">
+                                {formData.tips.map((tip, idx) => (
+                                    <li key={idx} className="leading-tight">{tip}</li>
+                                ))}
                             </ul>
                         </div>
                     )}
@@ -199,19 +208,22 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
             </div>
         </div>
         <p className="text-[10px] text-neutral-400 leading-relaxed mb-2 whitespace-pre-wrap">{item.description}</p>
+        
+        {/* Guide Notes Display with 3-line limit */}
         {item.tips && item.tips.length > 0 && (
             <div className="mb-2 bg-neutral-950/50 p-2 rounded border border-neutral-800/50">
                 <p className="text-[8px] text-neutral-500 uppercase tracking-widest mb-1 font-bold">Guide Notes</p>
                 <ul className="list-none space-y-0.5 max-h-[4.5em] overflow-hidden">
-                    {item.tips.map((tip, idx) => (
+                    {item.tips.slice(0, 3).map((tip, idx) => (
                         <li key={idx} className="text-[9px] text-neutral-300 flex items-start gap-1.5">
                              <span className="text-amber-500 mt-[1px]">✦</span> 
-                             <span dangerouslySetInnerHTML={{__html: tip.replace(/(Must Eat|Important|Reservation)/gi, '<b>$1</b>')}} />
+                             <span className="truncate" dangerouslySetInnerHTML={{__html: tip.replace(/(Must Eat|Important|Reservation|Open|Closed)/gi, '<b>$1</b>')}} />
                         </li>
                     ))}
                 </ul>
             </div>
         )}
+        
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-neutral-800">
             <span className="text-[9px] text-neutral-600 truncate max-w-[120px]">{item.location}</span>
             <button onClick={handleNavClick} className="flex items-center gap-1.5 bg-neutral-100 text-black px-3 py-1 rounded-full text-[9px] font-bold hover:bg-neutral-300 transition-colors uppercase">
