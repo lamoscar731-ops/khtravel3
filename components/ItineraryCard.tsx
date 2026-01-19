@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ItineraryItem, ItemType, Language } from '../types';
 
@@ -44,12 +45,15 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
   };
 
   const handleRemoveTip = (idx: number) => {
-    setFormData(prev => ({ ...prev, tips: prev.tips?.filter((_, i) => i !== idx) }));
+    setFormData(prev => ({
+      ...prev,
+      tips: prev.tips?.filter((_, i) => i !== idx)
+    }));
   };
 
   if (isEditing) {
     return (
-        <div className="flex gap-3 mb-2 relative">
+        <div className="flex gap-3 mb-2 relative max-w-full">
             {!isLast && <div className="absolute left-[15px] top-8 bottom-[-16px] w-[2px] bg-neutral-900 z-0"></div>}
             <div className="flex flex-col items-center min-w-[32px] z-10">
                 <div className="text-[10px] text-neutral-600 mb-1 font-mono uppercase">{formData.time}</div>
@@ -57,37 +61,25 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                     <TypeIcon type={formData.type} />
                 </div>
             </div>
-            <div className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg p-3 shadow-xl mb-3 relative ring-1 ring-neutral-800">
+            <div className="flex-1 min-w-0 bg-neutral-900 border border-neutral-800 rounded-lg p-3 shadow-xl mb-3 relative ring-1 ring-neutral-800">
                 <div className="space-y-3">
-                    <div className="grid grid-cols-3 gap-2">
-                         <div className="col-span-1">
-                            <label className="text-[9px] text-neutral-600 font-bold block mb-0.5 uppercase tracking-tighter">TIME</label>
-                            <input type="time" value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} className="w-full bg-transparent border-b border-neutral-800 text-white text-xs py-0.5 focus:outline-none [color-scheme:dark]" />
-                        </div>
-                        <div className="col-span-2">
-                             <label className="text-[9px] text-neutral-600 font-bold block mb-0.5 uppercase tracking-tighter">TYPE</label>
-                             <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value as ItemType})} className="w-full bg-transparent border-b border-neutral-800 text-white text-xs py-0.5 focus:outline-none appearance-none bg-neutral-900">
-                                {Object.values(ItemType).map(t => <option key={t} value={t} className="bg-neutral-900">{t}</option>)}
-                             </select>
-                        </div>
+                    <div>
+                        <label className="text-[9px] text-neutral-600 font-bold block mb-0.5 uppercase tracking-tighter">TIME</label>
+                        <input type="time" value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} className="w-full bg-transparent border-b border-neutral-800 text-white text-xs py-0.5 focus:outline-none [color-scheme:dark]" />
                     </div>
                     <div>
                         <label className="text-[9px] text-neutral-600 font-bold block mb-0.5 uppercase tracking-tighter">TITLE</label>
                         <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value.toUpperCase()})} className="w-full bg-transparent border-b border-neutral-800 text-white font-bold text-xs py-0.5 focus:outline-none" />
                     </div>
-                    <div>
-                        <label className="text-[9px] text-neutral-600 font-bold block mb-0.5 uppercase tracking-tighter">LOCATION</label>
-                        <input type="text" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value.toUpperCase()})} className="w-full bg-transparent border-b border-neutral-800 text-neutral-400 text-[10px] py-0.5 focus:outline-none" />
-                    </div>
                     
-                    {/* TIP MANAGEMENT */}
+                    {/* Tips Management in Edit Mode */}
                     {formData.tips && formData.tips.length > 0 && (
                       <div className="space-y-1">
-                        <label className="text-[9px] text-neutral-600 font-bold block uppercase tracking-tighter">TIPS</label>
+                        <label className="text-[9px] text-neutral-600 font-bold block uppercase tracking-tighter">AI TIPS</label>
                         {formData.tips.map((tip, idx) => (
-                          <div key={idx} className="flex items-center gap-2 bg-neutral-800/50 p-1.5 rounded border border-neutral-700/50">
-                            <span className="text-[10px] text-neutral-300 flex-1 truncate">{tip}</span>
-                            <button onClick={() => handleRemoveTip(idx)} className="text-red-500 font-bold px-1 active:scale-90">✕</button>
+                          <div key={idx} className="flex items-center gap-2 bg-neutral-800/50 p-2 rounded border border-neutral-700/50">
+                            <span className="text-[10px] text-neutral-300 flex-1 break-all whitespace-normal">{tip}</span>
+                            <button onClick={() => handleRemoveTip(idx)} className="text-red-500 font-bold px-1.5 active:scale-90">✕</button>
                           </div>
                         ))}
                       </div>
@@ -104,7 +96,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
   }
 
   return (
-    <div className={`flex gap-3 mb-2 relative group ${isActive ? 'opacity-100' : 'opacity-90'}`} onClick={() => isSelectMode && onSelect(item.id)}>
+    <div className={`flex gap-3 mb-2 relative group max-w-full ${isActive ? 'opacity-100' : 'opacity-90'}`} onClick={() => isSelectMode && onSelect(item.id)}>
       {!isLast && <div className="absolute left-[15px] top-8 bottom-[-16px] w-[2px] bg-neutral-900 z-0"></div>}
       <div className="flex flex-col items-center min-w-[32px] z-10">
         <div className={`text-[10px] mb-0.5 font-mono ${isActive ? 'text-white font-bold' : 'text-neutral-600'}`}>{item.time}</div>
@@ -112,28 +104,23 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
           {isSelectMode && isSelected ? <span className="text-black font-bold">✓</span> : <TypeIcon type={item.type} />}
         </div>
       </div>
-      <div className={`flex-1 bg-neutral-950 border rounded-xl p-4 shadow-sm mb-4 relative transition-colors ${isActive ? 'border-neutral-700' : 'border-neutral-900'}`}>
+      <div className={`flex-1 min-w-0 bg-neutral-950 border rounded-xl p-4 shadow-sm mb-4 relative transition-colors ${isActive ? 'border-neutral-700' : 'border-neutral-900'}`}>
         {!isSelectMode && (
              <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className="absolute top-3 right-3 p-1.5 text-neutral-800 hover:text-white transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
              </button>
         )}
         <div className="mb-2 pr-6">
-            <h3 className="text-base font-bold text-neutral-100 leading-tight tracking-tight uppercase truncate">{item.title}</h3>
-            <div className="flex flex-wrap gap-1 mt-1.5">
-                {item.tags?.map((tag, idx) => (
-                    <span key={idx} className={`text-[8px] px-1.5 py-0.5 rounded-sm border font-bold tracking-tighter uppercase ${tag.color === 'gold' ? 'text-amber-300 border-amber-900 bg-amber-950/20' : tag.color === 'red' ? 'text-red-400 border-red-900 bg-red-950/20' : 'text-neutral-500 border-neutral-800 bg-neutral-900/40'}`}>{tag.label}</span>
-                ))}
-            </div>
+            <h3 className="text-base font-bold text-neutral-100 leading-tight tracking-tight uppercase break-all whitespace-normal">{item.title}</h3>
         </div>
         
         {item.tips && item.tips.length > 0 && (
-            <div className="mb-3 bg-neutral-900/50 p-2.5 rounded-lg border border-neutral-900/50">
-                <ul className="list-none space-y-1">
+            <div className="mb-3 bg-neutral-900/50 p-2.5 rounded-lg border border-neutral-900/50 overflow-hidden">
+                <ul className="list-none space-y-1.5">
                     {item.tips.map((tip, idx) => (
-                        <li key={idx} className="text-[10px] text-neutral-500 flex items-start gap-2 leading-snug break-words">
+                        <li key={idx} className="text-[10px] text-neutral-500 flex items-start gap-2 leading-snug">
                              <span className="text-neutral-700 mt-0.5 flex-shrink-0">·</span> 
-                             <span className="min-w-0">{tip}</span>
+                             <span className="break-all whitespace-normal flex-1">{tip}</span>
                         </li>
                     ))}
                 </ul>
