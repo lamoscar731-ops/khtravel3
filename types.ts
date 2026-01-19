@@ -1,4 +1,3 @@
-
 export enum ItemType {
   SIGHTSEEING = 'SIGHTSEEING',
   FOOD = 'FOOD',
