@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,22 +9,22 @@
     <meta name="theme-color" content="#000000" />
     <title>kh.travel</title>
     
-    <!-- Browser Favicon (Lightweight SVG for Desktop/Android) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22black%22/><circle cx=%2250%22 cy=%2250%22 r=%2240%22 stroke=%22white%22 stroke-width=%226%22 fill=%22none%22/><path d=%22M10 50h80M50 10v80M50 10c15 0 25 18 25 40s-10 40-25 40-25-18-25-40 10-40 25-40z%22 stroke=%22white%22 stroke-width=%224%22 fill=%22none%22/></svg>">
     
-    <!-- Note: apple-touch-icon removed to prioritize launch speed and use iOS default snapshot behavior -->
-    
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Global Styles -->
     <style>
-      body {
+      html, body {
         background-color: #000000;
         color: #e5e5e5;
         font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+        overflow-x: hidden; /* 徹底禁止橫向捲動 */
+        width: 100%;
+        position: relative;
+      }
+      body {
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
         -webkit-tap-highlight-color: transparent;
@@ -45,10 +46,22 @@
       select { -webkit-appearance: none; }
     </style>
 
-    <!-- Polyfill for process.env -->
     <script>
       window.process = window.process || { env: {} };
     </script>
+
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+  }
+}
+</script>
 </head>
 <body>
     <div id="root"></div>
