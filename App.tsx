@@ -278,13 +278,12 @@ const App: React.FC = () => {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      // Basic compression logic using Canvas
       const reader = new FileReader();
       reader.onload = (event) => {
           const img = new Image();
           img.onload = () => {
               const canvas = document.createElement('canvas');
-              const MAX_WIDTH = 600; // Limit width to save space
+              const MAX_WIDTH = 600; 
               const scaleSize = MAX_WIDTH / img.width;
               canvas.width = MAX_WIDTH;
               canvas.height = img.height * scaleSize;
@@ -292,7 +291,6 @@ const App: React.FC = () => {
               const ctx = canvas.getContext('2d');
               if (ctx) {
                   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                  // Compress to JPEG with 0.5 quality
                   const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
                   setCoverImage(dataUrl);
               }
@@ -384,8 +382,6 @@ const App: React.FC = () => {
         const itemsBackup = JSON.parse(JSON.stringify(currentDayPlan.items));
         const planToEnrich = { ...currentDayPlan };
         const enrichedPlan = await enrichItineraryWithGemini(planToEnrich, lang);
-        
-        // Note: No automatic SOS update here anymore, strictly manual/static
         enrichedPlan.backupItems = itemsBackup;
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
@@ -403,7 +399,6 @@ const App: React.FC = () => {
       setItinerary(prev => prev.map(day => {
           if (day.dayId === selectedDay) {
               const { backupItems, ...rest } = day;
-              // Clear analysis fields and forecast, but keep other fields
               return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined, forecast: undefined };
           }
           return day;
@@ -436,7 +431,6 @@ const App: React.FC = () => {
       } catch (e) { alert("AI Offline"); } finally { setIsLoading(false); }
   };
 
-  // --- Map Route ---
   const handleMapRoute = () => {
       vibrate();
       let validItems = currentDayPlan.items.filter(i => 
@@ -453,7 +447,6 @@ const App: React.FC = () => {
       window.open(url, '_blank');
   };
 
-  // --- Auto-Sort & CRUD ---
   const sortItems = (items: ItineraryItem[]) => [...items].sort((a, b) => a.time.localeCompare(b.time));
   const handleUpdateItem = (updatedItem: ItineraryItem) => {
     setItinerary(prev => prev.map(day => {
@@ -514,18 +507,15 @@ const App: React.FC = () => {
                   <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
                   <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider text-center">{T.SETTINGS[lang]}</h3>
                   
-                  {/* Language Toggle (Short) */}
                   <div className="absolute top-4 left-6 flex gap-2">
                       <button onClick={() => { vibrate(); setLang('EN'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'EN' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>EN</button>
                       <button onClick={() => { vibrate(); setLang('TC'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'TC' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>繁</button>
                   </div>
 
                   <div className="space-y-6 mt-4">
-                      {/* Cover Photo Input */}
                       <div>
                           <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">{T.TRIP_COVER[lang]}</h4>
                           <div className="flex gap-2 h-10">
-                              {/* If Base64, show indicator & clear button */}
                               {coverImage.startsWith('data:') ? (
                                   <div className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 flex justify-between items-center">
                                       <span className="text-xs text-green-400 font-mono">Image Uploaded</span>
@@ -551,7 +541,6 @@ const App: React.FC = () => {
 
                       <div>
                           <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">{T.SYNC_SHARE[lang]}</h4>
-                          <p className="text-[9px] text-neutral-400 mb-3 leading-relaxed">Copy code below.</p>
                           <button onClick={handleExport} className="w-full bg-white text-black py-2 rounded-lg text-xs font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase"><span>📋 {T.COPY_CODE[lang]}</span></button>
                           <div className="relative mb-4 h-10">
                               <input value={importData} onChange={(e) => setImportData(e.target.value)} placeholder="Paste code..." className="w-full h-full bg-black border border-neutral-700 rounded-lg px-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none pr-16" />
@@ -602,17 +591,16 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="mt-6 text-center">
-                      {/* Fixed: Open Google Maps Home directly */}
                       <button onClick={() => { vibrate(); window.open('https://www.google.com/maps', '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">{T.SEARCH_MAPS[lang]}</button>
                   </div>
               </div>
           </div>
       )}
 
-      {/* Destination Selector Modal */}
+      {/* Destination Selector Modal - ADJUSTED FOR DYNAMIC ISLAND */}
       {showDestSelector && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
-               <div className="flex justify-between items-center mb-6">
+               <div className="flex justify-between items-center mb-6 pt-[calc(env(safe-area-inset-top)+20px)]">
                    <h3 className="text-lg font-bold text-white uppercase tracking-wider">{T.SELECT_DEST[lang]}</h3>
                    <button onClick={() => setShowDestSelector(false)} className="text-neutral-500 hover:text-white p-2 text-xl">✕</button>
                </div>
@@ -657,7 +645,7 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* Flag Selector & Notes Modal */}
+      {/* Flag Selector & Notes Modal - ADJUSTED FOR DYNAMIC ISLAND */}
       {showFlagSelector && (
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
                <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-xs shadow-2xl relative">
@@ -705,7 +693,7 @@ const App: React.FC = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
               </button>
               <button onClick={() => setShowSettings(true)} className="text-neutral-500 hover:text-white transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
               </button>
               <div onClick={handleFlagClick} className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center cursor-pointer active:opacity-70 transition-transform hover:scale-105 shadow-glow text-lg">
                 {userFlag}
@@ -713,7 +701,6 @@ const App: React.FC = () => {
           </div>
         </div>
         
-        {/* Day Selector */}
         {activeTab === Tab.ITINERARY && (
             <div className="flex px-5 pb-2 overflow-x-auto no-scrollbar gap-2 items-center">
                 {itinerary.map(day => (
@@ -751,7 +738,6 @@ const App: React.FC = () => {
                             {itinerary.length > 1 && (<button onClick={handleDeleteDay} className="mt-1 text-[9px] text-red-900 hover:text-red-500 transition-colors flex items-center gap-1 uppercase">🗑️ {T.DELETE[lang]} Day</button>)}
                         </div>
                     </div>
-                    {/* 7-Day Forecast Widget */}
                     {currentDayPlan.forecast && currentDayPlan.forecast.length > 0 && (
                         <div className="mt-3 flex overflow-x-auto no-scrollbar gap-2 pb-1">
                             {currentDayPlan.forecast.map((f, i) => (
@@ -764,7 +750,6 @@ const App: React.FC = () => {
                         </div>
                     )}
                     
-                    {/* Logic/Pace Analysis Display */}
                     {(currentDayPlan.paceAnalysis || currentDayPlan.logicWarning) && (
                         <div className="mt-2 flex gap-2 flex-wrap">
                             {currentDayPlan.paceAnalysis && <span className="text-[9px] bg-neutral-800 text-neutral-300 px-2 py-0.5 rounded border border-neutral-700">{currentDayPlan.paceAnalysis}</span>}
@@ -783,9 +768,6 @@ const App: React.FC = () => {
                     <button onClick={handleEnrichItinerary} disabled={isLoading} className="flex-1 bg-gradient-to-r from-neutral-800 to-neutral-900 border border-neutral-700 text-neutral-300 py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:border-neutral-500 transition-all active:scale-[0.98] uppercase">
                         {isLoading ? <span className="animate-pulse">Thinking...</span> : <><span>✨ {T.AI_CHECK[lang]}</span></>}
                     </button>
-                    {currentDayPlan.backupItems && (
-                        <button onClick={handleResetDay} className="w-16 bg-neutral-900 border border-neutral-800 text-red-400 py-2 rounded-lg text-[10px] font-bold hover:border-red-900 hover:bg-red-950/20 uppercase">{T.RESET[lang]}</button>
-                    )}
                 </div>
 
                 <div className="relative pl-0.5">
@@ -807,13 +789,6 @@ const App: React.FC = () => {
                         <div className="absolute left-[13px] top-0 bottom-8 w-[2px] bg-gradient-to-b from-neutral-800 to-transparent z-0"></div>
                         <div className="flex flex-col items-center min-w-[28px] z-10 opacity-50"><div className="w-7 h-7 rounded-full border border-neutral-800 border-dashed flex items-center justify-center"><span className="text-neutral-500 text-[10px]">+</span></div></div>
                         <button onClick={handleAddItem} className="flex-1 h-10 border border-dashed border-neutral-800 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-300 hover:border-neutral-600 transition-all active:scale-95 uppercase text-[9px] font-bold tracking-widest">+ {T.ADD_ACTIVITY[lang]}</button>
-                    </div>
-                    
-                    {/* After Party Button */}
-                    <div className="mb-8">
-                        <button onClick={handleAfterParty} className="w-full py-3 bg-neutral-900/50 border border-neutral-800 rounded-lg text-amber-200/50 hover:text-amber-200 hover:bg-neutral-900 text-[10px] font-bold tracking-widest uppercase transition-all">
-                            ✨ {T.NEXT_STOP[lang]}
-                        </button>
                     </div>
                 </div>
             </>
@@ -863,15 +838,8 @@ const App: React.FC = () => {
                             className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden h-32 flex flex-col justify-between ${activeTripId === trip.id ? 'border-white' : 'border-neutral-800 hover:border-neutral-600'}`}
                             style={trip.coverImage ? { backgroundImage: `url(${trip.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                         >
-                             {/* Overlay for image readablity */}
                              <div className={`absolute inset-0 ${trip.coverImage ? 'bg-black/60' : 'bg-neutral-900'} z-0`}></div>
                              
-                             {!trip.coverImage && (
-                                <div className={`absolute -right-4 -bottom-4 text-[60px] font-black opacity-5 pointer-events-none ${activeTripId === trip.id ? 'text-black' : 'text-white'}`}>
-                                    {trip.destination.substring(0, 3).toUpperCase()}
-                                </div>
-                             )}
-
                              <div className="relative z-10 flex justify-between items-start">
                                  <div>
                                      <div className="text-[9px] font-bold tracking-widest mb-0.5 text-neutral-400">{trip.startDate}</div>
@@ -879,8 +847,10 @@ const App: React.FC = () => {
                                  </div>
                                  {activeTripId === trip.id && <span className="bg-white text-black text-[8px] font-bold px-2 py-0.5 rounded-full">{T.ACTIVE[lang]}</span>}
                              </div>
-                             <div className="relative z-10 text-[9px] font-medium text-neutral-400">
-                                 {trip.itinerary.length} {T.DAYS[lang]} • {Math.max(0, trip.itinerary.length - 1)} {T.NIGHTS[lang]}
+                             
+                             {/* UPDATED FORMAT: XX DAYS . XX NIGHTS */}
+                             <div className="relative z-10 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">
+                                 {trip.itinerary.length} {T.DAYS[lang]} . {Math.max(0, trip.itinerary.length - 1)} {T.NIGHTS[lang]}
                              </div>
                         </div>
                     ))}
