@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
 import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES, TRANSLATIONS, EMERGENCY_DATA } from './constants';
-import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact, Language } from './types';
+import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact, Language, ToBuyItem } from './types';
 import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions } from './services/geminiService';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
@@ -62,24 +63,6 @@ const App: React.FC = () => {
   const [trips, setTrips] = useState<Trip[]>(() => {
       const savedTrips = localStorage.getItem('kuro_trips');
       if (savedTrips) return JSON.parse(savedTrips);
-      const oldItinerary = localStorage.getItem('kuro_itinerary');
-      if (oldItinerary) {
-          const migratedTrip: Trip = {
-              id: `trip-${Date.now()}`,
-              destination: localStorage.getItem('kuro_destination') || 'TOKYO',
-              startDate: '2023-11-15',
-              itinerary: JSON.parse(oldItinerary),
-              flights: JSON.parse(localStorage.getItem('kuro_flights') || JSON.stringify(INITIAL_FLIGHTS)),
-              hotels: JSON.parse(localStorage.getItem('kuro_hotels') || JSON.stringify(INITIAL_HOTELS)),
-              budget: JSON.parse(localStorage.getItem('kuro_budget') || JSON.stringify(INITIAL_BUDGET)),
-              contacts: JSON.parse(localStorage.getItem('kuro_contacts') || JSON.stringify(INITIAL_CONTACTS)),
-              totalBudget: 20000,
-              checklist: [],
-              notes: '',
-              coverImage: ''
-          };
-          return [migratedTrip];
-      }
       return [{
           id: `trip-${Date.now()}`,
           destination: 'TOKYO',
@@ -89,6 +72,7 @@ const App: React.FC = () => {
           hotels: INITIAL_HOTELS,
           budget: INITIAL_BUDGET,
           contacts: INITIAL_CONTACTS,
+          toBuyList: [],
           totalBudget: 20000,
           checklist: [],
           notes: '',
@@ -107,6 +91,7 @@ const App: React.FC = () => {
   const [hotels, setHotels] = useState<HotelInfo[]>([]);
   const [budget, setBudget] = useState<BudgetProps[]>([]);
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
+  const [toBuyList, setToBuyList] = useState<ToBuyItem[]>([]);
   const [totalBudget, setTotalBudget] = useState<number>(20000);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [tripNotes, setTripNotes] = useState<string>('');
@@ -121,16 +106,17 @@ const App: React.FC = () => {
       const currentTrip = trips.find(t => t.id === activeTripId);
       if (currentTrip) {
           setDestination(currentTrip.destination);
-          setItinerary(currentTrip.itinerary);
-          setFlights(currentTrip.flights);
-          setHotels(currentTrip.hotels);
-          setBudget(currentTrip.budget);
-          setContacts(currentTrip.contacts);
+          setItinerary(currentTrip.itinerary || []);
+          setFlights(currentTrip.flights || []);
+          setHotels(currentTrip.hotels || []);
+          setBudget(currentTrip.budget || []);
+          setContacts(currentTrip.contacts || []);
+          setToBuyList(currentTrip.toBuyList || []);
           setTotalBudget(currentTrip.totalBudget || 20000);
           setChecklist(currentTrip.checklist || []);
           setTripNotes(currentTrip.notes || '');
           setCoverImage(currentTrip.coverImage || '');
-          if (selectedDay > currentTrip.itinerary.length) setSelectedDay(1);
+          if (selectedDay > (currentTrip.itinerary?.length || 0)) setSelectedDay(1);
           setIsSelectMode(false);
           setSelectedItemIds(new Set());
       }
@@ -150,6 +136,7 @@ const App: React.FC = () => {
                       hotels, 
                       budget, 
                       contacts, 
+                      toBuyList,
                       totalBudget, 
                       checklist,
                       notes: tripNotes,
@@ -161,7 +148,7 @@ const App: React.FC = () => {
           localStorage.setItem('kuro_trips', JSON.stringify(newTrips));
           return newTrips;
       });
-  }, [destination, itinerary, flights, hotels, budget, contacts, totalBudget, checklist, tripNotes, coverImage]);
+  }, [destination, itinerary, flights, hotels, budget, contacts, toBuyList, totalBudget, checklist, tripNotes, coverImage]);
 
   useEffect(() => { localStorage.setItem('kuro_flag', userFlag); }, [userFlag]);
 
@@ -205,6 +192,7 @@ const App: React.FC = () => {
           hotels: [],
           budget: [],
           contacts: [],
+          toBuyList: [],
           totalBudget: 20000,
           checklist: [],
           notes: '',
@@ -243,13 +231,11 @@ const App: React.FC = () => {
   const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
   const handleSelectFlag = (flag: string) => { vibrate(); setUserFlag(flag); setShowFlagSelector(false); };
 
-  // --- Select Destination Logic (Static SOS Lookup) ---
   const handleSelectDestination = (city: string) => {
       vibrate();
       setDestination(city);
       setShowDestSelector(false);
 
-      // Look up country key from city value in COUNTRY_CITIES
       let foundCountry = '';
       for (const [country, cities] of Object.entries(COUNTRY_CITIES)) {
           if (cities.includes(city)) {
@@ -258,11 +244,9 @@ const App: React.FC = () => {
           }
       }
       
-      // Static SOS update (Simple and reliable)
       if (foundCountry && EMERGENCY_DATA[foundCountry]) {
           const staticContacts = EMERGENCY_DATA[foundCountry];
           setContacts(prev => {
-              // Avoid duplicates based on number
               const existingNums = new Set(prev.map(c => c.number));
               const newContacts = staticContacts.filter(c => !existingNums.has(c.number)).map(c => ({
                   id: `sos-${Date.now()}-${Math.random()}`,
@@ -273,11 +257,9 @@ const App: React.FC = () => {
       }
   };
 
-  // --- Cover Image Upload Logic ---
   const handleCoverImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-
       const reader = new FileReader();
       reader.onload = (event) => {
           const img = new Image();
@@ -287,7 +269,6 @@ const App: React.FC = () => {
               const scaleSize = MAX_WIDTH / img.width;
               canvas.width = MAX_WIDTH;
               canvas.height = img.height * scaleSize;
-
               const ctx = canvas.getContext('2d');
               if (ctx) {
                   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -295,9 +276,7 @@ const App: React.FC = () => {
                   setCoverImage(dataUrl);
               }
           };
-          if(event.target?.result) {
-              img.src = event.target.result as string;
-          }
+          if(event.target?.result) img.src = event.target.result as string;
       };
       reader.readAsDataURL(file);
   };
@@ -384,25 +363,7 @@ const App: React.FC = () => {
         const enrichedPlan = await enrichItineraryWithGemini(planToEnrich, lang);
         enrichedPlan.backupItems = itemsBackup;
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
-    } catch (e) {
-        console.error("Failed to enrich", e);
-        alert("Offline.");
-    } finally {
-        setIsLoading(false);
-    }
-  };
-
-  const handleResetDay = () => {
-      vibrate();
-      if (!currentDayPlan.backupItems) return;
-      const restoredItems = currentDayPlan.backupItems;
-      setItinerary(prev => prev.map(day => {
-          if (day.dayId === selectedDay) {
-              const { backupItems, ...rest } = day;
-              return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined, forecast: undefined };
-          }
-          return day;
-      }));
+    } catch (e) { alert("Offline."); } finally { setIsLoading(false); }
   };
 
   const handleAiChecklist = async () => {
@@ -419,18 +380,6 @@ const App: React.FC = () => {
       } catch (e) { alert("AI Offline"); } finally { setIsLoading(false); }
   };
 
-  const handleAfterParty = async () => {
-      vibrate();
-      if (currentDayPlan.items.length === 0) { alert("No items to base recommendations on."); return; }
-      setIsLoading(true);
-      try {
-          const lastItem = currentDayPlan.items[currentDayPlan.items.length - 1];
-          const recs = await generateAfterPartySuggestions(lastItem.location || destination, lastItem.time, lang);
-          setAfterPartyRecs(recs);
-          setShowAfterParty(true);
-      } catch (e) { alert("AI Offline"); } finally { setIsLoading(false); }
-  };
-
   const handleMapRoute = () => {
       vibrate();
       let validItems = currentDayPlan.items.filter(i => 
@@ -440,9 +389,9 @@ const App: React.FC = () => {
       if (validItems.length === 0) { alert("Select items with locations."); return; }
       if (validItems.length === 1) { const query = encodeURIComponent(validItems[0].location); window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank'); return; }
       const origin = encodeURIComponent(validItems[0].location);
-      const destination = encodeURIComponent(validItems[validItems.length - 1].location);
+      const destinationLoc = encodeURIComponent(validItems[validItems.length - 1].location);
       const waypoints = validItems.slice(1, -1).slice(0, 9).map(i => encodeURIComponent(i.location)).join('|');
-      let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`; 
+      let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destinationLoc}&travelmode=walking`; 
       if (waypoints) url += `&waypoints=${waypoints}`;
       window.open(url, '_blank');
   };
@@ -487,31 +436,34 @@ const App: React.FC = () => {
   const handleToggleChecklist = (id: string) => { vibrate(); setChecklist(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i)); };
   const handleDeleteChecklist = (id: string) => setChecklist(prev => prev.filter(i => i.id !== id));
 
+  // --- To Buy List Handlers ---
+  const handleAddToBuy = () => { vibrate(); setToBuyList(prev => [...prev, { id: `tb-${Date.now()}`, shop: '', address: '', item: '', website: '', checked: false }]); };
+  const handleUpdateToBuy = (updated: ToBuyItem) => { setToBuyList(prev => prev.map(i => i.id === updated.id ? updated : i)); };
+  const handleDeleteToBuy = (id: string) => { vibrate(); setToBuyList(prev => prev.filter(i => i.id !== id)); };
+  const handleToggleToBuy = (id: string) => { vibrate(); setToBuyList(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i)); };
+
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [tempDate, setTempDate] = useState('');
   const startEditingDate = () => { setTempDate(currentDayPlan.date.split(' ')[0]); setIsEditingDate(true); };
   const saveDate = () => { if(tempDate) handleUpdateDayDate(tempDate); setIsEditingDate(false); };
   const getFormattedDate = (dateStr: string) => { if (!dateStr) return "N/A"; const parts = dateStr.split(' ')[0].split('-'); if (parts.length >= 3) return `${parts[1]}/${parts[2]}`; return dateStr; };
 
-  const toggleSelectMode = () => { vibrate(); setIsSelectMode(!isSelectMode); setSelectedItemIds(new Set()); };
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const toggleSelectMode = () => { vibrate(); setIsSelectMode(!isSelectMode); setSelectedItemIds(new Set()); };
   const handleToggleItemSelection = (id: string) => { vibrate(); const newSet = new Set(selectedItemIds); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedItemIds(newSet); };
 
   return (
     <div className="min-h-screen bg-black pb-24 text-neutral-200 font-sans relative">
-      {/* Settings Modal */}
       {showSettings && (
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
               <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative overflow-y-auto max-h-[80vh]">
                   <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
                   <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider text-center">{T.SETTINGS[lang]}</h3>
-                  
                   <div className="absolute top-4 left-6 flex gap-2">
                       <button onClick={() => { vibrate(); setLang('EN'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'EN' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>EN</button>
                       <button onClick={() => { vibrate(); setLang('TC'); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${lang === 'TC' ? 'bg-white text-black' : 'text-neutral-500 border border-neutral-700'}`}>繁</button>
                   </div>
-
                   <div className="space-y-6 mt-4">
                       <div>
                           <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">{T.TRIP_COVER[lang]}</h4>
@@ -522,23 +474,12 @@ const App: React.FC = () => {
                                       <button onClick={() => setCoverImage('')} className="text-neutral-500 hover:text-white">✕</button>
                                   </div>
                               ) : (
-                                  <input 
-                                    value={coverImage} 
-                                    onChange={(e) => setCoverImage(e.target.value)} 
-                                    placeholder="URL..." 
-                                    className="flex-1 bg-black border border-neutral-700 rounded-lg px-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none h-full" 
-                                  />
+                                  <input value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="URL..." className="flex-1 bg-black border border-neutral-700 rounded-lg px-3 text-xs text-white placeholder-neutral-600 focus:border-white outline-none h-full" />
                               )}
-                              <button 
-                                onClick={() => coverInputRef.current?.click()} 
-                                className="bg-neutral-800 border border-neutral-700 text-white px-4 rounded-lg text-[10px] font-bold whitespace-nowrap h-full flex items-center justify-center"
-                              >
-                                  {T.UPLOAD[lang]}
-                              </button>
+                              <button onClick={() => coverInputRef.current?.click()} className="bg-neutral-800 border border-neutral-700 text-white px-4 rounded-lg text-[10px] font-bold whitespace-nowrap h-full flex items-center justify-center">{T.UPLOAD[lang]}</button>
                               <input type="file" ref={coverInputRef} className="hidden" accept="image/*" onChange={handleCoverImageUpload} />
                           </div>
                       </div>
-
                       <div>
                           <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2">{T.SYNC_SHARE[lang]}</h4>
                           <button onClick={handleExport} className="w-full bg-white text-black py-2 rounded-lg text-xs font-bold mb-4 active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase"><span>📋 {T.COPY_CODE[lang]}</span></button>
@@ -551,7 +492,6 @@ const App: React.FC = () => {
                               <button onClick={handleCopyText} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1"><span>📝 {T.COPY_TEXT[lang]}</span></button>
                           </div>
                       </div>
-                      
                       <div className="border-t border-neutral-800 pt-4 mt-4">
                         <h4 className="text-[10px] text-red-500 font-bold uppercase mb-2">{T.DANGER_ZONE[lang]}</h4>
                         <button onClick={handleDeleteTrip} className="w-full border border-red-900/50 bg-red-950/20 text-red-400 py-3 rounded-lg text-xs font-bold hover:bg-red-900/40 uppercase transition-colors">🗑️ {T.DELETE_TRIP[lang]}</button>
@@ -561,80 +501,26 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* After Party Modal */}
-      {showAfterParty && (
-          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
-              <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
-                  <button onClick={() => setShowAfterParty(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
-                  <h3 className="text-lg font-bold text-white mb-1 uppercase tracking-wider">{T.NEARBY_GEMS[lang]}</h3>
-                  <p className="text-[10px] text-neutral-500 mb-6">Late night spots near your last location.</p>
-                  
-                  <div className="space-y-3">
-                      {afterPartyRecs.map((rec, idx) => (
-                          <div 
-                            key={idx} 
-                            className="p-3 bg-neutral-800 rounded-lg border border-neutral-700 active:bg-neutral-700 transition-colors cursor-pointer flex justify-between items-center group"
-                            onClick={() => {
-                                vibrate();
-                                const query = encodeURIComponent(rec.name + " " + destination);
-                                window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-                            }}
-                          >
-                              <div>
-                                  <h4 className="text-xs font-bold text-white">{rec.name}</h4>
-                                  <p className="text-[10px] text-neutral-400">{rec.reason}</p>
-                              </div>
-                              <span className="text-neutral-600 group-hover:text-white">↗</span>
-                          </div>
-                      ))}
-                      {afterPartyRecs.length === 0 && <p className="text-xs text-neutral-500">No recommendations found.</p>}
-                  </div>
-                  
-                  <div className="mt-6 text-center">
-                      <button onClick={() => { vibrate(); window.open('https://www.google.com/maps', '_blank'); }} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase">{T.SEARCH_MAPS[lang]}</button>
-                  </div>
-              </div>
-          </div>
-      )}
-
-      {/* Destination Selector Modal - ADJUSTED FOR DYNAMIC ISLAND */}
       {showDestSelector && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
                <div className="flex justify-between items-center mb-6 pt-[calc(env(safe-area-inset-top)+20px)]">
                    <h3 className="text-lg font-bold text-white uppercase tracking-wider">{T.SELECT_DEST[lang]}</h3>
                    <button onClick={() => setShowDestSelector(false)} className="text-neutral-500 hover:text-white p-2 text-xl">✕</button>
                </div>
-               
-               <input 
-                  autoFocus
-                  className="bg-neutral-900 border border-neutral-700 rounded-lg p-4 text-sm text-white mb-4 w-full outline-none focus:border-white"
-                  placeholder="Search city..."
-                  value={destSearch}
-                  onChange={(e) => setDestSearch(e.target.value)}
-               />
-
+               <input autoFocus className="bg-neutral-900 border border-neutral-700 rounded-lg p-4 text-sm text-white mb-4 w-full outline-none focus:border-white" placeholder="Search city..." value={destSearch} onChange={(e) => setDestSearch(e.target.value)} />
                <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
                    {Object.entries(COUNTRY_CITIES).map(([country, cities]) => {
                        const filteredCities = cities.filter(c => c.toLowerCase().includes(destSearch.toLowerCase()));
                        if (filteredCities.length === 0 && destSearch && country !== "OTHERS") return null;
-                       
                        return (
                            <div key={country}>
                                <h4 className="text-[10px] text-neutral-500 font-bold uppercase mb-2 sticky top-0 bg-black py-1">{country}</h4>
                                {country === "OTHERS" ? (
-                                   <button onClick={() => handleSelectDestination(destSearch || "OTHERS")} className="w-full text-left p-3 rounded-lg bg-neutral-800 text-white text-xs font-bold">
-                                       {destSearch ? `Use "${destSearch}"` : "Type Custom Destination Above"}
-                                   </button>
+                                   <button onClick={() => handleSelectDestination(destSearch || "OTHERS")} className="w-full text-left p-3 rounded-lg bg-neutral-800 text-white text-xs font-bold">{destSearch ? `Use "${destSearch}"` : "Type Custom Destination Above"}</button>
                                ) : (
                                    <div className="grid grid-cols-2 gap-2">
                                        {filteredCities.map(city => (
-                                           <button 
-                                              key={city} 
-                                              onClick={() => handleSelectDestination(city)}
-                                              className="text-left p-3 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-600 text-xs text-white font-medium active:scale-95 transition-all"
-                                           >
-                                               {city}
-                                           </button>
+                                           <button key={city} onClick={() => handleSelectDestination(city)} className="text-left p-3 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-neutral-600 text-xs text-white font-medium active:scale-95 transition-all">{city}</button>
                                        ))}
                                    </div>
                                )}
@@ -645,7 +531,6 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* Flag Selector & Notes Modal - ADJUSTED FOR DYNAMIC ISLAND */}
       {showFlagSelector && (
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
                <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-xs shadow-2xl relative">
@@ -668,18 +553,10 @@ const App: React.FC = () => {
                   </h3>
                   <button onClick={() => setShowNotes(false)} className="text-neutral-500 hover:text-white p-2 text-xl">✕</button>
               </div>
-              <textarea 
-                  className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-sm text-neutral-300 focus:outline-none focus:border-neutral-700 resize-none leading-relaxed placeholder-neutral-700"
-                  placeholder="Type anything here..."
-                  value={tripNotes}
-                  onChange={(e) => setTripNotes(e.target.value)}
-                  autoFocus
-              />
-              <div className="mt-2 text-center text-[10px] text-neutral-600">Autosaved to Trip</div>
+              <textarea className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-sm text-neutral-300 focus:outline-none focus:border-neutral-700 resize-none leading-relaxed placeholder-neutral-700" placeholder="Type anything here..." value={tripNotes} onChange={(e) => setTripNotes(e.target.value)} autoFocus />
           </div>
       )}
 
-      {/* Header */}
       <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-neutral-900 pt-[env(safe-area-inset-top)]">
         <div className="px-5 py-2 mt-2 flex justify-between items-center">
           <div className="flex items-center gap-2" onClick={() => { vibrate(); setShowDestSelector(true); }}>
@@ -693,14 +570,11 @@ const App: React.FC = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
               </button>
               <button onClick={() => setShowSettings(true)} className="text-neutral-500 hover:text-white transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
               </button>
-              <div onClick={handleFlagClick} className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center cursor-pointer active:opacity-70 transition-transform hover:scale-105 shadow-glow text-lg">
-                {userFlag}
-              </div>
+              <div onClick={handleFlagClick} className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center cursor-pointer active:opacity-70 transition-transform hover:scale-105 shadow-glow text-lg">{userFlag}</div>
           </div>
         </div>
-        
         {activeTab === Tab.ITINERARY && (
             <div className="flex px-5 pb-2 overflow-x-auto no-scrollbar gap-2 items-center">
                 {itinerary.map(day => (
@@ -714,7 +588,6 @@ const App: React.FC = () => {
         )}
       </header>
 
-      {/* Main Content */}
       <main className="px-3 pt-[130px] max-w-lg mx-auto">
         {activeTab === Tab.ITINERARY ? (
             <>
@@ -738,24 +611,6 @@ const App: React.FC = () => {
                             {itinerary.length > 1 && (<button onClick={handleDeleteDay} className="mt-1 text-[9px] text-red-900 hover:text-red-500 transition-colors flex items-center gap-1 uppercase">🗑️ {T.DELETE[lang]} Day</button>)}
                         </div>
                     </div>
-                    {currentDayPlan.forecast && currentDayPlan.forecast.length > 0 && (
-                        <div className="mt-3 flex overflow-x-auto no-scrollbar gap-2 pb-1">
-                            {currentDayPlan.forecast.map((f, i) => (
-                                <div key={i} className="min-w-[50px] bg-neutral-900 border border-neutral-800 rounded p-1.5 flex flex-col items-center">
-                                    <span className="text-[8px] text-neutral-500 font-mono">{f.date}</span>
-                                    <span className="text-base my-0.5">{f.icon}</span>
-                                    <span className="text-[9px] font-bold text-neutral-300">{f.temp}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    
-                    {(currentDayPlan.paceAnalysis || currentDayPlan.logicWarning) && (
-                        <div className="mt-2 flex gap-2 flex-wrap">
-                            {currentDayPlan.paceAnalysis && <span className="text-[9px] bg-neutral-800 text-neutral-300 px-2 py-0.5 rounded border border-neutral-700">{currentDayPlan.paceAnalysis}</span>}
-                            {currentDayPlan.logicWarning && <span className="text-[9px] bg-red-950/30 text-red-400 px-2 py-0.5 rounded border border-red-900/30">⚠️ {currentDayPlan.logicWarning}</span>}
-                        </div>
-                    )}
                 </div>
 
                 <div className="flex gap-2 mb-4">
@@ -796,32 +651,9 @@ const App: React.FC = () => {
             <>
                  <h2 className="text-base font-bold text-white mb-3 uppercase tracking-tight">{T.WALLET[lang]} / {T.ITINERARY[lang]}</h2>
                  <Utilities 
-                    budget={budget} 
-                    flights={flights} 
-                    hotels={hotels} 
-                    contacts={contacts} 
-                    checklist={checklist}
-                    totalBudget={totalBudget}
-                    rates={exchangeRates} 
-                    onUpdateFlight={handleUpdateFlight} 
-                    onUpdateHotel={handleUpdateHotel} 
-                    onAddFlight={handleAddFlight} 
-                    onAddHotel={handleAddHotel} 
-                    onDeleteFlight={handleDeleteFlight} 
-                    onDeleteHotel={handleDeleteHotel} 
-                    onAddBudget={handleAddBudget} 
-                    onUpdateBudget={handleUpdateBudget} 
-                    onDeleteBudget={handleDeleteBudget} 
-                    onAddContact={handleAddContact} 
-                    onUpdateContact={handleUpdateContact} 
-                    onDeleteContact={handleDeleteContact}
-                    onUpdateTotalBudget={setTotalBudget}
-                    onAddChecklist={handleAddChecklist}
-                    onToggleChecklist={handleToggleChecklist}
-                    onDeleteChecklist={handleDeleteChecklist}
-                    onAiChecklist={handleAiChecklist}
-                    isLoadingAi={isLoading}
-                    lang={lang}
+                    budget={budget} flights={flights} hotels={hotels} contacts={contacts} checklist={checklist} totalBudget={totalBudget} rates={exchangeRates} 
+                    onUpdateFlight={handleUpdateFlight} onUpdateHotel={handleUpdateHotel} onAddFlight={handleAddFlight} onAddHotel={handleAddHotel} onDeleteFlight={handleDeleteFlight} onDeleteHotel={handleDeleteHotel} onAddBudget={handleAddBudget} onUpdateBudget={handleUpdateBudget} onDeleteBudget={handleDeleteBudget} onAddContact={handleAddContact} onUpdateContact={handleUpdateContact} onDeleteContact={handleDeleteContact} onUpdateTotalBudget={setTotalBudget} onAddChecklist={handleAddChecklist} onToggleChecklist={handleToggleChecklist} onDeleteChecklist={handleDeleteChecklist} onAiChecklist={handleAiChecklist} isLoadingAi={isLoading} lang={lang}
+                    toBuyList={toBuyList} onAddToBuy={handleAddToBuy} onUpdateToBuy={handleUpdateToBuy} onDeleteToBuy={handleDeleteToBuy} onToggleToBuy={handleToggleToBuy}
                 />
             </>
         ) : (
@@ -832,14 +664,8 @@ const App: React.FC = () => {
                 </div>
                 <div className="grid gap-2">
                     {trips.map(trip => (
-                        <div 
-                            key={trip.id} 
-                            onClick={() => { vibrate(); setActiveTripId(trip.id); setActiveTab(Tab.ITINERARY); }} 
-                            className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden h-32 flex flex-col justify-between ${activeTripId === trip.id ? 'border-white' : 'border-neutral-800 hover:border-neutral-600'}`}
-                            style={trip.coverImage ? { backgroundImage: `url(${trip.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-                        >
+                        <div key={trip.id} onClick={() => { vibrate(); setActiveTripId(trip.id); setActiveTab(Tab.ITINERARY); }} className={`relative p-4 rounded-xl border transition-all cursor-pointer group overflow-hidden h-32 flex flex-col justify-between ${activeTripId === trip.id ? 'border-white' : 'border-neutral-800 hover:border-neutral-600'}`} style={trip.coverImage ? { backgroundImage: `url(${trip.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
                              <div className={`absolute inset-0 ${trip.coverImage ? 'bg-black/60' : 'bg-neutral-900'} z-0`}></div>
-                             
                              <div className="relative z-10 flex justify-between items-start">
                                  <div>
                                      <div className="text-[9px] font-bold tracking-widest mb-0.5 text-neutral-400">{trip.startDate}</div>
@@ -847,22 +673,16 @@ const App: React.FC = () => {
                                  </div>
                                  {activeTripId === trip.id && <span className="bg-white text-black text-[8px] font-bold px-2 py-0.5 rounded-full">{T.ACTIVE[lang]}</span>}
                              </div>
-                             
-                             {/* UPDATED FORMAT: XX DAYS . XX NIGHTS */}
-                             <div className="relative z-10 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">
-                                 {trip.itinerary.length} {T.DAYS[lang]} . {Math.max(0, trip.itinerary.length - 1)} {T.NIGHTS[lang]}
-                             </div>
+                             <div className="relative z-10 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{trip.itinerary?.length || 0} {T.DAYS[lang]} . {Math.max(0, (trip.itinerary?.length || 1) - 1)} {T.NIGHTS[lang]}</div>
                         </div>
                     ))}
                 </div>
             </>
         )}
       </main>
-
       <div className="fixed bottom-[70px] w-full text-center pointer-events-none z-0">
           <span className="text-[8px] text-neutral-500 font-mono tracking-widest uppercase opacity-50">{T.COPYRIGHT[lang]}</span>
       </div>
-
       <nav className="fixed bottom-0 w-full bg-black/95 backdrop-blur-xl border-t border-neutral-900 pb-safe-bottom z-50">
         <div className="flex justify-around items-center h-[60px] max-w-lg mx-auto">
             <button onClick={() => { vibrate(); setActiveTab(Tab.ITINERARY); }} className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === Tab.ITINERARY ? 'text-white' : 'text-neutral-600'}`}>
