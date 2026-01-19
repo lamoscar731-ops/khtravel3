@@ -129,4 +129,4 @@ export interface Trip {
 export interface AfterPartyRec {
   name: string;
   reason: string;
-}
+} 
