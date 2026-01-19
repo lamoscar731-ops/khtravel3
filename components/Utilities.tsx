@@ -46,7 +46,7 @@ interface UtilitiesProps {
 
 const InputField = ({ label, value, onChange, placeholder }: { label: string, value: string | number, onChange: (val: string) => void, placeholder?: string }) => (
     <div className="mb-2">
-        <label className="text-[9px] text-neutral-500 uppercase font-bold block mb-0.5">{label}</label>
+        <label className="text-[9px] text-neutral-500 uppercase font-bold block mb-0.5 tracking-tighter">{label}</label>
         <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full bg-transparent border-b border-neutral-700 text-white text-xs py-0.5 focus:outline-none focus:border-neutral-400" />
     </div>
 );
@@ -61,7 +61,7 @@ const ToBuyListItem: React.FC<{ item: ToBuyItem, onUpdate: (i: ToBuyItem) => voi
     const handleOpenWebsite = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (item.website) {
-            let url = item.website;
+            let url = item.website.trim();
             if (!/^https?:\/\//i.test(url)) {
                 url = 'https://' + url;
             }
@@ -76,7 +76,7 @@ const ToBuyListItem: React.FC<{ item: ToBuyItem, onUpdate: (i: ToBuyItem) => voi
                     <InputField label="Item" value={data.item} onChange={v => setData({...data, item: v})} />
                     <InputField label="Shop" value={data.shop} onChange={v => setData({...data, shop: v})} />
                     <InputField label="Address" value={data.address} onChange={v => setData({...data, address: v})} />
-                    <InputField label="Website (URL)" value={data.website} onChange={v => setData({...data, website: v})} />
+                    <InputField label="Website" value={data.website} onChange={v => setData({...data, website: v})} />
                     <div className="flex gap-2 pt-1">
                         <button onClick={handleSave} className="flex-1 bg-white text-black py-1.5 rounded-sm text-[10px] font-bold uppercase active:scale-95 transition-all">SAVE</button>
                         <button onClick={() => onDelete(item.id)} className="flex-1 bg-neutral-800 text-red-400 py-1.5 rounded-sm text-[10px] font-bold uppercase active:scale-95 transition-all">DELETE</button>
@@ -87,11 +87,11 @@ const ToBuyListItem: React.FC<{ item: ToBuyItem, onUpdate: (i: ToBuyItem) => voi
     }
 
     return (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-3 mb-2 flex items-center gap-3 group relative transition-all hover:border-neutral-700">
-            <button onClick={() => onToggle(item.id)} className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${item.checked ? 'bg-white border-white' : 'border-neutral-600 hover:border-neutral-400'}`}>
+        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-3 mb-2 flex items-center gap-3 group relative transition-all hover:border-neutral-700" onClick={() => setIsEditing(true)}>
+            <button onClick={(e) => { e.stopPropagation(); onToggle(item.id); }} className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${item.checked ? 'bg-white border-white' : 'border-neutral-600 hover:border-neutral-400'}`}>
                 {item.checked && <span className="text-black text-[10px] font-bold">✓</span>}
             </button>
-            <div className="flex-1 min-w-0" onClick={() => setIsEditing(true)}>
+            <div className="flex-1 min-w-0">
                 <h4 className={`text-xs font-bold truncate ${item.checked ? 'text-neutral-600 line-through' : 'text-neutral-100'}`}>{item.item || 'Unnamed Item'}</h4>
                 <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[9px] text-neutral-500 uppercase tracking-tighter truncate max-w-[80px]">{item.shop || 'Unknown Shop'}</span>
@@ -100,7 +100,7 @@ const ToBuyListItem: React.FC<{ item: ToBuyItem, onUpdate: (i: ToBuyItem) => voi
                 </div>
             </div>
             {item.website && (
-                <button onClick={handleOpenWebsite} className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform">
+                <button onClick={handleOpenWebsite} className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform shadow-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
                 </button>
             )}
@@ -287,15 +287,12 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
     )
 }
 
-export const Utilities: React.FC<UtilitiesProps> = ({ 
-    budget, flights, hotels, contacts, rates,
-    onAddFlight, onUpdateFlight, onDeleteFlight,
-    onAddHotel, onUpdateHotel, onDeleteHotel,
-    onAddBudget, onUpdateBudget, onDeleteBudget,
-    onAddContact, onUpdateContact, onDeleteContact,
-    onUpdateTotalBudget, onAddChecklist, onToggleChecklist, onDeleteChecklist, onAiChecklist, isLoadingAi, checklist, totalBudget, lang,
+export const Utilities: React.FC<UtilitiesProps> = (props) => {
+  const { 
+    budget, flights, hotels, contacts, rates, checklist, totalBudget, lang,
     toBuyList, onAddToBuy, onUpdateToBuy, onDeleteToBuy, onToggleToBuy
-}) => {
+  } = props;
+
   const totalBudgetHkd = budget.reduce((acc, curr) => {
       const rate = rates[curr.currency] || 1;
       return acc + (curr.cost * rate);
@@ -305,65 +302,56 @@ export const Utilities: React.FC<UtilitiesProps> = ({
 
   const handleAddItem = () => {
       if(newItemText.trim()) {
-          onAddChecklist(newItemText);
+          props.onAddChecklist(newItemText);
           setNewItemText('');
       }
   };
 
   return (
-    <div className="space-y-4 pb-24">
-      <section>
-          <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Flights</h2><button onClick={onAddFlight} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
-          {flights.map(f => <FlightItem key={f.id} flight={f} onUpdate={onUpdateFlight} onDelete={onDeleteFlight} />)}
-          {flights.length === 0 && <div className="text-center py-4 border border-dashed border-neutral-800 rounded-lg text-neutral-600 text-[10px]">No flights added</div>}
-      </section>
-      <section>
-          <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Accommodation</h2><button onClick={onAddHotel} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
-          {hotels.map(h => <HotelItem key={h.id} hotel={h} onUpdate={onUpdateHotel} onDelete={onDeleteHotel} lang={lang} />)}
-          {hotels.length === 0 && <div className="text-center py-4 border border-dashed border-neutral-800 rounded-lg text-neutral-600 text-[10px]">No hotels added</div>}
-      </section>
-      
+    <div className="space-y-6 pb-24">
       {/* TO BUY LIST SECTION */}
       <section>
-          <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">To Buy List</h2><button onClick={onAddToBuy} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
-          <div className="bg-transparent">
+          <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">To Buy List</h2><button onClick={onAddToBuy} className="text-neutral-400 hover:text-white text-[10px] font-bold uppercase tracking-tight">+ New Item</button></div>
+          <div className="space-y-1">
               {toBuyList.map(item => <ToBuyListItem key={item.id} item={item} onUpdate={onUpdateToBuy} onDelete={onDeleteToBuy} onToggle={onToggleToBuy} />)}
-              {toBuyList.length === 0 && <div className="text-center py-8 border border-dashed border-neutral-800 rounded-lg text-neutral-600 text-[10px]">Nothing to buy yet</div>}
+              {toBuyList.length === 0 && <div className="text-center py-8 border border-dashed border-neutral-800 rounded-lg text-neutral-600 text-[10px] tracking-widest">WISHLIST EMPTY</div>}
           </div>
       </section>
 
       <section>
-        <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Emergency</h2><div className="flex gap-2"><button onClick={onAddContact} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div></div>
-        <div className="grid grid-cols-2 gap-2">{contacts.map(contact => <ContactItem key={contact.id} item={contact} onUpdate={onUpdateContact} onDelete={onDeleteContact} />)}</div>
+          <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Flights</h2><button onClick={props.onAddFlight} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
+          {flights.map(f => <FlightItem key={f.id} flight={f} onUpdate={props.onUpdateFlight} onDelete={props.onDeleteFlight} />)}
+      </section>
+
+      <section>
+          <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Accommodation</h2><button onClick={props.onAddHotel} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
+          {hotels.map(h => <HotelItem key={h.id} hotel={h} onUpdate={props.onUpdateHotel} onDelete={props.onDeleteHotel} lang={lang} />)}
+      </section>
+
+      <section>
+        <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Emergency</h2><button onClick={props.onAddContact} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
+        <div className="grid grid-cols-2 gap-2">{contacts.map(contact => <ContactItem key={contact.id} item={contact} onUpdate={props.onUpdateContact} onDelete={props.onDeleteContact} />)}</div>
       </section>
 
       <section>
         <div className="flex justify-between items-end mb-2 ml-1">
             <h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Packing Checklist</h2>
-            <button onClick={onAiChecklist} disabled={isLoadingAi} className="text-neutral-400 hover:text-white text-[10px] active:scale-95 transition-transform">
-                {isLoadingAi ? 'Generating...' : '✨ AI Suggest'}
+            <button onClick={props.onAiChecklist} disabled={props.isLoadingAi} className="text-neutral-400 hover:text-white text-[10px] active:scale-95 transition-transform">
+                {props.isLoadingAi ? 'Thinking...' : '✨ AI Suggest'}
             </button>
         </div>
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-3">
              {checklist.map(item => (
                 <div key={item.id} className="flex items-center gap-3 mb-2 group">
-                    <button onClick={() => onToggleChecklist(item.id)} className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${item.checked ? 'bg-white border-white' : 'border-neutral-600 hover:border-neutral-400'}`}>
+                    <button onClick={() => props.onToggleChecklist(item.id)} className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${item.checked ? 'bg-white border-white' : 'border-neutral-600 hover:border-neutral-400'}`}>
                         {item.checked && <span className="text-black text-[10px] font-bold">✓</span>}
                     </button>
                     <span className={`text-xs flex-1 transition-opacity ${item.checked ? 'text-neutral-600 line-through' : 'text-neutral-300'}`}>{item.text}</span>
-                    <button onClick={() => onDeleteChecklist(item.id)} className="text-neutral-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition px-2">×</button>
+                    <button onClick={() => props.onDeleteChecklist(item.id)} className="text-neutral-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition px-2">×</button>
                 </div>
             ))}
-            {checklist.length === 0 && <div className="text-center text-[10px] text-neutral-600 py-2">List is empty</div>}
             <div className="flex gap-2 mt-2 pt-2 border-t border-neutral-800">
-                 <input 
-                    type="text" 
-                    value={newItemText}
-                    onChange={(e) => setNewItemText(e.target.value)}
-                    placeholder="Add item..." 
-                    className="flex-1 bg-transparent text-xs text-white outline-none placeholder-neutral-600"
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
-                 />
+                 <input type="text" value={newItemText} onChange={(e) => setNewItemText(e.target.value)} placeholder="Add item..." className="flex-1 bg-transparent text-xs text-white outline-none placeholder-neutral-600" onKeyDown={(e) => e.key === 'Enter' && handleAddItem()} />
                  <button onClick={handleAddItem} disabled={!newItemText.trim()} className="text-[10px] font-bold text-neutral-500 hover:text-white disabled:opacity-30">+</button>
             </div>
         </div>
@@ -374,22 +362,13 @@ export const Utilities: React.FC<UtilitiesProps> = ({
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">
             <div className="p-3 border-b border-neutral-800 flex justify-between items-center bg-neutral-950/30">
                 <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">Trip Limit (HKD)</span>
-                <input 
-                    type="number" 
-                    value={totalBudget} 
-                    onChange={(e) => onUpdateTotalBudget(Number(e.target.value))} 
-                    className="bg-transparent text-right text-sm font-bold text-white outline-none w-24 border-b border-transparent focus:border-neutral-600 transition-colors" 
-                />
+                <input type="number" value={totalBudget} onChange={(e) => props.onUpdateTotalBudget(Number(e.target.value))} className="bg-transparent text-right text-sm font-bold text-white outline-none w-24 border-b border-transparent focus:border-neutral-600 transition-colors" />
             </div>
-            {budget.map((item) => <BudgetItem key={item.id} item={item} onUpdate={onUpdateBudget} onDelete={onDeleteBudget} rates={rates} />)}
-            <button onClick={onAddBudget} className="w-full py-2 text-[10px] text-neutral-500 hover:text-white hover:bg-neutral-800 transition border-b border-neutral-800">+ Add Expense</button>
+            {budget.map((item) => <BudgetItem key={item.id} item={item} onUpdate={props.onUpdateBudget} onDelete={props.onDeleteBudget} rates={rates} />)}
+            <button onClick={props.onAddBudget} className="w-full py-2 text-[10px] text-neutral-500 hover:text-white hover:bg-neutral-800 transition border-b border-neutral-800">+ Add Expense</button>
             <div className="bg-neutral-950/50 p-3 flex justify-between items-center">
                 <span className="text-[10px] font-bold text-neutral-400">TOTAL EST. (HKD)</span>
                 <span className={`text-sm font-bold font-mono ${totalBudgetHkd > totalBudget ? 'text-red-400' : 'text-white'}`}>HK${Math.round(totalBudgetHkd).toLocaleString()}</span>
-            </div>
-            <div className="bg-neutral-950/50 px-3 pb-3 flex justify-between items-center">
-                <span className="text-[10px] font-bold text-neutral-400">REMAINING</span>
-                <span className={`text-sm font-bold font-mono ${totalBudget - totalBudgetHkd < 0 ? 'text-red-400' : 'text-emerald-400'}`}>HK${Math.round(totalBudget - totalBudgetHkd).toLocaleString()}</span>
             </div>
         </div>
       </section>
