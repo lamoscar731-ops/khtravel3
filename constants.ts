@@ -1,3 +1,4 @@
+
 import { DayPlan, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency } from './types';
 
 export const EXCHANGE_RATES: Record<string, number> = {
@@ -54,7 +55,9 @@ export const TRANSLATIONS = {
   SCHEDULE: { EN: 'SCHEDULE', TC: '日程' },
   CHECKIN_IN: { EN: 'IN', TC: '還有' },
   DAYS_LEFT: { EN: 'DAYS', TC: '天' },
-  TODAY: { EN: 'TODAY', TC: '今天' }
+  TODAY: { EN: 'TODAY', TC: '今天' },
+  TOGO: { EN: 'TO GO', TC: '待去清單' },
+  IMPORT_TOGO: { EN: 'IMPORT TO GO', TC: '從 TO GO 加入' }
 };
 
 export const EMERGENCY_DATA: Record<string, {name: string, number: string, note: string}[]> = {
