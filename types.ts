@@ -47,6 +47,15 @@ export interface ToGoItem {
   remarks: string;
 }
 
+export interface ToBuyItem {
+  id: string;
+  shop: string;
+  address: string;
+  item: string;
+  website: string;
+  checked?: boolean;
+}
+
 export interface ForecastItem {
   date: string;
   icon: string;
@@ -101,8 +110,6 @@ export interface EmergencyContact {
   note: string;
 }
 
-export type SOSContact = EmergencyContact;
-
 export interface ChecklistItem {
   id: string;
   text: string;
@@ -119,6 +126,7 @@ export interface Trip {
   budget: BudgetProps[];
   contacts: EmergencyContact[];
   toGoList?: ToGoItem[];
+  toBuyList?: ToBuyItem[];
   totalBudget?: number;
   checklist?: ChecklistItem[];
   notes?: string;
