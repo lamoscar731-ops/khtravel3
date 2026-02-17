@@ -35,8 +35,13 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
 
   const handleNavClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const query = encodeURIComponent(item.navQuery || item.location);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+    // 增量邏輯：優先使用手動輸入的地圖網址
+    if (item.mapsUrl) {
+      window.open(item.mapsUrl, '_blank');
+    } else {
+      const query = encodeURIComponent(item.navQuery || item.location);
+      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+    }
   };
 
   const handleSave = () => {
@@ -72,6 +77,16 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                         <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value.toUpperCase()})} className="w-full bg-transparent border-b border-neutral-800 text-white font-bold text-xs py-0.5 focus:outline-none" />
                     </div>
                     
+                    {/* 增量添加：MAPS URL & ADDRESS */}
+                    <div>
+                        <label className="text-[9px] text-neutral-600 font-bold block mb-0.5 uppercase tracking-tighter">ADDRESS</label>
+                        <input type="text" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} className="w-full bg-transparent border-b border-neutral-800 text-white text-[10px] py-0.5 focus:outline-none" />
+                    </div>
+                    <div>
+                        <label className="text-[9px] text-neutral-600 font-bold block mb-0.5 uppercase tracking-tighter">MAPS LINK</label>
+                        <input type="text" value={formData.mapsUrl || ''} onChange={(e) => setFormData({...formData, mapsUrl: e.target.value})} placeholder="https://goo.gl/maps/..." className="w-full bg-transparent border-b border-neutral-800 text-white text-[9px] py-0.5 focus:outline-none" />
+                    </div>
+
                     {/* Tips Management in Edit Mode */}
                     {formData.tips && formData.tips.length > 0 && (
                       <div className="space-y-1">
@@ -88,6 +103,7 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                     <div className="flex gap-2 pt-1">
                         <button onClick={handleSave} className="flex-1 bg-white text-black py-1.5 rounded-sm text-[10px] font-bold uppercase active:scale-95 transition-all">SAVE</button>
                         <button onClick={() => setIsEditing(false)} className="flex-1 bg-neutral-800 text-neutral-400 py-1.5 rounded-sm text-[10px] font-bold uppercase active:scale-95 transition-all">CANCEL</button>
+                        <button onClick={() => { if(confirm("DELETE?")) onDelete(item.id); }} className="px-2 text-red-500">🗑️</button>
                     </div>
                 </div>
             </div>
@@ -125,6 +141,11 @@ export const ItineraryCard: React.FC<Props> = ({ item, isLast, onSave, onDelete,
                     ))}
                 </ul>
             </div>
+        )}
+
+        {/* 增量添加：顯示備註內容 */}
+        {item.description && item.description !== '...' && (
+          <p className="text-[10px] text-neutral-400 mt-2 italic leading-relaxed break-words">{item.description}</p>
         )}
         
         <div className="flex items-center justify-between mt-2 pt-3 border-t border-neutral-900/60">
