@@ -1,3 +1,4 @@
+
 export enum ItemType {
   SIGHTSEEING = 'SIGHTSEEING',
   FOOD = 'FOOD',
@@ -38,6 +39,12 @@ export interface ItineraryItem {
   weather?: string;
   navQuery: string;
   mapsUrl?: string;
+}
+
+export interface ToGoItem {
+  id: string;
+  place: string;
+  remarks: string;
 }
 
 export interface ForecastItem {
@@ -94,15 +101,6 @@ export interface EmergencyContact {
   note: string;
 }
 
-export interface ToBuyItem {
-  id: string;
-  shop: string;
-  address: string;
-  item: string;
-  website: string;
-  checked?: boolean;
-}
-
 export type SOSContact = EmergencyContact;
 
 export interface ChecklistItem {
@@ -120,7 +118,7 @@ export interface Trip {
   hotels: HotelInfo[];
   budget: BudgetProps[];
   contacts: EmergencyContact[];
-  toBuyList?: ToBuyItem[];
+  toGoList?: ToGoItem[];
   totalBudget?: number;
   checklist?: ChecklistItem[];
   notes?: string;
