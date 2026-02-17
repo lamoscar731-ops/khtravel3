@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { DayPlan, ItemType, AfterPartyRec } from "../types";
+import { DayPlan, ItemType, AfterPartyRec, ItineraryItem } from "../types";
 
 // Initialize the client.
 const getAiClient = (apiKey: string) => new GoogleGenAI({ apiKey });
@@ -10,7 +10,6 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
   if (!apiKey) throw new Error("Missing API Key");
 
   const ai = getAiClient(apiKey);
-  // Using gemini-3-flash-preview for itinerary enrichment task.
   const modelId = "gemini-3-flash-preview";
 
   const schema = {
@@ -103,12 +102,84 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
   }
 };
 
+// 增量：智慧排序與交通估算
+export const smartSortItinerary = async (items: ItineraryItem[], lang: string = 'EN'): Promise<{items: ItineraryItem[]}> => {
+  const apiKey = process.env.API_KEY;
+  const ai = getAiClient(apiKey!);
+  
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      items: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.STRING },
+            time: { type: Type.STRING },
+            transitInfo: { type: Type.STRING, description: "Est. travel time to NEXT item, e.g. '🚶 10m' or '🚄 20m'. Last item is null." }
+          }
+        }
+      }
+    }
+  };
+
+  const prompt = `
+    Task: Geography-based route optimization.
+    Reorder these items to minimize travel distance. 
+    Current Items: ${JSON.stringify(items.map(i => ({id: i.id, title: i.title, location: i.location})))}
+    
+    Return the optimized list with new 'time' (start from 09:00, 2hr gaps) and 'transitInfo' to the next stop.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: { responseMimeType: "application/json", responseSchema: schema }
+  });
+
+  const updates = JSON.parse(response.text!).items;
+  const sorted = updates.map((u: any) => {
+    const original = items.find(i => i.id === u.id)!;
+    return { ...original, time: u.time, transitInfo: u.transitInfo };
+  });
+
+  return { items: sorted };
+};
+
+// 增量：語音指令處理
+export const processVoiceCommand = async (base64Audio: string, lang: string = 'EN'): Promise<{type: 'TOGO' | 'NOTE', content: string}> => {
+  const apiKey = process.env.API_KEY;
+  const ai = getAiClient(apiKey!);
+  
+  const prompt = "Transcribe this travel voice note. Determine if it is a 'TOGO' (a place to visit) or a general 'NOTE'. Language: " + lang;
+  
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: [
+      { text: prompt },
+      { inlineData: { mimeType: "audio/webm", data: base64Audio } }
+    ],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          type: { type: Type.STRING, enum: ["TOGO", "NOTE"] },
+          content: { type: Type.STRING }
+        }
+      }
+    }
+  });
+
+  return JSON.parse(response.text!);
+};
+
 export const generatePackingList = async (destination: string, lang: string = 'EN'): Promise<string[]> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("Missing API Key");
 
   const ai = getAiClient(apiKey);
-  // Using gemini-3-flash-preview for packing list generation.
   const modelId = "gemini-3-flash-preview";
 
   const prompt = `Generate a concise packing checklist for a trip to ${destination}. 
@@ -146,7 +217,6 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
     if (!apiKey) throw new Error("Missing API Key");
   
     const ai = getAiClient(apiKey);
-    // Using gemini-3-flash-preview for after-party suggestions.
     const modelId = "gemini-3-flash-preview";
   
     const prompt = `Suggest 3 places near ${location} to go after ${time}. 
