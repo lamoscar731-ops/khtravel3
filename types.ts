@@ -39,6 +39,7 @@ export interface ItineraryItem {
   weather?: string;
   navQuery: string;
   mapsUrl?: string;
+  transitInfo?: string; // 增量：存儲與下一個景點間的交通資訊
 }
 
 export interface ForecastItem {
