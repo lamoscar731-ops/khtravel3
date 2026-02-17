@@ -41,21 +41,6 @@ export interface ItineraryItem {
   mapsUrl?: string;
 }
 
-export interface ToGoItem {
-  id: string;
-  place: string;
-  remarks: string;
-}
-
-export interface ToBuyItem {
-  id: string;
-  shop: string;
-  address: string;
-  item: string;
-  website: string;
-  checked?: boolean;
-}
-
 export interface ForecastItem {
   date: string;
   icon: string;
@@ -109,6 +94,26 @@ export interface EmergencyContact {
   number: string;
   note: string;
 }
+
+export interface ToBuyItem {
+  id: string;
+  shop: string;
+  address: string;
+  item: string;
+  website: string;
+  checked?: boolean;
+}
+
+// 增量添加：ToGoItem 欄位擴充
+export interface ToGoItem {
+  id: string;
+  place: string;
+  remarks: string;
+  address?: string;
+  url?: string;
+}
+
+export type SOSContact = EmergencyContact;
 
 export interface ChecklistItem {
   id: string;
