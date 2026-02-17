@@ -4,7 +4,7 @@ import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
 import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES, TRANSLATIONS, EMERGENCY_DATA } from './constants';
 import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact, Language, ToGoItem, ToBuyItem } from './types';
-import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions } from './services/geminiService';
+import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions, smartSortItinerary, processVoiceCommand } from './services/geminiService';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
 
@@ -371,6 +371,21 @@ const App: React.FC = () => {
     }
   };
 
+  // 增量：Smart Sort Handler
+  const handleSmartSort = async () => {
+    vibrate();
+    if (currentDayPlan.items.length < 2) return;
+    setIsLoading(true);
+    try {
+        const result = await smartSortItinerary(currentDayPlan.items, lang);
+        setItinerary(prev => prev.map(day => day.dayId === selectedDay ? { ...day, items: result.items } : day));
+    } catch (e) {
+        alert("Sorting failed.");
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
   const handleResetDay = () => {
       vibrate();
       if (!currentDayPlan.backupItems) return;
@@ -491,6 +506,50 @@ const App: React.FC = () => {
     setShowToGoPicker(false);
   };
 
+  // --- Voice Recording Logic ---
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  const startRecording = async () => {
+      vibrate();
+      try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const recorder = new MediaRecorder(stream);
+          audioChunksRef.current = [];
+          recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+          recorder.onstop = async () => {
+              const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+              const reader = new FileReader();
+              reader.readAsDataURL(audioBlob);
+              reader.onloadend = async () => {
+                  const base64Audio = (reader.result as string).split(',')[1];
+                  setIsLoading(true);
+                  try {
+                      const result = await processVoiceCommand(base64Audio, lang);
+                      if (result.type === 'TOGO') {
+                          setToGoList(prev => [...prev, { id: `v-tg-${Date.now()}`, place: result.content, remarks: 'From Voice' }]);
+                          alert(`Added to TO GO: ${result.content}`);
+                      } else {
+                          setTripNotes(prev => prev + "\n\n" + result.content);
+                          alert("Saved to Notes");
+                      }
+                  } catch (err) { alert("Voice failed."); }
+                  setIsLoading(false);
+              };
+          };
+          recorder.start();
+          mediaRecorderRef.current = recorder;
+          setIsRecording(true);
+      } catch (err) { alert("Mic denied."); }
+  };
+
+  const stopRecording = () => {
+      vibrate();
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+  };
+
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [tempDate, setTempDate] = useState('');
   const startEditingDate = () => { setTempDate(currentDayPlan.date.split(' ')[0]); setIsEditingDate(true); };
@@ -597,6 +656,13 @@ const App: React.FC = () => {
              </h1>
           </div>
           <div className="flex gap-4 items-center">
+              {/* 增量：語音速記按鈕 */}
+              <button 
+                onClick={() => isRecording ? stopRecording() : startRecording()} 
+                className={`transition-all duration-500 ${isRecording ? 'text-red-500 animate-pulse scale-125' : 'text-neutral-500 hover:text-white'}`}
+              >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+              </button>
               <button onClick={() => { vibrate(); setShowNotes(true); }} className="text-neutral-500 hover:text-white transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
               </button>
@@ -731,24 +797,38 @@ const App: React.FC = () => {
                             🗺️ {T.MAP_ROUTE[lang]} {isSelectMode && selectedItemIds.size > 0 ? `(${selectedItemIds.size})` : ''}
                         </button>
                         <button onClick={handleEnrichItinerary} disabled={isLoading} className="flex-1 bg-gradient-to-r from-neutral-800 to-neutral-900 border border-neutral-700 text-neutral-300 py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:border-neutral-500 transition-all active:scale-[0.98] uppercase">
-                            {isLoading ? <span className="animate-pulse">Thinking...</span> : <><span>✨ {T.AI_CHECK[lang]}</span></>}
+                            {isLoading ? <span className="animate-pulse">...</span> : <><span>✨ {T.AI_CHECK[lang]}</span></>}
+                        </button>
+                        {/* 增量：Smart Sort 按鈕 */}
+                        <button onClick={handleSmartSort} disabled={isLoading} className="w-10 bg-neutral-900 border border-neutral-800 text-neutral-400 py-2 rounded-lg flex items-center justify-center hover:border-white transition-all">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
                         </button>
                     </div>
 
                     <div className="relative pl-0.5">
                         {currentDayPlan.items.map((item, index) => (
-                            <ItineraryCard 
-                                key={item.id} 
-                                item={item} 
-                                isLast={index === currentDayPlan.items.length - 1} 
-                                onSave={handleUpdateItem} 
-                                onDelete={handleDeleteItem} 
-                                isSelectMode={isSelectMode}
-                                isSelected={selectedItemIds.has(item.id)}
-                                onSelect={handleToggleItemSelection}
-                                isActive={isLiveItem(item, index, currentDayPlan.items)}
-                                lang={lang}
-                            />
+                            <React.Fragment key={item.id}>
+                                <ItineraryCard 
+                                    item={item} 
+                                    isLast={index === currentDayPlan.items.length - 1} 
+                                    onSave={handleUpdateItem} 
+                                    onDelete={handleDeleteItem} 
+                                    isSelectMode={isSelectMode}
+                                    isSelected={selectedItemIds.has(item.id)}
+                                    onSelect={handleToggleItemSelection}
+                                    isActive={isLiveItem(item, index, currentDayPlan.items)}
+                                    lang={lang}
+                                />
+                                {/* 增量：交通間隔 (Transit Buffer) */}
+                                {item.transitInfo && index < currentDayPlan.items.length - 1 && (
+                                    <div className="ml-10 mb-4 -mt-2 animate-fade-in flex items-center gap-2">
+                                        <div className="w-[1px] h-4 bg-neutral-800 ml-[5px]"></div>
+                                        <div className="bg-neutral-900/40 px-2 py-0.5 rounded border border-neutral-900/50">
+                                            <span className="text-[8px] font-black text-neutral-600 uppercase tracking-tighter">{item.transitInfo}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </React.Fragment>
                         ))}
                         <div className="flex gap-2 mb-4 mt-2 relative">
                             <div className="absolute left-[13px] top-0 bottom-8 w-[2px] bg-gradient-to-b from-neutral-800 to-transparent z-0"></div>
@@ -761,6 +841,7 @@ const App: React.FC = () => {
                 </>
             )
         ) : activeTab === Tab.UTILITIES ? (
+            /* Wallet Tab */
             <>
                  <h2 className="text-base font-bold text-white mb-3 uppercase tracking-tight">{T.WALLET[lang]} / {T.ITINERARY[lang]}</h2>
                  <Utilities 
@@ -774,6 +855,7 @@ const App: React.FC = () => {
                 />
             </>
         ) : (
+            /* Trips Tab */
             <>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-base font-bold text-white uppercase tracking-tight">{T.MY_TRIPS[lang]}</h2>
