@@ -1,5 +1,5 @@
 
-import { DayPlan, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency } from './types';
+import { DayPlan, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency } from "./types";
 
 export const EXCHANGE_RATES: Record<string, number> = {
   [Currency.JPY]: 0.053,
