@@ -15,16 +15,17 @@ const safeParseJson = (text: string) => {
   }
 };
 
-const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY is not configured. Please check your environment variables.");
-  }
-  return new GoogleGenAI({ apiKey });
+// 輔助函式：確保每次請求都使用當前可用的 API_KEY
+const getAi = () => {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+        console.error("CRITICAL: API_KEY is missing from environment.");
+    }
+    return new GoogleGenAI({ apiKey: apiKey || "" });
 };
 
 export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: string = "EN"): Promise<DayPlan> => {
-  const ai = getAiClient();
+  const ai = getAi();
   const modelId = "gemini-3-pro-preview";
 
   const schema = {
@@ -92,9 +93,8 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
   try {
     const response = await ai.models.generateContent({
       model: modelId,
-      contents: { parts: [{ text: prompt }] },
+      contents: prompt,
       config: {
-        thinkingConfig: { thinkingBudget: 16000 },
         responseMimeType: "application/json",
         responseSchema: schema,
       },
@@ -110,7 +110,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
 };
 
 export const smartSortItinerary = async (items: ItineraryItem[], lang: string = "EN"): Promise<{items: ItineraryItem[]}> => {
-  const ai = getAiClient();
+  const ai = getAi();
   const schema = {
     type: Type.OBJECT,
     properties: {
@@ -134,9 +134,8 @@ export const smartSortItinerary = async (items: ItineraryItem[], lang: string = 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
-      contents: { parts: [{ text: prompt }] },
+      contents: prompt,
       config: { 
-        thinkingConfig: { thinkingBudget: 12000 },
         responseMimeType: "application/json", 
         responseSchema: schema 
       }
@@ -155,7 +154,7 @@ export const smartSortItinerary = async (items: ItineraryItem[], lang: string = 
 };
 
 export const processVoiceCommand = async (base64Audio: string, lang: string = "EN"): Promise<{type: "TOGO" | "NOTE", content: string}> => {
-  const ai = getAiClient();
+  const ai = getAi();
   const prompt = `Transcribe this travel voice note. Classify as 'TOGO' or 'NOTE'. Language: ${lang}.`;
   
   try {
@@ -184,11 +183,11 @@ export const processVoiceCommand = async (base64Audio: string, lang: string = "E
 };
 
 export const generatePackingList = async (destination: string, lang: string = "EN"): Promise<string[]> => {
-  const ai = getAiClient();
+  const ai = getAi();
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: { parts: [{ text: `Packing checklist for ${destination} in ${lang}. JSON array of strings.` }] },
+      contents: `Packing checklist for ${destination} in ${lang}. JSON array of strings.`,
       config: { responseMimeType: "application/json" },
     });
     return safeParseJson(response.text || "[]");
@@ -198,11 +197,11 @@ export const generatePackingList = async (destination: string, lang: string = "E
 };
 
 export const generateAfterPartySuggestions = async (location: string, time: string, lang: string = "EN"): Promise<AfterPartyRec[]> => {
-    const ai = getAiClient();
+    const ai = getAi();
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: { parts: [{ text: `3 spots near ${location} after ${time} in ${lang}. JSON array of objects {name, reason}.` }] },
+        contents: `3 spots near ${location} after ${time} in ${lang}. JSON array of objects {name, reason}.`,
         config: { responseMimeType: "application/json" },
       });
       return safeParseJson(response.text || "[]");
