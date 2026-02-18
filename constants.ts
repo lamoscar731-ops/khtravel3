@@ -42,7 +42,7 @@ export const TRANSLATIONS = {
   ITINERARY: { EN: 'ITINERARY', TC: '行程' },
   DELETE: { EN: 'DELETE', TC: '刪除' },
   MAP_ROUTE: { EN: 'MAP ROUTE', TC: '地圖路線' },
-  AI_CHECK: { EN: 'GEMINI', TC: 'GEMINI' },
+  AI_CHECK: { EN: '[GEMINI]', TC: '[GEMINI]' },
   RESET: { EN: 'RESET', TC: '重置' },
   ADD_ACTIVITY: { EN: 'ADD ACTIVITY', TC: '新增活動' },
   NEXT_STOP: { EN: 'WHERE NEXT?', TC: '下一站去哪?' },
