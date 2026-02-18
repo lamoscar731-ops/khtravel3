@@ -4,7 +4,7 @@ import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
 import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES, TRANSLATIONS, EMERGENCY_DATA } from './constants';
 import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact, Language, ToGoItem, ToBuyItem } from './types';
-import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions, smartSortItinerary, processVoiceCommand } from './services/geminiService';
+import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions, smartSortItinerary } from './services/geminiService';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
 
@@ -469,57 +469,6 @@ const App: React.FC = () => {
     setShowToGoPicker(false);
   };
 
-  const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-
-  const startRecording = async () => {
-      vibrate();
-      try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          const recorder = new MediaRecorder(stream);
-          audioChunksRef.current = [];
-          recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
-          recorder.onstop = async () => {
-              const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-              const reader = new FileReader();
-              reader.readAsDataURL(audioBlob);
-              reader.onloadend = async () => {
-                  const base64Audio = (reader.result as string).split(',')[1];
-                  setIsLoading(true);
-                  try {
-                      const result = await processVoiceCommand(base64Audio, lang);
-                      if (result.type === 'TOGO') {
-                          setToGoList(prev => [...prev, { id: `v-tg-${Date.now()}`, place: result.content, remarks: 'From Voice' }]);
-                          alert(`Added to TO GO: ${result.content}`);
-                      } else {
-                          setTripNotes(prev => prev + "\n\n" + result.content);
-                          alert("Saved to Notes");
-                      }
-                  } catch (err) { 
-                      console.error("Voice processing failed:", err);
-                      alert("Voice processing failed."); 
-                  }
-                  setIsLoading(false);
-              };
-          };
-          recorder.start();
-          mediaRecorderRef.current = recorder;
-          setIsRecording(true);
-      } catch (err) { 
-          console.error("Mic error:", err);
-          alert("Microphone access denied."); 
-      }
-  };
-
-  const stopRecording = () => {
-      vibrate();
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-          mediaRecorderRef.current.stop();
-      }
-      setIsRecording(false);
-  };
-
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [tempDate, setTempDate] = useState('');
   const startEditingDate = () => { setTempDate(currentDayPlan.date.split(' ')[0]); setIsEditingDate(true); };
@@ -623,9 +572,6 @@ const App: React.FC = () => {
              </h1>
           </div>
           <div className="flex gap-4 items-center">
-              <button onClick={() => isRecording ? stopRecording() : startRecording()} className={`transition-all duration-300 ${isRecording ? 'text-red-500 scale-125 animate-pulse' : 'text-neutral-500 hover:text-white'}`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
-              </button>
               <button onClick={() => { vibrate(); setShowNotes(true); }} className="text-neutral-500 hover:text-white transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
               </button>
