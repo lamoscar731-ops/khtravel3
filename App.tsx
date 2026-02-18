@@ -371,16 +371,18 @@ const App: React.FC = () => {
     }
   };
 
-  // 增量：Smart Sort Handler
   const handleSmartSort = async () => {
     vibrate();
     if (currentDayPlan.items.length < 2) return;
     setIsLoading(true);
     try {
         const result = await smartSortItinerary(currentDayPlan.items, lang);
-        setItinerary(prev => prev.map(day => day.dayId === selectedDay ? { ...day, items: result.items } : day));
+        if (result && result.items) {
+            setItinerary(prev => prev.map(day => day.dayId === selectedDay ? { ...day, items: result.items } : day));
+        }
     } catch (e) {
-        alert("Sorting failed.");
+        console.error("Smart Sort Error:", e);
+        alert("AI sorting failed. Please try again.");
     } finally {
         setIsLoading(false);
     }
@@ -534,19 +536,27 @@ const App: React.FC = () => {
                           setTripNotes(prev => prev + "\n\n" + result.content);
                           alert("Saved to Notes");
                       }
-                  } catch (err) { alert("Voice failed."); }
+                  } catch (err) { 
+                      console.error("Voice processing failed:", err);
+                      alert("Voice processing failed. Please check your mic and try again."); 
+                  }
                   setIsLoading(false);
               };
           };
           recorder.start();
           mediaRecorderRef.current = recorder;
           setIsRecording(true);
-      } catch (err) { alert("Mic denied."); }
+      } catch (err) { 
+          console.error("Mic error:", err);
+          alert("Microphone access denied."); 
+      }
   };
 
   const stopRecording = () => {
       vibrate();
-      mediaRecorderRef.current?.stop();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+      }
       setIsRecording(false);
   };
 
@@ -656,12 +666,11 @@ const App: React.FC = () => {
              </h1>
           </div>
           <div className="flex gap-4 items-center">
-              {/* 增量：語音速記按鈕 */}
               <button 
                 onClick={() => isRecording ? stopRecording() : startRecording()} 
-                className={`transition-all duration-500 ${isRecording ? 'text-red-500 animate-pulse scale-125' : 'text-neutral-500 hover:text-white'}`}
+                className={`transition-all duration-300 ${isRecording ? 'text-red-500 scale-125 animate-pulse' : 'text-neutral-500 hover:text-white'}`}
               >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
               </button>
               <button onClick={() => { vibrate(); setShowNotes(true); }} className="text-neutral-500 hover:text-white transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
@@ -797,10 +806,9 @@ const App: React.FC = () => {
                             🗺️ {T.MAP_ROUTE[lang]} {isSelectMode && selectedItemIds.size > 0 ? `(${selectedItemIds.size})` : ''}
                         </button>
                         <button onClick={handleEnrichItinerary} disabled={isLoading} className="flex-1 bg-gradient-to-r from-neutral-800 to-neutral-900 border border-neutral-700 text-neutral-300 py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:border-neutral-500 transition-all active:scale-[0.98] uppercase">
-                            {isLoading ? <span className="animate-pulse">...</span> : <><span>✨ {T.AI_CHECK[lang]}</span></>}
+                            {isLoading ? <span className="animate-pulse">Thinking...</span> : <><span>✨ {T.AI_CHECK[lang]}</span></>}
                         </button>
-                        {/* 增量：Smart Sort 按鈕 */}
-                        <button onClick={handleSmartSort} disabled={isLoading} className="w-10 bg-neutral-900 border border-neutral-800 text-neutral-400 py-2 rounded-lg flex items-center justify-center hover:border-white transition-all">
+                        <button onClick={handleSmartSort} disabled={isLoading} className={`w-10 bg-neutral-900 border border-neutral-800 text-neutral-400 py-2 rounded-lg flex items-center justify-center hover:border-white transition-all ${isLoading ? 'animate-pulse opacity-50' : ''}`}>
                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
                         </button>
                     </div>
@@ -819,12 +827,11 @@ const App: React.FC = () => {
                                     isActive={isLiveItem(item, index, currentDayPlan.items)}
                                     lang={lang}
                                 />
-                                {/* 增量：交通間隔 (Transit Buffer) */}
                                 {item.transitInfo && index < currentDayPlan.items.length - 1 && (
                                     <div className="ml-10 mb-4 -mt-2 animate-fade-in flex items-center gap-2">
-                                        <div className="w-[1px] h-4 bg-neutral-800 ml-[5px]"></div>
-                                        <div className="bg-neutral-900/40 px-2 py-0.5 rounded border border-neutral-900/50">
-                                            <span className="text-[8px] font-black text-neutral-600 uppercase tracking-tighter">{item.transitInfo}</span>
+                                        <div className="w-[1.5px] h-4 bg-neutral-800 ml-[5px]"></div>
+                                        <div className="bg-neutral-900/60 px-2 py-0.5 rounded-full border border-neutral-800 shadow-sm">
+                                            <span className="text-[8px] font-black text-neutral-400 uppercase tracking-tighter">{item.transitInfo}</span>
                                         </div>
                                     </div>
                                 )}
@@ -834,7 +841,7 @@ const App: React.FC = () => {
                             <div className="absolute left-[13px] top-0 bottom-8 w-[2px] bg-gradient-to-b from-neutral-800 to-transparent z-0"></div>
                             <div className="flex-1 flex gap-2">
                                 <button onClick={handleAddItem} className="flex-1 h-10 border border-dashed border-neutral-800 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-300 transition-all uppercase text-[9px] font-bold tracking-widest">+ {T.ADD_ACTIVITY[lang]}</button>
-                                <button onClick={() => { vibrate(); setShowToGoPicker(true); }} className="flex-1 h-10 border border-dashed border-neutral-800 rounded-lg flex items-center justify-center text-neutral-500 hover:text-white transition-all uppercase text-[9px] font-bold tracking-widest">IMPORT TO GO</button>
+                                <button onClick={() => { vibrate(); setShowToGoPicker(true); }} className="flex-1 h-10 border border-dashed border-neutral-800 rounded-lg flex items-center justify-center text-neutral-500 hover:text-white transition-all uppercase text-[9px] font-bold tracking-widest">{T.IMPORT_TOGO[lang]}</button>
                             </div>
                         </div>
                     </div>
