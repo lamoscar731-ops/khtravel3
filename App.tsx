@@ -22,7 +22,6 @@ const App: React.FC = () => {
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(DEFAULT_RATES);
   const [now, setNow] = useState(new Date());
   
-  // --- Language State ---
   const [lang, setLang] = useState<Language>(() => {
       return (localStorage.getItem('kuro_lang') as Language) || 'EN';
   });
@@ -32,13 +31,11 @@ const App: React.FC = () => {
       localStorage.setItem('kuro_lang', lang);
   }, [lang]);
 
-  // --- Clock for Live Mode ---
   useEffect(() => {
       const timer = setInterval(() => setNow(new Date()), 60000); 
       return () => clearInterval(timer);
   }, []);
   
-  // --- Fetch Real-time Rates ---
   useEffect(() => {
       fetch('https://api.exchangerate-api.com/v4/latest/HKD')
         .then(res => res.json())
@@ -59,7 +56,6 @@ const App: React.FC = () => {
         .catch(() => console.log("Using default rates"));
   }, []);
 
-  // --- Multi-Trip State Management ---
   const [trips, setTrips] = useState<Trip[]>(() => {
       const savedTrips = localStorage.getItem('kuro_trips');
       if (savedTrips) return JSON.parse(savedTrips);
@@ -101,7 +97,6 @@ const App: React.FC = () => {
     return localStorage.getItem('kuro_flag') || "🇯🇵";
   });
 
-  // --- Load Active Trip Data ---
   useEffect(() => {
       const currentTrip = trips.find(t => t.id === activeTripId);
       if (currentTrip) {
@@ -123,7 +118,6 @@ const App: React.FC = () => {
       localStorage.setItem('kuro_active_trip_id', activeTripId);
   }, [activeTripId]);
 
-  // --- Sync Changes Back ---
   useEffect(() => {
       setTrips(prevTrips => {
           const newTrips = prevTrips.map(t => {
@@ -152,10 +146,8 @@ const App: React.FC = () => {
 
   useEffect(() => { localStorage.setItem('kuro_flag', userFlag); }, [userFlag]);
 
-  const [isEditingDest, setIsEditingDest] = useState<boolean>(false);
   const currentDayPlan = itinerary.find(d => d.dayId === selectedDay) || (itinerary[0] || { dayId: 1, date: 'N/A', items: [] });
 
-  // --- Live Mode Helper ---
   const isLiveItem = (item: ItineraryItem, index: number, items: ItineraryItem[]) => {
       if (!currentDayPlan || selectedDay === 0) return false;
       const dateStr = currentDayPlan.date.split(' ')[0]; 
@@ -181,7 +173,6 @@ const App: React.FC = () => {
       return currentMinutes >= itemMinutes && currentMinutes < nextItemMinutes;
   };
 
-  // --- Handlers ---
   const handleCreateTrip = () => {
       vibrate();
       const newTrip: Trip = {
@@ -219,10 +210,7 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showFlagSelector, setShowFlagSelector] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
-  const [showAfterParty, setShowAfterParty] = useState(false);
   const [showToGoPicker, setShowToGoPicker] = useState(false); 
-  const [afterPartyRecs, setAfterPartyRecs] = useState<AfterPartyRec[]>([]);
-  
   const [showDestSelector, setShowDestSelector] = useState(false);
   const [destSearch, setDestSearch] = useState('');
 
@@ -364,7 +352,7 @@ const App: React.FC = () => {
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
         console.error("Failed to enrich", e);
-        alert("AI Offline or Config Error.");
+        alert("AI Offline: Check your connection or API Key.");
     } finally {
         setIsLoading(false);
     }
@@ -387,19 +375,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleResetDay = () => {
-      vibrate();
-      if (!currentDayPlan.backupItems) return;
-      const restoredItems = currentDayPlan.backupItems;
-      setItinerary(prev => prev.map(day => {
-          if (day.dayId === selectedDay) {
-              const { backupItems, ...rest } = day;
-              return { ...rest, items: restoredItems, weatherSummary: '', paceAnalysis: undefined, logicWarning: undefined, forecast: undefined };
-          }
-          return day;
-      }));
-  };
-
   const handleAiChecklist = async () => {
       vibrate();
       setIsLoading(true);
@@ -411,18 +386,6 @@ const App: React.FC = () => {
               const uniqueNew = newItems.filter(i => !existingTexts.has(i.text.toLowerCase()));
               return [...prev, ...uniqueNew];
           });
-      } catch (e) { alert("AI Offline"); } finally { setIsLoading(false); }
-  };
-
-  const handleAfterParty = async () => {
-      vibrate();
-      if (currentDayPlan.items.length === 0) { alert("No items to base recommendations on."); return; }
-      setIsLoading(true);
-      try {
-          const lastItem = currentDayPlan.items[currentDayPlan.items.length - 1];
-          const recs = await generateAfterPartySuggestions(lastItem.location || destination, lastItem.time, lang);
-          setAfterPartyRecs(recs);
-          setShowAfterParty(true);
       } catch (e) { alert("AI Offline"); } finally { setIsLoading(false); }
   };
 
@@ -506,7 +469,6 @@ const App: React.FC = () => {
     setShowToGoPicker(false);
   };
 
-  // --- Voice Recording Logic ---
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -536,7 +498,7 @@ const App: React.FC = () => {
                       }
                   } catch (err) { 
                       console.error("Voice processing failed:", err);
-                      alert("Voice processing failed. Please check your mic and try again."); 
+                      alert("Voice processing failed."); 
                   }
                   setIsLoading(false);
               };
@@ -571,7 +533,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black pb-24 text-neutral-200 font-sans relative">
-      {/* Settings Modal */}
       {showSettings && (
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
               <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-sm shadow-2xl relative overflow-y-auto max-h-[80vh]">
@@ -632,7 +593,6 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* [TO GO] Picker Modal */}
       {showToGoPicker && (
           <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-2xl flex flex-col p-8 animate-fade-in">
               <div className="flex justify-between items-center mb-10 pt-[calc(env(safe-area-inset-top)+20px)]">
@@ -663,10 +623,7 @@ const App: React.FC = () => {
              </h1>
           </div>
           <div className="flex gap-4 items-center">
-              <button 
-                onClick={() => isRecording ? stopRecording() : startRecording()} 
-                className={`transition-all duration-300 ${isRecording ? 'text-red-500 scale-125 animate-pulse' : 'text-neutral-500 hover:text-white'}`}
-              >
+              <button onClick={() => isRecording ? stopRecording() : startRecording()} className={`transition-all duration-300 ${isRecording ? 'text-red-500 scale-125 animate-pulse' : 'text-neutral-500 hover:text-white'}`}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
               </button>
               <button onClick={() => { vibrate(); setShowNotes(true); }} className="text-neutral-500 hover:text-white transition-colors">
@@ -714,37 +671,21 @@ const App: React.FC = () => {
                             return (
                                 <div key={item.id} className="bg-neutral-950 border border-neutral-900 rounded-2xl p-4 relative transition-all group hover:border-neutral-800">
                                     <button onClick={() => { vibrate(); setToGoList(toGoList.filter(i => i.id !== item.id)); }} className="absolute top-3 right-10 text-neutral-800 hover:text-red-500 text-xs p-1">✕</button>
-                                    
                                     {!isEditing && (
                                         <button onClick={(e) => { e.stopPropagation(); setEditingToGoId(item.id); }} className="absolute top-3 right-3 p-1.5 text-neutral-800 hover:text-white transition-colors">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                                         </button>
                                     )}
-
                                     {isEditing ? (
                                         <div className="space-y-3 animate-fade-in">
-                                            <div>
-                                                <label className="text-[9px] text-neutral-600 font-bold block mb-0.5 uppercase">Place Name</label>
-                                                <input autoFocus className="w-full bg-transparent border-b border-neutral-800 text-white font-bold text-sm uppercase outline-none placeholder-neutral-800" value={item.place} onChange={e => setToGoList(toGoList.map(i => i.id === item.id ? {...i, place: e.target.value.toUpperCase()} : i))} />
-                                            </div>
-                                            <div>
-                                                <label className="text-[9px] text-neutral-600 font-bold block mb-0.5 uppercase">Address</label>
-                                                <input className="w-full bg-transparent border-b border-neutral-800 text-neutral-500 text-[10px] uppercase outline-none placeholder-neutral-900" value={item.address || ''} onChange={e => setToGoList(toGoList.map(i => i.id === item.id ? {...i, address: e.target.value} : i))} />
-                                            </div>
-                                            <div>
-                                                <label className="text-[9px] text-neutral-600 font-bold block mb-0.5 uppercase">Maps Link</label>
-                                                <input className="w-full bg-transparent border-b border-neutral-800 text-neutral-500 text-[10px] uppercase outline-none placeholder-neutral-900" value={item.url || ''} onChange={e => setToGoList(toGoList.map(i => i.id === item.id ? {...i, url: e.target.value} : i))} />
-                                            </div>
-                                            <div>
-                                                <label className="text-[9px] text-neutral-600 font-bold block mb-0.5 uppercase">Remarks</label>
-                                                <textarea className="w-full bg-transparent border-b border-neutral-800 text-neutral-400 text-[10px] outline-none resize-none leading-relaxed placeholder-neutral-900" rows={2} value={item.remarks} onChange={e => setToGoList(toGoList.map(i => i.id === item.id ? {...i, remarks: e.target.value} : i))} />
-                                            </div>
-                                            <button onClick={() => setEditingToGoId(null)} className="w-full bg-white text-black py-2 rounded-lg text-[10px] font-bold uppercase active:scale-95 transition-all mt-2">Done</button>
+                                            <input autoFocus className="w-full bg-transparent border-b border-neutral-800 text-white font-bold text-sm uppercase outline-none" value={item.place} onChange={e => setToGoList(toGoList.map(i => i.id === item.id ? {...i, place: e.target.value.toUpperCase()} : i))} />
+                                            <textarea className="w-full bg-transparent border-b border-neutral-800 text-neutral-400 text-[10px] outline-none resize-none" rows={2} value={item.remarks} onChange={e => setToGoList(toGoList.map(i => i.id === item.id ? {...i, remarks: e.target.value} : i))} />
+                                            <button onClick={() => setEditingToGoId(null)} className="w-full bg-white text-black py-2 rounded-lg text-[10px] font-bold uppercase mt-2">Done</button>
                                         </div>
                                     ) : (
                                         <div onClick={() => setEditingToGoId(item.id)}>
                                             <h3 className="text-sm font-bold text-white uppercase tracking-tight">{item.place || 'UNNAMED PLACE'}</h3>
-                                            {item.address && <p className="text-[9px] text-neutral-600 truncate mt-1">{item.address}</p>}
+                                            {item.remarks && <p className="text-[9px] text-neutral-600 truncate mt-1">{item.remarks}</p>}
                                         </div>
                                     )}
                                 </div>
@@ -785,7 +726,6 @@ const App: React.FC = () => {
                                 ))}
                             </div>
                         )}
-                        
                         {(currentDayPlan.paceAnalysis || currentDayPlan.logicWarning) && (
                             <div className="mt-2 flex gap-2 flex-wrap">
                                 {currentDayPlan.paceAnalysis && <span className="text-[10px] bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full border border-neutral-700 font-bold uppercase tracking-tighter">{currentDayPlan.paceAnalysis}</span>}
@@ -798,13 +738,13 @@ const App: React.FC = () => {
                         <button onClick={toggleSelectMode} className={`w-10 flex items-center justify-center rounded-lg border transition-all ${isSelectMode ? 'bg-white text-black border-white' : 'bg-neutral-900 text-neutral-500 border-neutral-800 hover:border-neutral-600'}`}>
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         </button>
-                        <button onClick={handleMapRoute} className="flex-1 bg-neutral-100 border border-white text-black py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:bg-neutral-300 transition-all active:scale-[0.98] uppercase">
+                        <button onClick={handleMapRoute} className="flex-1 bg-neutral-100 border border-white text-black py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:bg-neutral-300 transition-all uppercase">
                             🗺️ {T.MAP_ROUTE[lang]} {isSelectMode && selectedItemIds.size > 0 ? `(${selectedItemIds.size})` : ''}
                         </button>
-                        <button onClick={handleEnrichItinerary} disabled={isLoading} className="flex-1 bg-neutral-900 border border-neutral-700 text-neutral-300 py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:border-white hover:text-white transition-all active:scale-[0.98] uppercase shadow-glow">
-                            {isLoading ? <span className="animate-pulse">Thinking...</span> : <><span>✨ [GEMINI]</span></>}
+                        <button onClick={handleEnrichItinerary} disabled={isLoading} className="flex-1 bg-neutral-900 border border-neutral-700 text-neutral-300 py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:border-white transition-all shadow-glow">
+                            {isLoading ? <span className="animate-pulse">Thinking...</span> : <span>✨ [GEMINI]</span>}
                         </button>
-                        <button onClick={handleSmartSort} disabled={isLoading} className={`w-10 bg-neutral-900 border border-neutral-800 text-neutral-400 py-2 rounded-lg flex items-center justify-center hover:border-white transition-all ${isLoading ? 'animate-pulse opacity-50' : ''}`}>
+                        <button onClick={handleSmartSort} disabled={isLoading} className={`w-10 bg-neutral-900 border border-neutral-800 text-neutral-400 py-2 rounded-lg flex items-center justify-center transition-all ${isLoading ? 'animate-pulse opacity-50' : ''}`}>
                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
                         </button>
                     </div>
@@ -878,17 +818,13 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <div className="fixed bottom-[70px] w-full text-center pointer-events-none z-0">
-          <span className="text-[8px] text-neutral-500 font-mono tracking-widest uppercase opacity-50">{T.COPYRIGHT[lang]}</span>
-      </div>
-
       <nav className="fixed bottom-0 w-full bg-black/95 backdrop-blur-xl border-t border-neutral-900 pb-safe-bottom z-50">
         <div className="flex justify-around items-center h-[60px] max-w-lg mx-auto">
             <button onClick={() => { vibrate(); setActiveTab(Tab.ITINERARY); }} className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === Tab.ITINERARY ? 'text-white' : 'text-neutral-600'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                 <span className="text-[8px] font-medium uppercase tracking-wider">{T.SCHEDULE[lang]}</span>
             </button>
-            <button onClick={() => { vibrate(); setActiveTab(Tab.TRIPS); }} className={`w-10 h-10 rounded-full flex items-center justify-center -mt-5 shadow-lg active:scale-95 transition-all ${activeTab === Tab.TRIPS ? 'bg-white text-black shadow-white/20' : 'bg-neutral-800 text-neutral-400 shadow-black border border-neutral-700'}`}>
+            <button onClick={() => { vibrate(); setActiveTab(Tab.TRIPS); }} className={`w-10 h-10 rounded-full flex items-center justify-center -mt-5 shadow-lg active:scale-95 transition-all ${activeTab === Tab.TRIPS ? 'bg-white text-black' : 'bg-neutral-800 text-neutral-400 border border-neutral-700'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
             </button>
             <button onClick={() => { vibrate(); setActiveTab(Tab.UTILITIES); }} className={`flex flex-col items-center gap-0.5 transition-colors ${activeTab === Tab.UTILITIES ? 'text-white' : 'text-neutral-600'}`}>
