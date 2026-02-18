@@ -10,7 +10,8 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
   if (!apiKey) throw new Error("Missing API Key");
 
   const ai = getAiClient(apiKey);
-  const modelId = "gemini-3-flash-preview";
+  // 使用 Pro 版本以確保複雜 JSON 結構的穩定性
+  const modelId = "gemini-3-pro-preview";
 
   const schema = {
     type: Type.OBJECT,
@@ -102,7 +103,6 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
   }
 };
 
-// 增量：智慧排序與交通估算
 export const smartSortItinerary = async (items: ItineraryItem[], lang: string = 'EN'): Promise<{items: ItineraryItem[]}> => {
   const apiKey = process.env.API_KEY;
   const ai = getAiClient(apiKey!);
@@ -126,53 +126,62 @@ export const smartSortItinerary = async (items: ItineraryItem[], lang: string = 
 
   const prompt = `
     Task: Geography-based route optimization.
-    Reorder these items to minimize travel distance. 
+    Reorder these items to minimize travel distance based on their locations. 
     Current Items: ${JSON.stringify(items.map(i => ({id: i.id, title: i.title, location: i.location})))}
     
-    Return the optimized list with new 'time' (start from 09:00, 2hr gaps) and 'transitInfo' to the next stop.
+    Return the optimized list with new 'time' (start from 09:00, logical gaps) and 'transitInfo' to the next stop.
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: { responseMimeType: "application/json", responseSchema: schema }
-  });
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-preview",
+      contents: prompt,
+      config: { responseMimeType: "application/json", responseSchema: schema }
+    });
 
-  const updates = JSON.parse(response.text!).items;
-  const sorted = updates.map((u: any) => {
-    const original = items.find(i => i.id === u.id)!;
-    return { ...original, time: u.time, transitInfo: u.transitInfo };
-  });
+    const updates = JSON.parse(response.text!).items;
+    const sorted = updates.map((u: any) => {
+      const original = items.find(i => i.id === u.id)!;
+      return { ...original, time: u.time, transitInfo: u.transitInfo };
+    });
 
-  return { items: sorted };
+    return { items: sorted };
+  } catch (error) {
+    console.error("Smart Sort Error:", error);
+    return { items };
+  }
 };
 
-// 增量：語音指令處理
 export const processVoiceCommand = async (base64Audio: string, lang: string = 'EN'): Promise<{type: 'TOGO' | 'NOTE', content: string}> => {
   const apiKey = process.env.API_KEY;
   const ai = getAiClient(apiKey!);
   
-  const prompt = "Transcribe this travel voice note. Determine if it is a 'TOGO' (a place to visit) or a general 'NOTE'. Language: " + lang;
+  const prompt = "Transcribe this travel voice note. Determine if it is a 'TOGO' (a place/shop to visit) or a general 'NOTE'. Language: " + lang;
   
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: [
-      { text: prompt },
-      { inlineData: { mimeType: "audio/webm", data: base64Audio } }
-    ],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          type: { type: Type.STRING, enum: ["TOGO", "NOTE"] },
-          content: { type: Type.STRING }
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-native-audio-preview-12-2025",
+      contents: [
+        { text: prompt },
+        { inlineData: { mimeType: "audio/webm", data: base64Audio } }
+      ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            type: { type: Type.STRING, enum: ["TOGO", "NOTE"] },
+            content: { type: Type.STRING }
+          }
         }
       }
-    }
-  });
+    });
 
-  return JSON.parse(response.text!);
+    return JSON.parse(response.text!);
+  } catch (error) {
+    console.error("Voice Processing Error:", error);
+    throw error;
+  }
 };
 
 export const generatePackingList = async (destination: string, lang: string = 'EN'): Promise<string[]> => {
@@ -180,8 +189,6 @@ export const generatePackingList = async (destination: string, lang: string = 'E
   if (!apiKey) throw new Error("Missing API Key");
 
   const ai = getAiClient(apiKey);
-  const modelId = "gemini-3-flash-preview";
-
   const prompt = `Generate a concise packing checklist for a trip to ${destination}. 
   Language: ${lang === 'TC' ? 'Traditional Chinese (Hong Kong)' : 'English'}.
   Return a JSON array of strings only.`;
@@ -193,7 +200,7 @@ export const generatePackingList = async (destination: string, lang: string = 'E
 
   try {
     const response = await ai.models.generateContent({
-      model: modelId,
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -201,13 +208,8 @@ export const generatePackingList = async (destination: string, lang: string = 'E
       },
     });
 
-    const resultText = response.text;
-    if (!resultText) throw new Error("No response from Gemini");
-    
-    return JSON.parse(resultText) as string[];
-
+    return JSON.parse(response.text);
   } catch (error) {
-    console.error("Gemini Packing List Error:", error);
     return ["Passport", "Phone Charger", "Wallet"];
   }
 };
@@ -217,8 +219,6 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
     if (!apiKey) throw new Error("Missing API Key");
   
     const ai = getAiClient(apiKey);
-    const modelId = "gemini-3-flash-preview";
-  
     const prompt = `Suggest 3 places near ${location} to go after ${time}. 
     Language: ${lang === 'TC' ? 'Traditional Chinese (Hong Kong)' : 'English'}.
     Return JSON array of objects with 'name' and 'reason'.`;
@@ -236,21 +236,15 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
   
     try {
       const response = await ai.models.generateContent({
-        model: modelId,
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
           responseSchema: schema,
         },
       });
-  
-      const resultText = response.text;
-      if (!resultText) throw new Error("No response from Gemini");
-      
-      return JSON.parse(resultText) as AfterPartyRec[];
-  
+      return JSON.parse(response.text);
     } catch (error) {
-      console.error("Gemini AfterParty Error:", error);
       return [];
     }
   };
