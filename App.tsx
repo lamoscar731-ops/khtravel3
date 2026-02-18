@@ -8,7 +8,7 @@ import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySugge
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
 
-const FLAGS = ['🇯🇵', '🇰🇷', '🇹鳳', '🇨🇳', '🇭🇰', '🇹🇭', '🇻🇳', '🇸🇬', '🇺🇸', '🇬🇧', '🇪🇺', '🇦🇺', '🇨🇦', '🇫🇷', '🇮🇹', '🇪🇸', '🌍'];
+const FLAGS = ['🇯🇵', '🇰🇷', '🇹🇼', '🇨🇳', '🇭🇰', '🇹🇭', '🇻🇳', '🇸🇬', '🇺🇸', '🇬🇧', '🇪🇺', '🇦🇺', '🇨🇦', '🇫🇷', '🇮🇹', '🇪🇸', '🌍'];
 
 const vibrate = () => {
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -223,7 +223,6 @@ const App: React.FC = () => {
   const [showToGoPicker, setShowToGoPicker] = useState(false); 
   const [afterPartyRecs, setAfterPartyRecs] = useState<AfterPartyRec[]>([]);
   
-  // Destination Selector
   const [showDestSelector, setShowDestSelector] = useState(false);
   const [destSearch, setDestSearch] = useState('');
 
@@ -365,7 +364,7 @@ const App: React.FC = () => {
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
         console.error("Failed to enrich", e);
-        alert("Offline.");
+        alert("AI Offline or Config Error.");
     } finally {
         setIsLoading(false);
     }
@@ -382,7 +381,7 @@ const App: React.FC = () => {
         }
     } catch (e) {
         console.error("Smart Sort Error:", e);
-        alert("AI sorting failed. Please try again.");
+        alert("AI sorting failed.");
     } finally {
         setIsLoading(false);
     }
@@ -483,7 +482,6 @@ const App: React.FC = () => {
   const handleToggleChecklist = (id: string) => { vibrate(); setChecklist(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i)); };
   const handleDeleteChecklist = (id: string) => setChecklist(prev => prev.filter(i => i.id !== id));
 
-  // [TO GO] 管理
   const handleAddToGo = () => {
     vibrate();
     const ni: ToGoItem = { id: `tg-${Date.now()}`, place: '', remarks: '' };
@@ -656,7 +654,6 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* Header */}
       <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-neutral-900 pt-[env(safe-area-inset-top)]">
         <div className="px-5 py-2 mt-2 flex justify-between items-center">
           <div className="flex items-center gap-2" onClick={() => { vibrate(); setShowDestSelector(true); }}>
@@ -676,7 +673,7 @@ const App: React.FC = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
               </button>
               <button onClick={() => setShowSettings(true)} className="text-neutral-500 hover:text-white transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 2 2 2 2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 1.41-3.41"/></svg>
               </button>
               <div onClick={handleFlagClick} className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center cursor-pointer active:opacity-70 transition-transform hover:scale-105 shadow-glow text-lg">
                 {userFlag}
@@ -700,7 +697,6 @@ const App: React.FC = () => {
         )}
       </header>
 
-      {/* Main Content */}
       <main className="px-3 pt-[130px] max-w-lg mx-auto">
         {activeTab === Tab.ITINERARY ? (
             selectedDay === 0 ? (
@@ -848,7 +844,6 @@ const App: React.FC = () => {
                 </>
             )
         ) : activeTab === Tab.UTILITIES ? (
-            /* Wallet Tab */
             <>
                  <h2 className="text-base font-bold text-white mb-3 uppercase tracking-tight">{T.WALLET[lang]} / {T.ITINERARY[lang]}</h2>
                  <Utilities 
@@ -862,7 +857,6 @@ const App: React.FC = () => {
                 />
             </>
         ) : (
-            /* Trips Tab */
             <>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-base font-bold text-white uppercase tracking-tight">{T.MY_TRIPS[lang]}</h2>
@@ -904,7 +898,6 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      {/* Destination Selector Modal */}
       {showDestSelector && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col p-6 animate-fade-in">
                <div className="flex justify-between items-center mb-6 pt-[calc(env(safe-area-inset-top)+20px)]">
@@ -929,7 +922,6 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* Flag Selector Modal */}
       {showFlagSelector && (
           <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
                <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-w-xs shadow-2xl relative">
@@ -942,7 +934,6 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* Notes Modal */}
       {showNotes && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col px-6 pb-6 pt-[calc(env(safe-area-inset-top)+20px)] animate-fade-in">
               <div className="flex justify-between items-center mb-4">
