@@ -15,17 +15,8 @@ const safeParseJson = (text: string) => {
   }
 };
 
-// 輔助函式：確保每次請求都使用當前可用的 API_KEY
-const getAi = () => {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-        console.error("CRITICAL: API_KEY is missing from environment.");
-    }
-    return new GoogleGenAI({ apiKey: apiKey || "" });
-};
-
 export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: string = "EN"): Promise<DayPlan> => {
-  const ai = getAi();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const modelId = "gemini-3-pro-preview";
 
   const schema = {
@@ -110,7 +101,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
 };
 
 export const smartSortItinerary = async (items: ItineraryItem[], lang: string = "EN"): Promise<{items: ItineraryItem[]}> => {
-  const ai = getAi();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const schema = {
     type: Type.OBJECT,
     properties: {
@@ -153,37 +144,8 @@ export const smartSortItinerary = async (items: ItineraryItem[], lang: string = 
   }
 };
 
-export const processVoiceCommand = async (base64Audio: string, lang: string = "EN"): Promise<{type: "TOGO" | "NOTE", content: string}> => {
-  const ai = getAi();
-  const prompt = `Transcribe this travel voice note. Classify as 'TOGO' or 'NOTE'. Language: ${lang}.`;
-  
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-native-audio-preview-12-2025",
-      contents: [
-        { text: prompt },
-        { inlineData: { mimeType: "audio/webm", data: base64Audio } }
-      ],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            type: { type: Type.STRING, enum: ["TOGO", "NOTE"] },
-            content: { type: Type.STRING }
-          },
-          required: ["type", "content"]
-        }
-      }
-    });
-    return safeParseJson(response.text || "");
-  } catch (error) {
-    throw error;
-  }
-};
-
 export const generatePackingList = async (destination: string, lang: string = "EN"): Promise<string[]> => {
-  const ai = getAi();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -197,7 +159,7 @@ export const generatePackingList = async (destination: string, lang: string = "E
 };
 
 export const generateAfterPartySuggestions = async (location: string, time: string, lang: string = "EN"): Promise<AfterPartyRec[]> => {
-    const ai = getAi();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
