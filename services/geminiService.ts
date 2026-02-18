@@ -2,10 +2,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { DayPlan, ItemType, AfterPartyRec, ItineraryItem } from "../types";
 
-// 初始化 AI 客戶端
 const getAiClient = () => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("Missing API Key");
+  if (!apiKey) throw new Error("API_KEY is not configured in environment variables.");
   return new GoogleGenAI({ apiKey });
 };
 
@@ -18,33 +17,33 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
     properties: {
       dayId: { type: Type.INTEGER },
       date: { type: Type.STRING },
-      weatherSummary: { type: Type.STRING, description: "Today's Temperature and Humidity (e.g., 22°C, 60%)." },
-      paceAnalysis: { type: Type.STRING, description: "Analyze the intensity of the day." },
-      logicWarning: { type: Type.STRING, description: "CRITICAL: Warn if the route is inefficient (backtracking) or if items are too far apart." },
+      weatherSummary: { type: Type.STRING, description: "Today's Temperature and Humidity." },
+      paceAnalysis: { type: Type.STRING, description: "Analysis of the day's intensity (Relaxed, Busy, etc.)." },
+      logicWarning: { type: Type.STRING, description: "Check if the sequence of locations is geographically logical. Warn if there is significant backtracking (挠路) or if travel times are unrealistic." },
       forecast: {
         type: Type.ARRAY,
         items: {
           type: Type.OBJECT,
           properties: {
-             date: { type: Type.STRING, description: "Short date (e.g. 11/15)" },
-             icon: { type: Type.STRING, description: "Weather emoji (☀, ☁, 🌧, etc.)" },
-             temp: { type: Type.STRING, description: "High-Low range." }
+             date: { type: Type.STRING, description: "Short date (e.g., 11/15)" },
+             icon: { type: Type.STRING, description: "Weather emoji representation." },
+             temp: { type: Type.STRING, description: "e.g., 18-24°C" }
           }
         },
-        description: "Mandatory: Generate a consecutive 7-day forecast starting from current date."
+        description: "Generate a 7-day weather forecast table for the local area."
       },
       items: {
         type: Type.ARRAY,
         items: {
           type: Type.OBJECT,
           properties: {
-            id: { type: Type.STRING, description: "MUST MATCH ORIGINAL ID." },
+            id: { type: Type.STRING },
             time: { type: Type.STRING },
             title: { type: Type.STRING },
             location: { type: Type.STRING },
             type: { type: Type.STRING, enum: [ItemType.SIGHTSEEING, ItemType.FOOD, ItemType.RAMEN, ItemType.COFFEE, ItemType.ALCOHOL, ItemType.TRANSPORT, ItemType.SHOPPING, ItemType.HOTEL, ItemType.MISC] },
             description: { type: Type.STRING },
-            tips: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Max 3 tips. For FOOD/RAMEN, Tip #1 MUST be Business Hours." },
+            tips: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Max 3 tips. For FOOD/RAMEN/SHOPPING, the first tip MUST be the business hours." },
             tags: {
                 type: Type.ARRAY,
                 items: {
@@ -55,6 +54,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
                     }
                 }
             },
+            weather: { type: Type.STRING },
             navQuery: { type: Type.STRING }
           }
         }
@@ -64,17 +64,17 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
   };
 
   const prompt = `
-    ROLE: Premium Travel Consultant (GEMINI).
-    TASK: Analyze and enhance the itinerary for Day ${currentPlan.dayId} (${currentPlan.date}).
+    You are a professional travel planner [GEMINI]. 
+    Analyze the itinerary for Day ${currentPlan.dayId} (${currentPlan.date}) and provide enhancements.
     Language: ${lang === 'TC' ? 'Traditional Chinese (Hong Kong style)' : 'English'}.
     
-    CRITICAL REQUIREMENTS:
-    1. WEATHER: Generate a 7-day weather forecast table for the area.
-    2. GEOGRAPHY: Check the sequence of locations. If they cause backtracking (挠路) or are too distant, describe it in 'logicWarning'.
-    3. TIPS: For every restaurant/cafe/bar, the FIRST tip MUST be their opening hours and holiday info.
-    4. PERSISTENCE: Return the exact IDs for each item.
+    CRITICAL TASKS:
+    1. GEOGRAPHY CHECK: Evaluate if the locations are in a logical order. If the user is traveling back and forth (backtracking/挠路), explain why it is inefficient in 'logicWarning'.
+    2. WEATHER: Provide a 7-day forecast for the destination starting from ${currentPlan.date}.
+    3. TIPS: For every restaurant or shop, the FIRST tip MUST be the opening hours (e.g., "Open 11:00-22:00, Closed on Mondays").
+    4. PERSISTENCE: Return the same item IDs provided in the input.
     
-    DATA:
+    CURRENT PLAN:
     ${JSON.stringify(currentPlan.items)}
   `;
 
@@ -83,7 +83,7 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
       model: modelId,
       contents: prompt,
       config: {
-        thinkingConfig: { thinkingBudget: 16000 },
+        thinkingConfig: { thinkingBudget: 12000 },
         responseMimeType: "application/json",
         responseSchema: schema,
       },
@@ -93,15 +93,13 @@ export const enrichItineraryWithGemini = async (currentPlan: DayPlan, lang: stri
     if (currentPlan.backupItems) result.backupItems = currentPlan.backupItems;
     return result as DayPlan;
   } catch (error) {
-    console.error("Gemini Failure:", error);
+    console.error("Gemini Enrichment Error:", error);
     return currentPlan;
   }
 };
 
 export const smartSortItinerary = async (items: ItineraryItem[], lang: string = 'EN'): Promise<{items: ItineraryItem[]}> => {
   const ai = getAiClient();
-  const modelId = "gemini-3-pro-preview";
-
   const schema = {
     type: Type.OBJECT,
     properties: {
@@ -112,7 +110,7 @@ export const smartSortItinerary = async (items: ItineraryItem[], lang: string = 
           properties: {
             id: { type: Type.STRING },
             time: { type: Type.STRING },
-            transitInfo: { type: Type.STRING, description: "Est. transport to NEXT item, e.g. '🚶 12m'." }
+            transitInfo: { type: Type.STRING, description: "Estimated time to next item, e.g. '🚶 10m'." }
           }
         }
       }
@@ -120,48 +118,41 @@ export const smartSortItinerary = async (items: ItineraryItem[], lang: string = 
     required: ["items"]
   };
 
-  const prompt = `
-    TASK: Geographically optimize this route to minimize travel time.
-    Language: ${lang === 'TC' ? 'Traditional Chinese' : 'English'}.
-    Data: ${JSON.stringify(items.map(i => ({id: i.id, title: i.title, location: i.location})))}
-    
-    1. Reorder for maximum efficiency.
-    2. Provide transit details (walking/train time) to the next stop.
-    3. Keep IDs consistent.
-  `;
+  const prompt = `Optimize the following itinerary items for minimum travel distance. 
+  Language: ${lang === 'TC' ? 'Traditional Chinese' : 'English'}.
+  Items: ${JSON.stringify(items.map(i => ({id: i.id, title: i.title, location: i.location})))}`;
 
   try {
     const response = await ai.models.generateContent({
-      model: modelId,
+      model: "gemini-3-pro-preview",
       contents: prompt,
       config: { 
-        thinkingConfig: { thinkingBudget: 16000 },
+        thinkingConfig: { thinkingBudget: 8000 },
         responseMimeType: "application/json", 
         responseSchema: schema 
       }
     });
 
-    const resultData = JSON.parse(response.text!);
-    const sorted = resultData.items.map((u: any) => {
+    const updates = JSON.parse(response.text!).items;
+    const sorted = updates.map((u: any) => {
       const original = items.find(i => i.id === u.id);
       return original ? { ...original, time: u.time, transitInfo: u.transitInfo } : null;
     }).filter(Boolean);
 
     return { items: sorted.length === items.length ? sorted : items };
   } catch (error) {
+    console.error("Smart Sort Error:", error);
     return { items };
   }
 };
 
 export const processVoiceCommand = async (base64Audio: string, lang: string = 'EN'): Promise<{type: 'TOGO' | 'NOTE', content: string}> => {
   const ai = getAiClient();
-  const prompt = "Transcribe this travel voice note. Classify as 'TOGO' (place) or 'NOTE'. Language: " + (lang === 'TC' ? 'Traditional Chinese' : 'English');
-  
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-native-audio-preview-12-2025",
       contents: [
-        { text: prompt },
+        { text: `Transcribe this travel voice note. Classify as 'TOGO' or 'NOTE'. Language: ${lang}.` },
         { inlineData: { mimeType: "audio/webm", data: base64Audio } }
       ],
       config: {
@@ -178,6 +169,7 @@ export const processVoiceCommand = async (base64Audio: string, lang: string = 'E
     });
     return JSON.parse(response.text!);
   } catch (error) {
+    console.error("Voice Error:", error);
     throw error;
   }
 };
@@ -187,7 +179,7 @@ export const generatePackingList = async (destination: string, lang: string = 'E
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Packing list for ${destination}. Language: ${lang}. JSON array of strings only.`,
+      contents: `Generate a checklist for ${destination} in ${lang}. JSON array of strings only.`,
       config: { responseMimeType: "application/json" },
     });
     return JSON.parse(response.text!);
@@ -201,7 +193,7 @@ export const generateAfterPartySuggestions = async (location: string, time: stri
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `3 places near ${location} after ${time}. Language: ${lang}. Return JSON array of objects {name, reason}.`,
+        contents: `3 spots near ${location} after ${time}. Language: ${lang}. Return JSON array of {name, reason}.`,
         config: { responseMimeType: "application/json" },
       });
       return JSON.parse(response.text!);
