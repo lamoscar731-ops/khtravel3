@@ -2,7 +2,5 @@
 {
   "name": "kh.travel",
   "description": "Japanese minimalist dark-themed travel assistant.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
+  "requestFramePermissions": []
 }
