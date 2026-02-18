@@ -779,12 +779,12 @@ const App: React.FC = () => {
                             </div>
                         </div>
                         {currentDayPlan.forecast && currentDayPlan.forecast.length > 0 && (
-                            <div className="mt-3 flex overflow-x-auto no-scrollbar gap-2 pb-1">
+                            <div className="mt-3 flex overflow-x-auto no-scrollbar gap-2 pb-1 bg-neutral-950/40 p-2 rounded-xl border border-neutral-900">
                                 {currentDayPlan.forecast.map((f, i) => (
-                                    <div key={i} className="min-w-[50px] bg-neutral-900 border border-neutral-800 rounded p-1.5 flex flex-col items-center">
-                                        <span className="text-[8px] text-neutral-500 font-mono">{f.date}</span>
-                                        <span className="text-base my-0.5">{f.icon}</span>
-                                        <span className="text-[9px] font-bold text-neutral-300">{f.temp}</span>
+                                    <div key={i} className="min-w-[60px] bg-neutral-900 border border-neutral-800 rounded-lg p-2 flex flex-col items-center">
+                                        <span className="text-[9px] text-neutral-500 font-bold font-mono">{f.date}</span>
+                                        <span className="text-lg my-1">{f.icon}</span>
+                                        <span className="text-[10px] font-black text-neutral-200">{f.temp}</span>
                                     </div>
                                 ))}
                             </div>
@@ -792,8 +792,8 @@ const App: React.FC = () => {
                         
                         {(currentDayPlan.paceAnalysis || currentDayPlan.logicWarning) && (
                             <div className="mt-2 flex gap-2 flex-wrap">
-                                {currentDayPlan.paceAnalysis && <span className="text-[9px] bg-neutral-800 text-neutral-300 px-2 py-0.5 rounded border border-neutral-700">{currentDayPlan.paceAnalysis}</span>}
-                                {currentDayPlan.logicWarning && <span className="text-[9px] bg-red-950/30 text-red-400 px-2 py-0.5 rounded border border-red-900/30">⚠️ {currentDayPlan.logicWarning}</span>}
+                                {currentDayPlan.paceAnalysis && <span className="text-[10px] bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full border border-neutral-700 font-bold uppercase tracking-tighter">{currentDayPlan.paceAnalysis}</span>}
+                                {currentDayPlan.logicWarning && <span className="text-[10px] bg-red-950/30 text-red-400 px-3 py-1 rounded-full border border-red-900/30 font-bold">⚠️ {currentDayPlan.logicWarning}</span>}
                             </div>
                         )}
                     </div>
@@ -805,8 +805,8 @@ const App: React.FC = () => {
                         <button onClick={handleMapRoute} className="flex-1 bg-neutral-100 border border-white text-black py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:bg-neutral-300 transition-all active:scale-[0.98] uppercase">
                             🗺️ {T.MAP_ROUTE[lang]} {isSelectMode && selectedItemIds.size > 0 ? `(${selectedItemIds.size})` : ''}
                         </button>
-                        <button onClick={handleEnrichItinerary} disabled={isLoading} className="flex-1 bg-gradient-to-r from-neutral-800 to-neutral-900 border border-neutral-700 text-neutral-300 py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:border-neutral-500 transition-all active:scale-[0.98] uppercase">
-                            {isLoading ? <span className="animate-pulse">Thinking...</span> : <><span>✨ {T.AI_CHECK[lang]}</span></>}
+                        <button onClick={handleEnrichItinerary} disabled={isLoading} className="flex-1 bg-neutral-900 border border-neutral-700 text-neutral-300 py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:border-white hover:text-white transition-all active:scale-[0.98] uppercase shadow-glow">
+                            {isLoading ? <span className="animate-pulse">Thinking...</span> : <><span>✨ [GEMINI]</span></>}
                         </button>
                         <button onClick={handleSmartSort} disabled={isLoading} className={`w-10 bg-neutral-900 border border-neutral-800 text-neutral-400 py-2 rounded-lg flex items-center justify-center hover:border-white transition-all ${isLoading ? 'animate-pulse opacity-50' : ''}`}>
                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
@@ -830,8 +830,8 @@ const App: React.FC = () => {
                                 {item.transitInfo && index < currentDayPlan.items.length - 1 && (
                                     <div className="ml-10 mb-4 -mt-2 animate-fade-in flex items-center gap-2">
                                         <div className="w-[1.5px] h-4 bg-neutral-800 ml-[5px]"></div>
-                                        <div className="bg-neutral-900/60 px-2 py-0.5 rounded-full border border-neutral-800 shadow-sm">
-                                            <span className="text-[8px] font-black text-neutral-400 uppercase tracking-tighter">{item.transitInfo}</span>
+                                        <div className="bg-neutral-900/80 px-3 py-1 rounded-full border border-neutral-800 shadow-sm backdrop-blur-sm">
+                                            <span className="text-[9px] font-black text-neutral-300 uppercase tracking-widest">{item.transitInfo}</span>
                                         </div>
                                     </div>
                                 )}
@@ -840,8 +840,8 @@ const App: React.FC = () => {
                         <div className="flex gap-2 mb-4 mt-2 relative">
                             <div className="absolute left-[13px] top-0 bottom-8 w-[2px] bg-gradient-to-b from-neutral-800 to-transparent z-0"></div>
                             <div className="flex-1 flex gap-2">
-                                <button onClick={handleAddItem} className="flex-1 h-10 border border-dashed border-neutral-800 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-300 transition-all uppercase text-[9px] font-bold tracking-widest">+ {T.ADD_ACTIVITY[lang]}</button>
-                                <button onClick={() => { vibrate(); setShowToGoPicker(true); }} className="flex-1 h-10 border border-dashed border-neutral-800 rounded-lg flex items-center justify-center text-neutral-500 hover:text-white transition-all uppercase text-[9px] font-bold tracking-widest">{T.IMPORT_TOGO[lang]}</button>
+                                <button onClick={handleAddItem} className="flex-1 h-12 border border-dashed border-neutral-800 rounded-xl flex items-center justify-center text-neutral-500 hover:text-neutral-300 transition-all uppercase text-[10px] font-black tracking-widest">+ {T.ADD_ACTIVITY[lang]}</button>
+                                <button onClick={() => { vibrate(); setShowToGoPicker(true); }} className="flex-1 h-12 border border-dashed border-neutral-800 rounded-xl flex items-center justify-center text-neutral-500 hover:text-white transition-all uppercase text-[10px] font-black tracking-widest">{T.IMPORT_TOGO[lang]}</button>
                             </div>
                         </div>
                     </div>
