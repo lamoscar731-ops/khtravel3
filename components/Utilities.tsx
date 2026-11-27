@@ -337,17 +337,17 @@ export const Utilities: React.FC<UtilitiesProps> = (props) => {
       </section>
 
       <section>
-          <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Flights</h2><button onClick={props.onAddFlight} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
+          <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Flights</h2><button onClick={props.onAddFlight} className="text-neutral-400 hover:text-white text-[10px]">+ ADD</button></div>
           {flights.map(f => <FlightItem key={f.id} flight={f} onUpdate={props.onUpdateFlight} onDelete={props.onDeleteFlight} />)}
       </section>
 
       <section>
-          <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Accommodation</h2><button onClick={props.onAddHotel} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
+          <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Accommodation</h2><button onClick={props.onAddHotel} className="text-neutral-400 hover:text-white text-[10px]">+ ADD</button></div>
           {hotels.map(h => <HotelItem key={h.id} hotel={h} onUpdate={props.onUpdateHotel} onDelete={props.onDeleteHotel} lang={lang} />)}
       </section>
 
       <section>
-        <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Emergency</h2><button onClick={props.onAddContact} className="text-neutral-400 hover:text-white text-[10px]">+ Add</button></div>
+        <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Emergency</h2><button onClick={props.onAddContact} className="text-neutral-400 hover:text-white text-[10px]">+ ADD</button></div>
         <div className="grid grid-cols-2 gap-2">{contacts.map(contact => <ContactItem key={contact.id} item={contact} onUpdate={props.onUpdateContact} onDelete={props.onDeleteContact} />)}</div>
       </section>
 
@@ -355,7 +355,7 @@ export const Utilities: React.FC<UtilitiesProps> = (props) => {
         <div className="flex justify-between items-end mb-2 ml-1">
             <h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Packing Checklist</h2>
             <button onClick={props.onAiChecklist} disabled={props.isLoadingAi} className="text-neutral-400 hover:text-white text-[10px] active:scale-95 transition-transform">
-                {props.isLoadingAi ? 'Thinking...' : '✨ AI Suggest'}
+                {props.isLoadingAi ? 'THINKING...' : '✨ AI SUGGEST'}
             </button>
         </div>
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-3">
@@ -389,7 +389,7 @@ export const Utilities: React.FC<UtilitiesProps> = (props) => {
                 <div className={`mt-2 flex justify-between border-t border-neutral-800 pt-2 text-[10px] font-bold ${Math.abs(settlementHkd) < 1 ? 'text-neutral-300' : 'text-white'}`}><span>{Math.abs(settlementHkd) < 1 ? (lang === 'TC' ? '已平帳' : 'Settled') : settlementHkd > 0 ? (lang === 'TC' ? '女朋友應付你' : 'Partner owes you') : (lang === 'TC' ? '你應付女朋友' : 'You owe partner')}</span><span>{Math.abs(settlementHkd) < 1 ? '—' : `HK$${Math.round(Math.abs(settlementHkd)).toLocaleString()}`}</span></div>
                 {unassignedExpenses > 0 && <p className="mt-2 text-[8px] text-amber-700">{lang === 'TC' ? `${unassignedExpenses} 項舊開支未設定付款人，暫不計入分帳。` : `${unassignedExpenses} expense(s) need a payer before they count toward settlement.`}</p>}
             </div>
-            <button onClick={props.onAddBudget} className="w-full py-2 text-[10px] text-neutral-500 hover:text-white hover:bg-neutral-800 transition border-b border-neutral-800">+ Add Expense</button>
+            <button onClick={props.onAddBudget} className="w-full py-2 text-[10px] text-neutral-500 hover:text-white hover:bg-neutral-800 transition border-b border-neutral-800">+ ADD EXPENSE</button>
             <div className="bg-neutral-950/50 p-3 flex justify-between items-center">
                 <span className="text-[10px] font-bold text-neutral-400">TOTAL EST. (HKD)</span>
                 <span className={`text-sm font-bold font-mono ${totalBudgetHkd > totalBudget ? 'text-red-400' : 'text-white'}`}>HK${Math.round(totalBudgetHkd).toLocaleString()}</span>

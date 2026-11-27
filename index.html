@@ -27,6 +27,17 @@
         letter-spacing: -0.02em;
         overflow-x: hidden;
       }
+      .app-shell { text-transform: uppercase; }
+      .app-shell :is(input, textarea) { text-transform: none; }
+      .app-shell :is(input, textarea)::placeholder { text-transform: uppercase; }
+      .app-primary-heading {
+        color: #fff;
+        font-family: inherit;
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1.5rem;
+        letter-spacing: -0.025em;
+      }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       
