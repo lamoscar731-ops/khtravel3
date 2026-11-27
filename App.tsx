@@ -4,7 +4,7 @@ import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
 import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES, TRANSLATIONS, EMERGENCY_DATA } from './constants';
 import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact, Language, ToGoItem, ToBuyItem } from './types';
-import { enrichItineraryWithGemini, generatePackingList, generateAfterPartySuggestions, smartSortItinerary } from './services/geminiService';
+import { enrichItineraryWithGPT, generatePackingList, smartSortItinerary } from './services/aiService';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
 
@@ -347,12 +347,12 @@ const App: React.FC = () => {
     try {
         const itemsBackup = JSON.parse(JSON.stringify(currentDayPlan.items));
         const planToEnrich = { ...currentDayPlan };
-        const enrichedPlan = await enrichItineraryWithGemini(planToEnrich, lang);
+        const enrichedPlan = await enrichItineraryWithGPT(planToEnrich, lang);
         enrichedPlan.backupItems = itemsBackup;
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
         console.error("Failed to enrich", e);
-        alert("AI Offline: Check your connection or API Key.");
+        alert("GPT is unavailable. Check your connection and server API settings.");
     } finally {
         setIsLoading(false);
     }
@@ -369,7 +369,7 @@ const App: React.FC = () => {
         }
     } catch (e) {
         console.error("Smart Sort Error:", e);
-        alert("AI sorting failed.");
+        alert("GPT sorting failed. Check your connection and server API settings.");
     } finally {
         setIsLoading(false);
     }
@@ -386,7 +386,7 @@ const App: React.FC = () => {
               const uniqueNew = newItems.filter(i => !existingTexts.has(i.text.toLowerCase()));
               return [...prev, ...uniqueNew];
           });
-      } catch (e) { alert("AI Offline"); } finally { setIsLoading(false); }
+      } catch (e) { alert("GPT is unavailable. Check your connection and server API settings."); } finally { setIsLoading(false); }
   };
 
   const handleMapRoute = () => {
@@ -688,7 +688,7 @@ const App: React.FC = () => {
                             🗺️ {T.MAP_ROUTE[lang]} {isSelectMode && selectedItemIds.size > 0 ? `(${selectedItemIds.size})` : ''}
                         </button>
                         <button onClick={handleEnrichItinerary} disabled={isLoading} className="flex-1 bg-neutral-900 border border-neutral-700 text-neutral-300 py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] font-bold hover:border-white transition-all shadow-glow">
-                            {isLoading ? <span className="animate-pulse">Thinking...</span> : <span>✨ [GEMINI]</span>}
+                            {isLoading ? <span className="animate-pulse">Thinking...</span> : <span>✨ [GPT]</span>}
                         </button>
                         <button onClick={handleSmartSort} disabled={isLoading} className={`w-10 bg-neutral-900 border border-neutral-800 text-neutral-400 py-2 rounded-lg flex items-center justify-center transition-all ${isLoading ? 'animate-pulse opacity-50' : ''}`}>
                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
@@ -834,3 +834,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
