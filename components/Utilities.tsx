@@ -9,6 +9,7 @@ interface UtilitiesProps {
     hotels: HotelInfo[];
     contacts: EmergencyContact[];
     rates: Record<string, number>; 
+    exchangeRateDate?: string;
     
     onAddFlight: () => void;
     onUpdateFlight: (data: FlightInfo) => void;
@@ -358,7 +359,7 @@ export const Utilities: React.FC<UtilitiesProps> = (props) => {
       </section>
 
       <section>
-        <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Budget Tracker</h2></div>
+        <div className="flex justify-between items-end mb-2 ml-1"><h2 className="text-neutral-500 text-[10px] font-bold tracking-widest uppercase">Budget Tracker</h2><span className="text-[8px] text-neutral-700">{props.exchangeRateDate ? `Frankfurter · ${props.exchangeRateDate}` : 'Reference rates · fallback'}</span></div>
         <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden">
             <div className="p-3 border-b border-neutral-800 flex justify-between items-center bg-neutral-950/30">
                 <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">Trip Limit (HKD)</span>
