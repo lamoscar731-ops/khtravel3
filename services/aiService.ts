@@ -1,6 +1,19 @@
-import { AfterPartyRec, DayPlan, ItineraryItem } from "../types";
+import { AfterPartyRec, DayPlan, ItineraryItem, ItemType } from "../types";
 
-type AiAction = "enrich-itinerary" | "sort-itinerary" | "packing-list" | "nearby-suggestions";
+type AiAction = "enrich-itinerary" | "sort-itinerary" | "packing-list" | "nearby-suggestions" | "parse-itinerary";
+
+export interface ParsedItineraryItem {
+  time: string;
+  title: string;
+  location: string;
+  type: ItemType;
+  description: string;
+}
+
+export interface ParsedItineraryDay {
+  date: string;
+  items: ParsedItineraryItem[];
+}
 
 async function requestAI<T>(action: AiAction, data: Record<string, unknown>): Promise<T> {
   const response = await fetch("/api/ai", {
@@ -48,6 +61,11 @@ export async function smartSortItinerary(
 export async function generatePackingList(destination: string, lang = "EN"): Promise<string[]> {
   const result = await requestAI<{ items: string[] }>("packing-list", { destination, lang });
   return result.items;
+}
+
+export async function parseItineraryText(text: string, lang = "EN"): Promise<ParsedItineraryDay[]> {
+  const result = await requestAI<{ days: ParsedItineraryDay[] }>("parse-itinerary", { text, lang });
+  return result.days;
 }
 
 export async function generateAfterPartySuggestions(

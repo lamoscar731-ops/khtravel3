@@ -20,3 +20,10 @@ Travel itinerary planner built with React, Vite, and TypeScript. GPT features ru
 
 Add `OPENAI_API_KEY` as a server-side project environment variable in Vercel. `OPENAI_MODEL` can optionally override the default `gpt-6-luna` model. Do not use a `VITE_` prefix for these secrets.
 
+## Data and AI
+
+- GPT requests are sent through `/api/ai`; the OpenAI key stays on the server. Requests are capped at 20 per IP in a rolling 15-minute window per running function instance. This in-memory limit is a basic safeguard, not a shared account-wide quota.
+- Pasted itinerary text is extracted into stops and appended to the current trip. Explicit dates and times are preserved; missing dates are assigned from today. Check imported details before relying on them.
+- Weather forecasts come from Open-Meteo and appear only when the selected trip date falls in its forecast window. The app links to Open-Meteo for attribution. Forecasts are estimates, not live observations.
+- Currency conversions use Frankfurter reference rates; the rate date is shown beside the budget tracker. The app falls back to bundled rates if the service is unavailable.
+- Trip data remains in this browser's local storage. There is no cloud sync.

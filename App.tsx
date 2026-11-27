@@ -2,9 +2,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
-import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, EXCHANGE_RATES as DEFAULT_RATES, COUNTRY_CITIES, TRANSLATIONS, EMERGENCY_DATA } from './constants';
+import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, COUNTRY_CITIES, TRANSLATIONS, EMERGENCY_DATA } from './constants';
 import { DayPlan, ItineraryItem, ItemType, BudgetProps, FlightInfo, HotelInfo, EmergencyContact, Currency, Trip, ChecklistItem, AfterPartyRec, SOSContact, Language, ToGoItem, ToBuyItem } from './types';
-import { enrichItineraryWithGPT, generatePackingList, smartSortItinerary } from './services/aiService';
+import { enrichItineraryWithGPT, generatePackingList, parseItineraryText, smartSortItinerary } from './services/aiService';
+import { PasteItineraryImport } from './components/PasteItineraryImport';
+import { useTravelData } from './hooks/useTravelData';
+import { jsonStorage, stringStorage, useLocalStorageState } from './hooks/useLocalStorageState';
+import { toDayPlans } from './services/itineraryTextImport';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
 
@@ -16,50 +20,22 @@ const vibrate = () => {
     }
 };
 
+const currentDayDate = (plans: DayPlan[], selectedDay: number) =>
+  (plans.find((day) => day.dayId === selectedDay) || plans[0])?.date?.split(' ')[0] || '';
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.ITINERARY);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(DEFAULT_RATES);
   const [now, setNow] = useState(new Date());
-  
-  const [lang, setLang] = useState<Language>(() => {
-      return (localStorage.getItem('kuro_lang') as Language) || 'EN';
-  });
+  const [lang, setLang] = useLocalStorageState<Language>('kuro_lang', 'EN', stringStorage);
   const T = TRANSLATIONS;
-
-  useEffect(() => {
-      localStorage.setItem('kuro_lang', lang);
-  }, [lang]);
 
   useEffect(() => {
       const timer = setInterval(() => setNow(new Date()), 60000); 
       return () => clearInterval(timer);
   }, []);
   
-  useEffect(() => {
-      fetch('https://api.exchangerate-api.com/v4/latest/HKD')
-        .then(res => res.json())
-        .then(data => {
-            if (data && data.rates) {
-                const newRates: Record<string, number> = {};
-                Object.keys(DEFAULT_RATES).forEach(key => {
-                    if (data.rates[key]) {
-                        newRates[key] = 1 / data.rates[key];
-                    } else {
-                        newRates[key] = DEFAULT_RATES[key];
-                    }
-                });
-                newRates[Currency.HKD] = 1;
-                setExchangeRates(newRates);
-            }
-        })
-        .catch(() => console.log("Using default rates"));
-  }, []);
-
-  const [trips, setTrips] = useState<Trip[]>(() => {
-      const savedTrips = localStorage.getItem('kuro_trips');
-      if (savedTrips) return JSON.parse(savedTrips);
-      return [{
+  const [trips, setTrips] = useLocalStorageState<Trip[]>('kuro_trips', [{
           id: `trip-${Date.now()}`,
           destination: 'TOKYO',
           startDate: '2024-01-01',
@@ -73,12 +49,9 @@ const App: React.FC = () => {
           toGoList: [],
           notes: '',
           coverImage: ''
-      }];
-  });
+      }], jsonStorage);
 
-  const [activeTripId, setActiveTripId] = useState<string>(() => {
-      return localStorage.getItem('kuro_active_trip_id') || (trips.length > 0 ? trips[0].id : '');
-  });
+  const [activeTripId, setActiveTripId] = useLocalStorageState<string>('kuro_active_trip_id', trips[0]?.id || '', stringStorage);
 
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const [destination, setDestination] = useState<string>('TOKYO');
@@ -93,9 +66,10 @@ const App: React.FC = () => {
   const [tripNotes, setTripNotes] = useState<string>('');
   const [coverImage, setCoverImage] = useState<string>('');
 
-  const [userFlag, setUserFlag] = useState<string>(() => {
-    return localStorage.getItem('kuro_flag') || "🇯🇵";
-  });
+  const [userFlag, setUserFlag] = useLocalStorageState<string>('kuro_flag', '🇯🇵', stringStorage);
+
+  const travelData = useTravelData(destination, userFlag, currentDayDate(itinerary, selectedDay), lang);
+  const exchangeRates = travelData.exchangeRates;
 
   useEffect(() => {
       const currentTrip = trips.find(t => t.id === activeTripId);
@@ -115,7 +89,6 @@ const App: React.FC = () => {
           setIsSelectMode(false);
           setSelectedItemIds(new Set());
       }
-      localStorage.setItem('kuro_active_trip_id', activeTripId);
   }, [activeTripId]);
 
   useEffect(() => {
@@ -139,12 +112,10 @@ const App: React.FC = () => {
               }
               return t;
           });
-          localStorage.setItem('kuro_trips', JSON.stringify(newTrips));
           return newTrips;
       });
   }, [destination, itinerary, flights, hotels, budget, contacts, totalBudget, checklist, toGoList, tripNotes, coverImage]);
 
-  useEffect(() => { localStorage.setItem('kuro_flag', userFlag); }, [userFlag]);
 
   const currentDayPlan = itinerary.find(d => d.dayId === selectedDay) || (itinerary[0] || { dayId: 1, date: 'N/A', items: [] });
 
@@ -201,7 +172,6 @@ const App: React.FC = () => {
       if (confirm("Delete this trip? This cannot be undone.")) {
           const newTrips = trips.filter(t => t.id !== activeTripId);
           setTrips(newTrips);
-          localStorage.setItem('kuro_trips', JSON.stringify(newTrips));
           setActiveTripId(newTrips[0].id);
           setShowSettings(false);
       }
@@ -291,6 +261,23 @@ const App: React.FC = () => {
           setImportData('');
           alert("Imported!");
       } catch (e) { alert("Invalid code."); }
+  };
+
+  const handlePasteItinerary = async (text: string) => {
+      try {
+          const parsed = await parseItineraryText(text, lang);
+          const firstDayId = Math.max(0, ...itinerary.map((day) => day.dayId)) + 1;
+          const imported = toDayPlans(parsed, firstDayId);
+          if (!imported.length) throw new Error(lang === 'TC' ? '找不到可匯入的行程。' : 'No itinerary stops were found.');
+          setItinerary((previous) => [...previous, ...imported]);
+          setSelectedDay(imported[0].dayId);
+          setActiveTab(Tab.ITINERARY);
+          setShowSettings(false);
+          alert(lang === 'TC' ? `已加入 ${imported.length} 日行程。` : `Added ${imported.length} itinerary day(s).`);
+      } catch (error) {
+          alert(error instanceof Error ? error.message : (lang === 'TC' ? '匯入失敗，請再試一次。' : 'Import failed. Please try again.'));
+          throw error;
+      }
   };
 
   const handleExportCalendar = () => {
@@ -531,6 +518,7 @@ const App: React.FC = () => {
                               <button onClick={handleExportCalendar} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1"><span>📅 {T.EXPORT_ICS[lang]}</span></button>
                               <button onClick={handleCopyText} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1"><span>📝 {T.COPY_TEXT[lang]}</span></button>
                           </div>
+                          <PasteItineraryImport lang={lang} onImport={handlePasteItinerary} />
                       </div>
                       
                       <div className="border-t border-neutral-800 pt-4 mt-4">
@@ -661,15 +649,16 @@ const App: React.FC = () => {
                                 {itinerary.length > 1 && (<button onClick={handleDeleteDay} className="mt-1 text-[9px] text-red-900 hover:text-red-500 transition-colors flex items-center gap-1 uppercase">🗑️ {T.DELETE[lang]} Day</button>)}
                             </div>
                         </div>
-                        {currentDayPlan.forecast && currentDayPlan.forecast.length > 0 && (
+                        {travelData.forecast && travelData.forecast.items.length > 0 && (
                             <div className="mt-3 flex overflow-x-auto no-scrollbar gap-2 pb-1 bg-neutral-950/40 p-2 rounded-xl border border-neutral-900">
-                                {currentDayPlan.forecast.map((f, i) => (
+                                {travelData.forecast.items.map((f, i) => (
                                     <div key={i} className="min-w-[60px] bg-neutral-900 border border-neutral-800 rounded-lg p-2 flex flex-col items-center">
                                         <span className="text-[9px] text-neutral-500 font-bold font-mono">{f.date}</span>
                                         <span className="text-lg my-1">{f.icon}</span>
                                         <span className="text-[10px] font-black text-neutral-200">{f.temp}</span>
                                     </div>
                                 ))}
+                                <div className="self-end shrink-0 pb-1 text-[8px] text-neutral-600">{travelData.forecast.location} · <a href={travelData.forecast.sourceUrl} target="_blank" rel="noreferrer" className="underline">Open-Meteo</a></div>
                             </div>
                         )}
                         {(currentDayPlan.paceAnalysis || currentDayPlan.logicWarning) && (
@@ -733,7 +722,7 @@ const App: React.FC = () => {
             <>
                  <h2 className="text-base font-bold text-white mb-3 uppercase tracking-tight">{T.WALLET[lang]} / {T.ITINERARY[lang]}</h2>
                  <Utilities 
-                    budget={budget} flights={flights} hotels={hotels} contacts={contacts} checklist={checklist} totalBudget={totalBudget} rates={exchangeRates} 
+                    budget={budget} flights={flights} hotels={hotels} contacts={contacts} checklist={checklist} totalBudget={totalBudget} rates={exchangeRates} exchangeRateDate={travelData.exchangeRateDate}
                     onUpdateFlight={handleUpdateFlight} onUpdateHotel={handleUpdateHotel} onAddFlight={handleAddFlight} onAddHotel={handleAddHotel} onDeleteFlight={handleDeleteFlight} onDeleteHotel={handleDeleteHotel} onAddBudget={handleAddBudget} onUpdateBudget={handleUpdateBudget} onDeleteBudget={handleDeleteBudget} onAddContact={handleAddContact} onUpdateContact={handleUpdateContact} onDeleteContact={handleDeleteContact} onUpdateTotalBudget={setTotalBudget} onAddChecklist={handleAddChecklist} onToggleChecklist={handleToggleChecklist} onDeleteChecklist={handleDeleteChecklist} onAiChecklist={handleAiChecklist} isLoadingAi={isLoading} lang={lang}
                     toBuyList={trips.find(t => t.id === activeTripId)?.toBuyList || []}
                     onAddToBuy={() => { vibrate(); const newItem: ToBuyItem = { id: `tb-${Date.now()}`, item: '', shop: '', address: '', website: '', checked: false }; setTrips(prev => prev.map(t => t.id === activeTripId ? { ...t, toBuyList: [...(t.toBuyList || []), newItem] } : t)); }}
