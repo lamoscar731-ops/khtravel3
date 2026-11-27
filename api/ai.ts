@@ -101,10 +101,18 @@ async function generate(action: Action, body: Record<string, any>) {
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     console.error("OpenAI API error", response.status, result?.error?.message || "Unknown error");
-    throw new Error("GPT request failed. Check the server API key and model settings.");
+    throw new Error(result?.error?.message || "GPT request failed. Check the server API key and model settings.");
   }
 
-  const text = result.output_text;
+  const text = typeof result.output_text === "string"
+    ? result.output_text
+    : Array.isArray(result.output)
+      ? result.output
+          .flatMap((item: any) => Array.isArray(item.content) ? item.content : [])
+          .filter((item: any) => item.type === "output_text" && typeof item.text === "string")
+          .map((item: any) => item.text)
+          .join("")
+      : "";
   if (typeof text !== "string" || !text) throw new Error("GPT returned an empty response.");
   return JSON.parse(text);
 }

@@ -352,7 +352,7 @@ const App: React.FC = () => {
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
         console.error("Failed to enrich", e);
-        alert("GPT is unavailable. Check your connection and server API settings.");
+        alert(e instanceof Error ? e.message : "GPT is unavailable. Check your connection and server API settings.");
     } finally {
         setIsLoading(false);
     }
@@ -369,7 +369,7 @@ const App: React.FC = () => {
         }
     } catch (e) {
         console.error("Smart Sort Error:", e);
-        alert("GPT sorting failed. Check your connection and server API settings.");
+        alert(e instanceof Error ? e.message : "GPT sorting failed. Check your connection and server API settings.");
     } finally {
         setIsLoading(false);
     }
@@ -386,7 +386,7 @@ const App: React.FC = () => {
               const uniqueNew = newItems.filter(i => !existingTexts.has(i.text.toLowerCase()));
               return [...prev, ...uniqueNew];
           });
-      } catch (e) { alert("GPT is unavailable. Check your connection and server API settings."); } finally { setIsLoading(false); }
+      } catch (e) { alert(e instanceof Error ? e.message : "GPT is unavailable. Check your connection and server API settings."); } finally { setIsLoading(false); }
   };
 
   const handleMapRoute = () => {
