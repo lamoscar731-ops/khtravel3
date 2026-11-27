@@ -20,6 +20,8 @@ const vibrate = () => {
         navigator.vibrate(10); 
     }
 };
+const showAppAlert = (message: string) => alert(message.toUpperCase());
+const confirmAppAction = (message: string) => confirm(message.toUpperCase());
 
 const currentDayDate = (plans: DayPlan[], selectedDay: number) =>
   (plans.find((day) => day.dayId === selectedDay) || plans[0])?.date?.split(' ')[0] || '';
@@ -171,8 +173,8 @@ const App: React.FC = () => {
 
   const handleDeleteTrip = () => {
       vibrate();
-      if (trips.length <= 1) { alert("You must have at least one trip."); return; }
-      if (confirm("Delete this trip? This cannot be undone.")) {
+      if (trips.length <= 1) { showAppAlert("You must have at least one trip."); return; }
+      if (confirmAppAction("Delete this trip? This cannot be undone.")) {
           const newTrips = trips.filter(t => t.id !== activeTripId);
           setTrips(newTrips);
           setActiveTripId(newTrips[0].id);
@@ -276,7 +278,7 @@ const App: React.FC = () => {
       if (!currentTrip) return;
       const jsonStr = JSON.stringify(currentTrip);
       const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
-      navigator.clipboard.writeText(encoded).then(() => alert("Trip code copied!"));
+      navigator.clipboard.writeText(encoded).then(() => showAppAlert("Trip code copied!"));
   };
 
   const handleImport = () => {
@@ -291,8 +293,8 @@ const App: React.FC = () => {
           setActiveTripId(newTrip.id);
           setShowSettings(false);
           setImportData('');
-          alert("Imported!");
-      } catch (e) { alert("Invalid code."); }
+          showAppAlert("Imported!");
+      } catch (e) { showAppAlert("Invalid code."); }
   };
 
   const handlePasteItinerary = async (text: string) => {
@@ -305,9 +307,9 @@ const App: React.FC = () => {
           setSelectedDay(imported[0].dayId);
           setActiveTab(Tab.ITINERARY);
           setShowSettings(false);
-          alert(lang === 'TC' ? `已加入 ${imported.length} 日行程。` : `Added ${imported.length} itinerary day(s).`);
+          showAppAlert(lang === 'TC' ? `已加入 ${imported.length} 日行程。` : `Added ${imported.length} itinerary day(s).`);
       } catch (error) {
-          alert(error instanceof Error ? error.message : (lang === 'TC' ? '匯入失敗，請再試一次。' : 'Import failed. Please try again.'));
+          showAppAlert(error instanceof Error ? error.message : (lang === 'TC' ? '匯入失敗，請再試一次。' : 'Import failed. Please try again.'));
           throw error;
       }
   };
@@ -357,7 +359,7 @@ const App: React.FC = () => {
           });
           text += `----------------\n`;
       });
-      navigator.clipboard.writeText(text).then(() => alert("Itinerary copied to clipboard!"));
+      navigator.clipboard.writeText(text).then(() => showAppAlert("Itinerary copied to clipboard!"));
   };
 
   const handleEnrichItinerary = async () => {
@@ -371,7 +373,7 @@ const App: React.FC = () => {
         setItinerary(prev => prev.map(day => day.dayId === selectedDay ? enrichedPlan : day));
     } catch (e) {
         console.error("Failed to enrich", e);
-        alert(e instanceof Error ? e.message : "GPT is unavailable. Check your connection and server API settings.");
+        showAppAlert(e instanceof Error ? e.message : "GPT is unavailable. Check your connection and server API settings.");
     } finally {
         setIsLoading(false);
     }
@@ -388,7 +390,7 @@ const App: React.FC = () => {
         }
     } catch (e) {
         console.error("Smart Sort Error:", e);
-        alert(e instanceof Error ? e.message : "GPT sorting failed. Check your connection and server API settings.");
+        showAppAlert(e instanceof Error ? e.message : "GPT sorting failed. Check your connection and server API settings.");
     } finally {
         setIsLoading(false);
     }
@@ -405,7 +407,7 @@ const App: React.FC = () => {
               const uniqueNew = newItems.filter(i => !existingTexts.has(i.text.toLowerCase()));
               return [...prev, ...uniqueNew];
           });
-      } catch (e) { alert(e instanceof Error ? e.message : "GPT is unavailable. Check your connection and server API settings."); } finally { setIsLoading(false); }
+      } catch (e) { showAppAlert(e instanceof Error ? e.message : "GPT is unavailable. Check your connection and server API settings."); } finally { setIsLoading(false); }
   };
 
   const handleMapRoute = () => {
@@ -414,7 +416,7 @@ const App: React.FC = () => {
           i.location && i.location.trim() !== '' && !i.location.includes('TBD') && !i.location.includes('Location TBD')
       );
       if (isSelectMode && selectedItemIds.size > 0) validItems = validItems.filter(item => selectedItemIds.has(item.id));
-      if (validItems.length === 0) { alert("Select items with locations."); return; }
+      if (validItems.length === 0) { showAppAlert("Select items with locations."); return; }
       if (validItems.length === 1) { const query = encodeURIComponent(validItems[0].location); window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank'); return; }
       const origin = encodeURIComponent(validItems[0].location);
       const destinationLoc = encodeURIComponent(validItems[validItems.length - 1].location);
@@ -445,7 +447,7 @@ const App: React.FC = () => {
   };
 
   const handleAddDay = () => { vibrate(); const newDayId = Math.max(0, ...itinerary.map(day => day.dayId)) + 1; let nextDate = new Date(); if (itinerary.length > 0) { const lastDateStr = itinerary[itinerary.length - 1].date.split(' ')[0]; const lastDate = new Date(`${lastDateStr}T00:00:00`); if (!isNaN(lastDate.getTime())) { lastDate.setDate(lastDate.getDate() + 1); nextDate = lastDate; } } const newDay: DayPlan = { dayId: newDayId, date: toLocalISODate(nextDate), items: [] }; setItinerary(prev => [...prev, newDay]); setSelectedDay(newDayId); };
-  const handleDeleteDay = () => { vibrate(); if (itinerary.length <= 1) { alert("Keep one day."); return; } const remaining = itinerary.filter(d => d.dayId !== selectedDay); setItinerary(remaining); setSelectedDay(remaining[0].dayId); };
+  const handleDeleteDay = () => { vibrate(); if (itinerary.length <= 1) { showAppAlert("Keep one day."); return; } const remaining = itinerary.filter(d => d.dayId !== selectedDay); setItinerary(remaining); setSelectedDay(remaining[0].dayId); };
   const handleUpdateDayDate = (newDate: string) => setItinerary(prev => prev.map(d => d.dayId === selectedDay ? { ...d, date: newDate } : d));
 
   const handleAddFlight = () => { vibrate(); setFlights(prev => [...prev, { id: `f-${Date.now()}`, flightNumber: 'FL 000', departureDate: '2024-01-01', departureTime: '00:00', departureAirport: 'DEP', arrivalDate: '2024-01-01', arrivalTime: '00:00', arrivalAirport: 'ARR' }]); };
@@ -500,7 +502,7 @@ const App: React.FC = () => {
   const handleToggleItemSelection = (id: string) => { vibrate(); const newSet = new Set(selectedItemIds); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedItemIds(newSet); };
 
   return (
-    <div className="min-h-screen bg-black pb-24 text-neutral-200 font-sans relative">
+    <div className="app-shell min-h-screen bg-black pb-24 text-neutral-200 font-sans relative">
           <div className={`fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm items-center justify-center p-6 ${showSettings ? 'flex' : 'hidden'}`}>
               <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-sm shadow-2xl relative overflow-y-auto max-h-[80vh]">
                   <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
@@ -664,7 +666,7 @@ const App: React.FC = () => {
                         <div className="flex justify-between items-start">
                             <div className="flex-1">
                                 <div className="flex items-center gap-2">
-                                    <h2 className="text-base font-bold text-white uppercase tracking-tight">{T.ITINERARY[lang]}</h2>
+                    <h2 className="app-primary-heading">{T.ITINERARY[lang]}</h2>
                                     {isEditingDate ? (
                                         <div className="flex items-center gap-1">
                                             <input type="date" className="bg-neutral-800 text-[10px] text-white p-1 rounded border border-neutral-700 outline-none w-[100px] [color-scheme:dark]" value={tempDate} onChange={e => setTempDate(e.target.value)} />
@@ -751,7 +753,7 @@ const App: React.FC = () => {
             )
         ) : activeTab === Tab.UTILITIES ? (
             <>
-                 <h2 className="text-base font-bold text-white mb-3 uppercase tracking-tight">{T.WALLET[lang]} / {T.ITINERARY[lang]}</h2>
+                 <h2 className="app-primary-heading mb-3">{T.WALLET[lang]} / {T.ITINERARY[lang]}</h2>
                  <Utilities 
                     budget={budget} flights={flights} hotels={hotels} contacts={contacts} checklist={checklist} totalBudget={totalBudget} rates={exchangeRates} exchangeRateDate={travelData.exchangeRateDate}
                     onUpdateFlight={handleUpdateFlight} onUpdateHotel={handleUpdateHotel} onAddFlight={handleAddFlight} onAddHotel={handleAddHotel} onDeleteFlight={handleDeleteFlight} onDeleteHotel={handleDeleteHotel} onAddBudget={handleAddBudget} onUpdateBudget={handleUpdateBudget} onDeleteBudget={handleDeleteBudget} onAddContact={handleAddContact} onUpdateContact={handleUpdateContact} onDeleteContact={handleDeleteContact} onUpdateTotalBudget={setTotalBudget} onAddChecklist={handleAddChecklist} onToggleChecklist={handleToggleChecklist} onDeleteChecklist={handleDeleteChecklist} onAiChecklist={handleAiChecklist} isLoadingAi={isLoading} lang={lang}
