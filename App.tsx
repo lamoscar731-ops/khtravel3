@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ItineraryCard } from './components/ItineraryCard';
 import { Utilities } from './components/Utilities';
 import { INITIAL_ITINERARY, INITIAL_BUDGET, INITIAL_FLIGHTS, INITIAL_HOTELS, INITIAL_CONTACTS, COUNTRY_CITIES, TRANSLATIONS, EMERGENCY_DATA } from './constants';
@@ -9,6 +9,7 @@ import { PasteItineraryImport } from './components/PasteItineraryImport';
 import { useTravelData } from './hooks/useTravelData';
 import { jsonStorage, stringStorage, useLocalStorageState } from './hooks/useLocalStorageState';
 import { toDayPlans } from './services/itineraryTextImport';
+import { CloudSyncPanel } from './components/CloudSyncPanel';
 
 enum Tab { ITINERARY = 'ITINERARY', TRIPS = 'TRIPS', UTILITIES = 'UTILITIES' }
 
@@ -22,6 +23,8 @@ const vibrate = () => {
 
 const currentDayDate = (plans: DayPlan[], selectedDay: number) =>
   (plans.find((day) => day.dayId === selectedDay) || plans[0])?.date?.split(' ')[0] || '';
+
+const toLocalISODate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.ITINERARY);
@@ -85,7 +88,7 @@ const App: React.FC = () => {
           setToGoList(currentTrip.toGoList || []);
           setTripNotes(currentTrip.notes || '');
           setCoverImage(currentTrip.coverImage || '');
-          if (selectedDay > currentTrip.itinerary.length && selectedDay !== 0) setSelectedDay(1);
+          if (selectedDay !== 0 && !currentTrip.itinerary.some(day => day.dayId === selectedDay)) setSelectedDay(currentTrip.itinerary[0]?.dayId || 1);
           setIsSelectMode(false);
           setSelectedItemIds(new Set());
       }
@@ -177,7 +180,7 @@ const App: React.FC = () => {
       }
   };
 
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState(() => Boolean(new URLSearchParams(window.location.search).get('tripInvite') || localStorage.getItem('kuro_pending_trip_invite')));
   const [showFlagSelector, setShowFlagSelector] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showToGoPicker, setShowToGoPicker] = useState(false); 
@@ -186,6 +189,35 @@ const App: React.FC = () => {
 
   const [importData, setImportData] = useState('');
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const activeTripRecord = trips.find((trip) => trip.id === activeTripId) || null;
+
+  const handleCloudAttach = useCallback((cloudId: string) => {
+      setTrips(previous => previous.map(trip => trip.id === activeTripId ? { ...trip, cloudId } : trip));
+  }, [activeTripId]);
+  const handleCloudJoin = useCallback((joinedTrip: Trip, cloudId: string) => {
+      const localId = `shared-${cloudId}`;
+      setTrips(previous => previous.some(trip => trip.id === localId) ? previous : [...previous, { ...joinedTrip, id: localId, cloudId }]);
+      setActiveTripId(localId);
+      setActiveTab(Tab.ITINERARY);
+      setShowSettings(false);
+  }, []);
+  const handleCloudReplace = useCallback((cloudTrip: Trip) => {
+      const localId = activeTripId;
+      const updated = { ...cloudTrip, id: localId, cloudId: cloudTrip.cloudId || activeTripRecord?.cloudId };
+      setTrips(previous => previous.map(trip => trip.id === localId ? updated : trip));
+      setDestination(updated.destination);
+      setItinerary(updated.itinerary);
+      setFlights(updated.flights);
+      setHotels(updated.hotels);
+      setBudget(updated.budget);
+      setContacts(updated.contacts);
+      setTotalBudget(updated.totalBudget || 20000);
+      setChecklist(updated.checklist || []);
+      setToGoList(updated.toGoList || []);
+      setTripNotes(updated.notes || '');
+      setCoverImage(updated.coverImage || '');
+      if (selectedDay !== 0 && !updated.itinerary.some(day => day.dayId === selectedDay)) setSelectedDay(updated.itinerary[0]?.dayId || 1);
+  }, [activeTripId, activeTripRecord?.cloudId, selectedDay]);
   
   const handleFlagClick = () => { vibrate(); setShowFlagSelector(true); };
   const handleSelectFlag = (flag: string) => { vibrate(); setUserFlag(flag); setShowFlagSelector(false); };
@@ -412,8 +444,8 @@ const App: React.FC = () => {
     setItinerary(prev => prev.map(day => { if (day.dayId !== selectedDay) return day; const newItems = [...day.items, newItem]; return { ...day, items: sortItems(newItems) }; }));
   };
 
-  const handleAddDay = () => { vibrate(); const newDayId = itinerary.length + 1; let nextDate = new Date(); if (itinerary.length > 0) { const lastDateStr = itinerary[itinerary.length - 1].date.split(' ')[0]; const lastDate = new Date(lastDateStr); if (!isNaN(lastDate.getTime())) { lastDate.setDate(lastDate.getDate() + 1); nextDate = lastDate; } } const newDay: DayPlan = { dayId: newDayId, date: nextDate.toISOString().split('T')[0], items: [] }; setItinerary(prev => [...prev, newDay]); setSelectedDay(newDayId); };
-  const handleDeleteDay = () => { vibrate(); if (itinerary.length <= 1) { alert("Keep one day."); return; } const reindexed = itinerary.filter(d => d.dayId !== selectedDay).map((day, index) => ({ ...day, dayId: index + 1 })); setItinerary(reindexed); setSelectedDay(1); };
+  const handleAddDay = () => { vibrate(); const newDayId = Math.max(0, ...itinerary.map(day => day.dayId)) + 1; let nextDate = new Date(); if (itinerary.length > 0) { const lastDateStr = itinerary[itinerary.length - 1].date.split(' ')[0]; const lastDate = new Date(`${lastDateStr}T00:00:00`); if (!isNaN(lastDate.getTime())) { lastDate.setDate(lastDate.getDate() + 1); nextDate = lastDate; } } const newDay: DayPlan = { dayId: newDayId, date: toLocalISODate(nextDate), items: [] }; setItinerary(prev => [...prev, newDay]); setSelectedDay(newDayId); };
+  const handleDeleteDay = () => { vibrate(); if (itinerary.length <= 1) { alert("Keep one day."); return; } const remaining = itinerary.filter(d => d.dayId !== selectedDay); setItinerary(remaining); setSelectedDay(remaining[0].dayId); };
   const handleUpdateDayDate = (newDate: string) => setItinerary(prev => prev.map(d => d.dayId === selectedDay ? { ...d, date: newDate } : d));
 
   const handleAddFlight = () => { vibrate(); setFlights(prev => [...prev, { id: `f-${Date.now()}`, flightNumber: 'FL 000', departureDate: '2024-01-01', departureTime: '00:00', departureAirport: 'DEP', arrivalDate: '2024-01-01', arrivalTime: '00:00', arrivalAirport: 'ARR' }]); };
@@ -422,7 +454,7 @@ const App: React.FC = () => {
   const handleAddHotel = () => { vibrate(); setHotels(prev => [...prev, { id: `h-${Date.now()}`, name: 'New Hotel', address: 'Address', checkIn: '2024-01-01', checkOut: '2024-01-05', bookingRef: '' }]); };
   const handleUpdateHotel = (u: HotelInfo) => setHotels(prev => prev.map(h => h.id === u.id ? h : h));
   const handleDeleteHotel = (id: string) => setHotels(prev => prev.filter(h => h.id !== id));
-  const handleAddBudget = () => { vibrate(); setBudget(prev => [...prev, { id: `b-${Date.now()}`, item: 'Expense', cost: 0, category: ItemType.MISC, currency: Currency.JPY }]); };
+  const handleAddBudget = () => { vibrate(); setBudget(prev => [...prev, { id: `b-${Date.now()}`, item: 'Expense', cost: 0, category: ItemType.MISC, currency: Currency.JPY, paidBy: 'me' }]); };
   const handleUpdateBudget = (u: BudgetProps) => setBudget(prev => prev.map(b => b.id === u.id ? u : b));
   const handleDeleteBudget = (id: string) => setBudget(prev => prev.filter(b => b.id !== id));
   const handleAddContact = () => { vibrate(); setContacts(prev => [...prev, { id: `c-${Date.now()}`, name: lang === 'TC' ? '緊急聯絡' : 'CONTACT', number: '', note: '' }]); };
@@ -469,8 +501,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black pb-24 text-neutral-200 font-sans relative">
-      {showSettings && (
-          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className={`fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm items-center justify-center p-6 ${showSettings ? 'flex' : 'hidden'}`}>
               <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 w-full max-sm shadow-2xl relative overflow-y-auto max-h-[80vh]">
                   <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">✕</button>
                   <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider text-center">{T.SETTINGS[lang]}</h3>
@@ -519,6 +550,7 @@ const App: React.FC = () => {
                               <button onClick={handleCopyText} className="bg-neutral-800 border border-neutral-700 text-neutral-300 py-2 rounded-lg text-[10px] font-bold hover:bg-neutral-700 uppercase flex flex-col items-center gap-1"><span>📝 {T.COPY_TEXT[lang]}</span></button>
                           </div>
                           <PasteItineraryImport lang={lang} onImport={handlePasteItinerary} />
+                          <CloudSyncPanel trip={activeTripRecord} lang={lang} onAttach={handleCloudAttach} onJoin={handleCloudJoin} onReplace={handleCloudReplace} />
                       </div>
                       
                       <div className="border-t border-neutral-800 pt-4 mt-4">
@@ -528,7 +560,6 @@ const App: React.FC = () => {
                   </div>
               </div>
           </div>
-      )}
 
       {showToGoPicker && (
           <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-2xl flex flex-col p-8 animate-fade-in">

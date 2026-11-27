@@ -65,6 +65,9 @@ export interface BudgetProps {
   cost: number;
   category: string;
   currency: string;
+  paidBy?: 'me' | 'partner' | 'unassigned';
+  /** Amount of this expense assigned to the current user, in the expense currency. */
+  myShare?: number;
 }
 
 export interface FlightInfo {
@@ -124,6 +127,8 @@ export interface ChecklistItem {
 
 export interface Trip {
   id: string;
+  /** Supabase shared trip identifier; absent for local-only trips. */
+  cloudId?: string;
   destination: string;
   startDate: string;
   itinerary: DayPlan[];
