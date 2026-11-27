@@ -256,11 +256,11 @@ const ContactItem: React.FC<{ item: EmergencyContact, onUpdate: (c: EmergencyCon
     );
 }
 
-const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => void, onDelete: (id: string) => void, rates: Record<string, number> }> = ({ item, onUpdate, onDelete, rates }) => {
+const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => void, onDelete: (id: string) => void, rates: Record<string, number>, lang: Language }> = ({ item, onUpdate, onDelete, rates, lang }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [data, setData] = useState(item);
     useEffect(() => { setData(item); }, [item]);
-    const handleSave = () => { onUpdate({...data, cost: Number(data.cost)}); setIsEditing(false); };
+    const handleSave = () => { onUpdate({...data, cost: Number(data.cost), myShare: data.myShare === undefined ? undefined : Math.min(Number(data.cost), Math.max(0, Number(data.myShare)))}); setIsEditing(false); };
     
     const rate = rates[item.currency] || 1;
     const hkdAmount = Math.round(item.cost * rate);
@@ -273,13 +273,23 @@ const BudgetItem: React.FC<{ item: BudgetProps, onUpdate: (b: BudgetProps) => vo
                     <div className="col-span-2"><select className="w-full bg-neutral-900 text-white text-[10px] border border-neutral-600 rounded p-0.5" value={data.currency} onChange={(e) => setData({...data, currency: e.target.value})}>{Object.keys(rates).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                 </div>
                 <div className="flex gap-2 mb-1"><input className="bg-transparent border-b border-neutral-600 text-white text-xs focus:outline-none flex-1 text-right" type="number" value={data.cost} onChange={e => setData({...data, cost: Number(e.target.value)})} placeholder="Cost" /></div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                    <label className="text-[9px] text-neutral-500">{lang === 'TC' ? '付款人' : 'Paid by'}
+                        <select className="mt-1 w-full bg-neutral-900 text-white text-[10px] border border-neutral-600 rounded p-1" value={data.paidBy || 'unassigned'} onChange={e => setData({...data, paidBy: e.target.value as BudgetProps['paidBy']})}>
+                            <option value="unassigned">{lang === 'TC' ? '未設定' : 'Not set'}</option><option value="me">{lang === 'TC' ? '我' : 'Me'}</option><option value="partner">{lang === 'TC' ? '女朋友' : 'Partner'}</option>
+                        </select>
+                    </label>
+                    <label className="text-[9px] text-neutral-500">{lang === 'TC' ? '我應付（留空＝平分）' : 'My share (blank = half)'}
+                        <input className="mt-1 w-full bg-transparent border-b border-neutral-600 text-white text-[10px] focus:outline-none" type="number" min="0" max={data.cost} value={data.myShare ?? ''} onChange={e => setData({...data, myShare: e.target.value === '' ? undefined : Number(e.target.value)})} placeholder={`${(Number(data.cost) / 2).toFixed(2)} ${data.currency}`} />
+                    </label>
+                </div>
                 <div className="flex justify-between items-center"><input className="bg-transparent border-b border-neutral-600 text-neutral-400 text-[10px] focus:outline-none w-1/2" value={data.category} onChange={e => setData({...data, category: e.target.value})} placeholder="Category" /><div className="flex gap-2"><button onClick={() => onDelete(item.id)} className="text-red-400 text-[10px] px-2 border border-red-900/50 rounded">Del</button><button onClick={handleSave} className="bg-white text-black text-[10px] px-2 py-0.5 rounded font-bold">OK</button></div></div>
              </div>
         )
     }
     return (
         <div onClick={() => setIsEditing(true)} className="p-3 flex justify-between items-center border-b border-neutral-800 hover:bg-neutral-800/30 transition cursor-pointer group">
-            <div><div className="text-xs text-neutral-200 group-hover:text-white">{item.item}</div><div className="text-[9px] text-neutral-500">{item.category}</div></div>
+            <div><div className="text-xs text-neutral-200 group-hover:text-white">{item.item}</div><div className="text-[9px] text-neutral-500">{item.category} · {lang === 'TC' ? (item.paidBy === 'me' ? '我付款' : item.paidBy === 'partner' ? '女朋友付款' : '付款人未設定') : (item.paidBy === 'me' ? 'Paid by me' : item.paidBy === 'partner' ? 'Paid by partner' : 'Payer not set')}</div></div>
             <div className="text-right">
                 <div className="text-xs text-neutral-300 font-mono group-hover:text-white">{item.currency === Currency.JPY ? '¥' : item.currency === Currency.USD ? '$' : item.currency} {item.cost.toLocaleString()}</div>
                 {item.currency !== Currency.HKD && (<div className="text-[9px] text-neutral-500 font-mono">≈ HK${hkdAmount.toLocaleString()}</div>)}
@@ -298,6 +308,13 @@ export const Utilities: React.FC<UtilitiesProps> = (props) => {
       const rate = rates[curr.currency] || 1;
       return acc + (curr.cost * rate);
   }, 0);
+  const sharedExpenses = budget.filter((item) => item.paidBy === 'me' || item.paidBy === 'partner');
+  const settlementHkd = sharedExpenses.reduce((balance, item) => {
+      const rate = rates[item.currency] || 1;
+      const myShare = item.myShare ?? item.cost / 2;
+      return balance + (item.paidBy === 'me' ? item.cost - myShare : -myShare) * rate;
+  }, 0);
+  const unassignedExpenses = budget.filter((item) => item.paidBy !== 'me' && item.paidBy !== 'partner').length;
 
   const [newItemText, setNewItemText] = useState('');
 
@@ -365,7 +382,13 @@ export const Utilities: React.FC<UtilitiesProps> = (props) => {
                 <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">Trip Limit (HKD)</span>
                 <input type="number" value={totalBudget} onChange={(e) => props.onUpdateTotalBudget(Number(e.target.value))} className="bg-transparent text-right text-sm font-bold text-white outline-none w-24 border-b border-transparent focus:border-neutral-600 transition-colors" />
             </div>
-            {budget.map((item) => <BudgetItem key={item.id} item={item} onUpdate={props.onUpdateBudget} onDelete={props.onDeleteBudget} rates={rates} />)}
+            {budget.map((item) => <BudgetItem key={item.id} item={item} onUpdate={props.onUpdateBudget} onDelete={props.onDeleteBudget} rates={rates} lang={lang} />)}
+            <div className="border-b border-neutral-800 bg-neutral-950/30 p-3">
+                <div className="flex justify-between text-[9px] text-neutral-500"><span>{lang === 'TC' ? '已記錄付款' : 'Paid so far'} · {lang === 'TC' ? '我' : 'Me'}</span><span>HK${Math.round(sharedExpenses.filter(item => item.paidBy === 'me').reduce((sum, item) => sum + item.cost * (rates[item.currency] || 1), 0)).toLocaleString()}</span></div>
+                <div className="mt-1 flex justify-between text-[9px] text-neutral-500"><span>{lang === 'TC' ? '已記錄付款' : 'Paid so far'} · {lang === 'TC' ? '女朋友' : 'Partner'}</span><span>HK${Math.round(sharedExpenses.filter(item => item.paidBy === 'partner').reduce((sum, item) => sum + item.cost * (rates[item.currency] || 1), 0)).toLocaleString()}</span></div>
+                <div className={`mt-2 flex justify-between border-t border-neutral-800 pt-2 text-[10px] font-bold ${Math.abs(settlementHkd) < 1 ? 'text-neutral-300' : 'text-white'}`}><span>{Math.abs(settlementHkd) < 1 ? (lang === 'TC' ? '已平帳' : 'Settled') : settlementHkd > 0 ? (lang === 'TC' ? '女朋友應付你' : 'Partner owes you') : (lang === 'TC' ? '你應付女朋友' : 'You owe partner')}</span><span>{Math.abs(settlementHkd) < 1 ? '—' : `HK$${Math.round(Math.abs(settlementHkd)).toLocaleString()}`}</span></div>
+                {unassignedExpenses > 0 && <p className="mt-2 text-[8px] text-amber-700">{lang === 'TC' ? `${unassignedExpenses} 項舊開支未設定付款人，暫不計入分帳。` : `${unassignedExpenses} expense(s) need a payer before they count toward settlement.`}</p>}
+            </div>
             <button onClick={props.onAddBudget} className="w-full py-2 text-[10px] text-neutral-500 hover:text-white hover:bg-neutral-800 transition border-b border-neutral-800">+ Add Expense</button>
             <div className="bg-neutral-950/50 p-3 flex justify-between items-center">
                 <span className="text-[10px] font-bold text-neutral-400">TOTAL EST. (HKD)</span>
